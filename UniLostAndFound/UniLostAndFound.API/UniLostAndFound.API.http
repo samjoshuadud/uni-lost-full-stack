@@ -1,0 +1,10 @@
+@UniLostAndFound.API_HostAddress = http://localhost:5067
+
+GET {{UniLostAndFound.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+### Test Firestore Connection
+GET http://localhost:5067/api/auth/test-firestore
+Accept: application/json
+
+###

@@ -1,0 +1,36 @@
+UniLostAndFound
+├── UniLostAndFound.API
+│   ├── appsettings.Development.json
+│   ├── appsettings.json
+│   ├── bin
+│   │   └── Debug
+│   │       └── net8.0
+│   ├── Controllers
+│   ├── Data
+│   ├── firebase-config.json
+│   ├── Models
+│   ├── obj
+│   │   ├── Debug
+│   │   │   └── net8.0
+│   │   │       ├── ref
+│   │   │       ├── refint
+│   │   │       ├── UniLostAndFound.API.AssemblyInfo.cs
+│   │   │       ├── UniLostAndFound.API.AssemblyInfoInputs.cache
+│   │   │       ├── UniLostAndFound.API.assets.cache
+│   │   │       ├── UniLostAndFound.API.csproj.AssemblyReference.cache
+│   │   │       ├── UniLostAndFound.API.GeneratedMSBuildEditorConfig.editorconfig
+│   │   │       └── UniLostAndFound.API.GlobalUsings.g.cs
+│   │   ├── project.assets.json
+│   │   ├── project.nuget.cache
+│   │   ├── UniLostAndFound.API.csproj.nuget.dgspec.json
+│   │   ├── UniLostAndFound.API.csproj.nuget.g.props
+│   │   └── UniLostAndFound.API.csproj.nuget.g.targets
+│   ├── Program.cs
+│   ├── Properties
+│   │   └── launchSettings.json
+│   ├── Services
+│   ├── UniLostAndFound.API.csproj
+│   └── UniLostAndFound.API.http
+└── UniLostAndFound.sln
+
+15 directories, 19 files
