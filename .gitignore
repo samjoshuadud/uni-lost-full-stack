@@ -1,0 +1,94 @@
+# Frontend (Next.js)
+# Dependencies
+frontend/node_modules/
+frontend/.pnp
+frontend/.pnp.js
+
+
+# Dependencies
+**/node_modules
+node_modules
+frontend/node_modules
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+.next/
+
+# Testing
+frontend/coverage
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+
+# Production
+frontend/build
+
+# Misc
+frontend/.DS_Store
+frontend/*.pem
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Debug
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# Backend (C#)
+# Build results
+UniLostAndFound/**/[Dd]ebug/
+UniLostAndFound/**/[Dd]ebugPublic/
+UniLostAndFound/**/[Rr]elease/
+UniLostAndFound/**/[Rr]eleases/
+UniLostAndFound/**/x64/
+UniLostAndFound/**/x86/
+UniLostAndFound/**/build/
+UniLostAndFound/**/bld/
+UniLostAndFound/**/[Bb]in/
+UniLostAndFound/**/[Oo]bj/
+
+# Visual Studio files
+.vs/
+.vscode/
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.dbmdl
+*.dbproj.schemaview
+*.pfx
+*.publishsettings
+
+# Firebase
+firebase-config.json
+**/firebase-adminsdk*.json
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Logs
+logs
+*.log
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
