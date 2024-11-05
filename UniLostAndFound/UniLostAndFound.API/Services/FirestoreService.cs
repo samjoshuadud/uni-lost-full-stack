@@ -10,6 +10,7 @@ public class FirestoreService
     private readonly ILogger<FirestoreService> _logger;
     private const string UsersCollection = "users";
     private const string UserAccessCollection = "userAccess";
+    private const string ITEMS_COLLECTION = "items";
 
     public FirestoreService(string projectId, ILogger<FirestoreService> logger)
     {
@@ -124,5 +125,51 @@ public class FirestoreService
             _logger.LogError($"[Debug] Error updating admin emails: {ex.Message}");
             return false;
         }
+    }
+
+    public async Task<string> CreateItemAsync(Item item)
+    {
+        try
+        {
+            var collection = _db.Collection(ITEMS_COLLECTION);
+            var docRef = await collection.AddAsync(item);
+            _logger.LogInformation($"Created item with ID: {docRef.Id}");
+            return docRef.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error creating item: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<Item> GetItemAsync(string id)
+    {
+        var docRef = _db.Collection(ITEMS_COLLECTION).Document(id);
+        var snapshot = await docRef.GetSnapshotAsync();
+        return snapshot.ConvertTo<Item>();
+    }
+
+    public async Task<List<Item>> GetItemsByUniversityAsync(string universityId)
+    {
+        var query = _db.Collection(ITEMS_COLLECTION)
+            .WhereEqualTo("UniversityId", universityId);
+        var snapshot = await query.GetSnapshotAsync();
+        
+        return snapshot.Documents
+            .Select(d => d.ConvertTo<Item>())
+            .ToList();
+    }
+
+    public async Task UpdateItemAsync(string id, Item item)
+    {
+        var docRef = _db.Collection(ITEMS_COLLECTION).Document(id);
+        await docRef.SetAsync(item);
+    }
+
+    public async Task DeleteItemAsync(string id)
+    {
+        var docRef = _db.Collection(ITEMS_COLLECTION).Document(id);
+        await docRef.DeleteAsync();
     }
 } 

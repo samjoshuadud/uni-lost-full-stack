@@ -31,24 +31,10 @@ export default function UniLostAndFound() {
   const [selectedItem, setSelectedItem] = useState(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [searchCategory, setSearchCategory] = useState("all")
-  const [items, setItems] = useState([
-    { id: 1, name: "Textbook", location: "Science Building", status: "lost", description: "Biology 101 textbook, blue cover", category: "Books", date: "2023-06-01", approved: true, claimedBy: null, verificationQuestions: ["What's the title of the book?", "What color is the cover?"] },
-    { id: 2, name: "Water Bottle", location: "Gym", status: "found", description: "Red metal water bottle", category: "Personal Items", date: "2023-06-02", approved: true, foundBy: "12345", claimedBy: null, verificationQuestions: ["What material is the bottle made of?", "What color is the bottle?"] },
-    { id: 3, name: "Laptop Charger", location: "Library", status: "found", description: "Black laptop charger", category: "Electronics", date: "2023-06-03", approved: true, foundBy: "23456", claimedBy: null, verificationQuestions: ["What brand is the charger?", "What color is the charger?"] },
-    { id: 4, name: "Backpack", location: "Cafeteria", status: "handed_over", description: "Gray backpack", category: "Bags", date: "2023-06-04", approved: true, foundBy: "34567", claimedBy: "45678", verificationQuestions: ["What brand is the backpack?", "Are there any distinctive features on the backpack?"] },
-  ])
+  const [items, setItems] = useState([])
   const [adminNotifications, setAdminNotifications] = useState([])
   const [surrenderedItems, setSurrenderedItems] = useState([])
-  const [userNotifications, setUserNotifications] = useState([
-    // Example structure
-    {
-      id: 1,
-      type: "pending_approval", // or "item_found" or "verification_needed"
-      itemId: 1,
-      message: "Your lost item report is pending approval",
-      status: "pending" // or "verified" or "ready_for_pickup"
-    }
-  ])
+  const [userNotifications, setUserNotifications] = useState([])
   const [pendingProcesses, setPendingProcesses] = useState([])
   const [showReportConfirmDialog, setShowReportConfirmDialog] = useState(false)
   const [pendingReport, setPendingReport] = useState(null)
@@ -57,9 +43,11 @@ export default function UniLostAndFound() {
   const [currentNotification, setCurrentNotification] = useState(null)
   const [showVerificationSuccessDialog, setShowVerificationSuccessDialog] = useState(false)
   const [showVerificationFailDialog, setShowVerificationFailDialog] = useState(false)
-  const [adminUsers, setAdminUsers] = useState([
-    'admin1@umak.edu.ph' // Initial admin
-  ]);
+  const [adminUsers, setAdminUsers] = useState([])
+
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState(null)
 
   const filteredItems = items.filter(item => 
     item.approved &&
@@ -107,11 +95,58 @@ export default function UniLostAndFound() {
     }
   }
 
-  const handleReportSubmit = (newItem) => {
+  const handleReportSubmit = async (formData) => {
     if (requireAuth()) return;
-    setPendingReport(newItem);
-    setShowReportConfirmDialog(true);
-  }
+    
+    try {
+      setIsSubmitting(true);
+      
+      // Log the form data for debugging
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+
+      const response = await fetch('http://localhost:5067/api/item', {
+        method: 'POST',
+        body: formData // Let the browser handle the Content-Type header
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Server response:', errorText);
+        throw new Error(`Failed to submit report: ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Report submitted successfully:', data);
+      
+      // Update local state with new item
+      const newItem = {
+        id: data,
+        name: formData.get('name'),
+        description: formData.get('description'),
+        category: formData.get('category'),
+        status: formData.get('status'),
+        location: formData.get('location'),
+        reporterId: formData.get('reporterId'),
+        studentId: formData.get('studentId'),
+        universityId: formData.get('universityId'),
+        imageUrl: '', // Will be updated from backend response
+        dateReported: new Date().toISOString(),
+        approved: false,
+        verificationQuestions: []
+      };
+
+      setItems(prevItems => [...prevItems, newItem]);
+      setPendingReport(null);
+      setShowReportConfirmDialog(false);
+      setActiveSection("pending_process");
+    } catch (error) {
+      console.error('Error submitting report:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleConfirmReport = () => {
     if (pendingReport.status === "lost") {
@@ -138,65 +173,31 @@ export default function UniLostAndFound() {
     setPendingReport(null);
   }
 
-  const handleApproveItem = (id, status, itemData = null) => {
-    if (status === "lost") {
+  const handleApproveItem = async (id, status, itemData = null) => {
+    try {
+      const response = await fetch(`http://localhost:5067/api/item/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status,
+          approved: true,
+          ...itemData
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to approve item')
+
+      // Update local state after successful API call
       setItems(items.map(item => 
-        item.id === id ? { ...item, approved: true } : item
-      ));
-      setPendingProcesses(pendingProcesses.map(process =>
-        process.item.id === id ? { ...process, status: "approved" } : process
-      ));
-    } else if (status === "found" && itemData) {
-      // Add the found item to the main items list
-      setItems([...items, {
-        ...itemData,
-        id: items.length + 1,
-        status: "found",
-        approved: true,
-        date: new Date().toISOString().split('T')[0]
-      }]);
-    } else if (status === "in_possession") {
-      setItems(items.map(item => 
-        item.id === id ? { 
-          ...item, 
-          verificationQuestions: verificationQuestions 
-        } : item
-      ));
-      setPendingProcesses(pendingProcesses.map(process =>
-        process.item.id === id ? { 
-          ...process, 
-          status: "verification_needed",
-          item: {
-            ...process.item,
-            verificationQuestions: verificationQuestions
-          }
-        } : process
-      ));
-    } else if (status === "posted") {
-      setPendingProcesses(pendingProcesses.map(process =>
-        process.item.id === id ? { ...process, status: "posted" } : process
-      ));
-      setItems(items.map(item =>
-        item.id === id ? { ...item, status: "lost", approved: true } : item
-      ));
-    } else if (status === true) { // Correct verification
-      setPendingProcesses(pendingProcesses.map(process =>
-        process.item.id === id ? { 
-          ...process, 
-          status: "verified",
-          message: "Verified! Please proceed to the student center (Room 101) to retrieve your item."
-        } : process
-      ));
-    } else if (status === false) { // Incorrect verification
-      setPendingProcesses(pendingProcesses.map(process =>
-        process.item.id === id ? { 
-          ...process, 
-          status: "posted",
-          message: "Verification failed. The item will remain posted. You can try again if you believe this is your item."
-        } : process
-      ));
+        item.id === id ? { ...item, approved: true, status } : item
+      ))
+    } catch (error) {
+      setError('Failed to approve item')
+      console.error('Error approving item:', error)
     }
-  };
+  }
 
   const handleHandOverItem = (id, claimantId) => {
     setItems(items.map(item => 
@@ -232,10 +233,20 @@ export default function UniLostAndFound() {
     setAdminNotifications(adminNotifications.filter(notification => notification.id !== notificationId))
   }
 
-  const handleDelete = (id) => {
-    setItems(items.filter(item => item.id !== id))
-    setSurrenderedItems(surrenderedItems.filter(item => item.id !== id))
-    setAdminNotifications(adminNotifications.filter(notification => notification.id !== id))
+  const handleDelete = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5067/api/item/${id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) throw new Error('Failed to delete item')
+
+      // Update local state after successful deletion
+      setItems(items.filter(item => item.id !== id))
+    } catch (error) {
+      setError('Failed to delete item')
+      console.error('Error deleting item:', error)
+    }
   }
 
   const generateVerificationQuestions = (item) => {
