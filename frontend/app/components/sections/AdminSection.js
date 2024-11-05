@@ -13,14 +13,15 @@ import { Trash, UserPlus, CheckCircle, XCircle, ClipboardList, Package, Bell, Us
 import { useAuth } from "@/lib/AuthContext"
 
 export default function AdminSection({ 
-  items, 
-  surrenderedItems, 
-  notifications, 
+  items = [], 
+  surrenderedItems = [], 
+  notifications = [], 
   onApprove, 
   onHandOver, 
   onResolveNotification, 
   onDelete,
-  onUpdateItemStatus
+  onUpdateItemStatus,
+  isLoading
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
   const [verificationQuestions, setVerificationQuestions] = useState("")
@@ -47,6 +48,15 @@ export default function AdminSection({
         </CardContent>
       </Card>
     );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="text-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Loading...</p>
+      </div>
+    )
   }
 
   const handleAssignAdmin = async () => {

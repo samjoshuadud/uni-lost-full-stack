@@ -3,8 +3,17 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants';
 
 export default function ItemSection({ items, onSeeMore, title }) {
+  const getStatusBadge = (status) => {
+    return (
+      <Badge variant={ItemStatusVariants[status] || 'default'}>
+        {ItemStatusLabels[status] || status}
+      </Badge>
+    );
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -18,9 +27,7 @@ export default function ItemSection({ items, onSeeMore, title }) {
                 <div className="flex-grow">
                   <h3 className="font-bold">{item.name}</h3>
                   <p className="text-sm text-muted-foreground">{item.location}</p>
-                  <Badge variant={item.status === "lost" ? "destructive" : item.status === "found" ? "secondary" : "default"}>
-                    {item.status === "lost" ? "Lost" : item.status === "found" ? "Found" : "Handed Over"}
-                  </Badge>
+                  {getStatusBadge(item.status)}
                 </div>
                 <Button onClick={() => onSeeMore(item)}>See More</Button>
               </CardContent>

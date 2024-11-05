@@ -4,22 +4,24 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
+import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants';
 
 export default function DashboardSection({ items, onItemClick }) {
   const { userData, isAdmin } = useAuth();
 
+  if (!items) return (
+    <div className="col-span-full text-center p-8 text-muted-foreground">
+      Loading...
+    </div>
+  )
+
   const getStatusBadge = (status) => {
-    switch (status) {
-      case "lost":
-        return <Badge variant="destructive">Lost</Badge>
-      case "found":
-        return <Badge variant="secondary">Found</Badge>
-      case "handed_over":
-        return <Badge variant="default">Handed Over</Badge>
-      default:
-        return <Badge>{status}</Badge>
-    }
-  }
+    return (
+      <Badge variant={ItemStatusVariants[status] || 'default'}>
+        {ItemStatusLabels[status] || status}
+      </Badge>
+    );
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

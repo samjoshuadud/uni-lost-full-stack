@@ -6,6 +6,7 @@ using Google.Apis.Auth.OAuth2;
 using Microsoft.IdentityModel.Tokens;
 using UniLostAndFound.API.Services;
 using Google.Cloud.Firestore;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,7 +31,13 @@ try
     }
 
     // Add services to the container.
-    builder.Services.AddControllers();
+    builder.Services.AddControllers(options =>
+    {
+        options.EnableEndpointRouting = false;
+    }).AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = null;
+    });
 
     // Configure Swagger/OpenAPI
     builder.Services.AddEndpointsApiExplorer();
@@ -76,6 +83,12 @@ try
             });
     });
 
+    // Add these configurations
+    builder.Services.Configure<FormOptions>(options =>
+    {
+        options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
+    });
+
     var app = builder.Build();
 
     // Configure the HTTP request pipeline.
@@ -92,6 +105,9 @@ try
     app.UseCors("AllowNextJS");
     app.UseAuthorization();
     app.MapControllers();
+
+    // Add this after other middleware configurations
+    app.UseStaticFiles();
 
     Console.WriteLine("[Debug] Application configured successfully");
     app.Run();
