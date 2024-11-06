@@ -4,13 +4,19 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Trash, UserPlus, CheckCircle, XCircle, ClipboardList, Package, Bell, Users, ExternalLink } from "lucide-react"
+import { Trash, UserPlus, CheckCircle, XCircle, ClipboardList, Package, Bell, Users, ExternalLink, Loader2, BarChart, PieChart, Activity, TrendingUp } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
+import StatisticsSection from "./admin-tabs/StatisticsSection"
+import LostReportsTab from "./admin-tabs/LostReportsTab"
+import FoundItemsTab from "./admin-tabs/FoundItemsTab"
+import VerificationsTab from "./admin-tabs/VerificationsTab"
+import PendingProcessesTab from "./admin-tabs/PendingProcessesTab"
+import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab"
 
 export default function AdminSection({ 
   items = [], 
@@ -27,7 +33,7 @@ export default function AdminSection({
   const [verificationQuestions, setVerificationQuestions] = useState("")
   const [selectedItem, setSelectedItem] = useState(null)
   const [newAdminEmail, setNewAdminEmail] = useState("")
-  const [activeTab, setActiveTab] = useState("lost")
+  const [activeTab, setActiveTab] = useState("statistics")
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [showFailDialog, setShowFailDialog] = useState(false)
   const [showNoShowDialog, setShowNoShowDialog] = useState(false)
@@ -38,21 +44,51 @@ export default function AdminSection({
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState({ title: "", message: "" })
   const [pendingProcesses, setPendingProcesses] = useState([])
+  const [isCountsLoading, setIsCountsLoading] = useState(true)
+  const [allItems, setAllItems] = useState([]);
+  const [isItemsLoading, setIsItemsLoading] = useState(true);
+  const [pendingAttentionCount, setPendingAttentionCount] = useState(0);
+  const [isAttentionCountLoading, setIsAttentionCountLoading] = useState(true);
+  const [foundItems, setFoundItems] = useState([]);
+  const [isFoundItemsLoading, setIsFoundItemsLoading] = useState(true);
+  const [selectedItemDetails, setSelectedItemDetails] = useState(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
 
   useEffect(() => {
-    const fetchAllPendingProcesses = async () => {
+    const fetchPendingProcesses = async () => {
       try {
-        const response = await fetch(`http://localhost:5067/api/item/pending/all`);
+        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
         if (!response.ok) throw new Error("Failed to fetch all pending processes");
         const data = await response.json();
+        
         setPendingProcesses(data);
+        
+        const items = data
+          .filter(process => process.Item)
+          .map(process => ({
+            ...process.Item,
+            processId: process.Id,
+            processStatus: process.Status
+          }));
+        
+        setAllItems(items);
+        setIsCountsLoading(false);
+        setIsItemsLoading(false);
       } catch (error) {
-        console.error("Error fetching all pending processes:", error);
+        setIsCountsLoading(false);
+        setIsItemsLoading(false);
       }
     };
 
-    fetchAllPendingProcesses();
+    fetchPendingProcesses();
   }, []);
+
+  // Add console logs to debug the data
+  useEffect(() => {
+    console.log("Pending Processes:", pendingProcesses);
+    console.log("Items:", items);
+  }, [pendingProcesses, items]);
 
   // Only allow access if user is admin
   if (!isAdmin) {
@@ -122,8 +158,18 @@ export default function AdminSection({
   };
 
   const getPendingApprovalCount = () => {
+    const count = pendingProcesses.filter(process => 
+      process.Status === "pending_approval" && 
+      process.Item?.Status === "lost"
+    ).length;
+    
+    console.log("Pending approval processes count:", count);
+    return count;
+  };
+
+  const getPendingFoundApprovalCount = () => {
     return items.filter(item => 
-      item.status === "lost" && 
+      !item.approved && item.status === "found" && 
       !notifications.some(n => n.type === 'verification' && n.item?.id === item.id)
     ).length;
   };
@@ -161,418 +207,141 @@ export default function AdminSection({
     }
   };
 
+  useEffect(() => {
+    // Force the tab to "reports" when component mounts
+    setActiveTab("reports");
+  }, []); // Empty dependency array means this runs once on mount
+
+  const renderCount = (count) => {
+    if (isCountsLoading) {
+      return <Loader2 className="h-6 w-6 text-primary animate-spin" />;
+    }
+    return <h3 className="text-2xl font-bold">{count}</h3>;
+  };
+
+  useEffect(() => {
+    const fetchPendingAttentionCount = async () => {
+      try {
+        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        if (!response.ok) throw new Error("Failed to fetch pending processes");
+        const data = await response.json();
+        const count = data.filter(process => 
+          process.Status === "pending_approval" && 
+          process.Item?.Status === "lost"
+        ).length;
+        setPendingAttentionCount(count);
+      } catch (error) {
+        console.error("Error fetching attention count:", error);
+      } finally {
+        setIsAttentionCountLoading(false);
+      }
+    };
+
+    fetchPendingAttentionCount();
+  }, []);
+
+  useEffect(() => {
+    const fetchFoundItems = async () => {
+      if (activeTab !== "found") return;
+      
+      try {
+        setIsFoundItemsLoading(true);
+        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        if (!response.ok) throw new Error("Failed to fetch found items");
+        const data = await response.json();
+        const foundItems = data.filter(process => process.Item?.Status === "found");
+        setFoundItems(foundItems);
+      } catch (error) {
+        console.error("Error fetching found items:", error);
+      } finally {
+        setIsFoundItemsLoading(false);
+      }
+    };
+
+    fetchFoundItems();
+  }, [activeTab]);
+
+  const handleViewDetails = (item) => {
+    setSelectedItemDetails(item);
+    setShowDetailsDialog(true);
+  };
+
   return (
     <div className="space-y-8">
-      {/* Admin Overview Cards */}
-      <div className="grid grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <ClipboardList className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Pending Reports</p>
-                <h3 className="text-2xl font-bold">{items.filter(item => item.status === "lost").length}</h3>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Package className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Surrendered Items</p>
-                <h3 className="text-2xl font-bold">{surrenderedItems.length}</h3>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Bell className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Verifications</p>
-                <h3 className="text-2xl font-bold">
-                  {notifications.filter(n => n.type === 'verification').length}
-                </h3>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-start space-x-4">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Admin Management</p>
-                <Button variant="link" className="px-0" onClick={() => setShowAdminDialog(true)}>
-                  Assign Admin →
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Admin Dashboard Overview Card */}
+      <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-none">
+        <CardContent className="p-8">
+          <div className="text-center space-y-2">
+            <h3 className="font-bold text-2xl text-primary">Admin Dashboard</h3>
+            <p className="text-muted-foreground max-w-lg mx-auto">
+              Manage and monitor all lost and found items in the system
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Main Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Admin Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="reports">Lost Item Reports</TabsTrigger>
+      <Card className="border-t-4 border-t-primary">
+        <CardContent className="p-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="statistics" className="w-full">
+            <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1 rounded-lg">
+              <TabsTrigger value="statistics">Statistics</TabsTrigger>
+              <TabsTrigger value="reports">Lost Reports</TabsTrigger>
               <TabsTrigger value="found">Found Items</TabsTrigger>
               <TabsTrigger value="verifications">Verifications</TabsTrigger>
-              <TabsTrigger value="pending">Pending Processes</TabsTrigger>
+              <TabsTrigger value="pending">Processes</TabsTrigger>
+              <TabsTrigger value="retrieval">Pending Retrieval</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="reports" className="space-y-4 mt-4">
-              <h3 className="text-lg font-semibold">Lost Item Reports</h3>
-              
-              {/* New Status Summary Section */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">Pending Approval</span>
-                      <span className="text-2xl font-bold">
-                        {getPendingApprovalCount()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">In Verification</span>
-                      <span className="text-2xl font-bold">
-                        {getInVerificationCount()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-muted-foreground">Pending Retrieval</span>
-                      <span className="text-2xl font-bold">
-                        {getPendingRetrievalCount()}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Pending Reports Section */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">New Reports</h4>
-                  {notifications.filter(n => n.type === 'verification' && n.item).length > 0 && (
-                    <Badge variant="secondary" className="animate-pulse">
-                      {notifications.filter(n => n.type === 'verification' && n.item).length} items need verification
-                    </Badge>
-                  )}
-                </div>
-                
-                {items.filter(item => item.status === "lost").map((item) => {
-                  // Check if item is already in verification process
-                  const isInVerification = notifications.some(
-                    n => n.type === 'verification' && n.item?.id === item.id
-                  );
-                  
-                  // Check if verification questions have been set
-                  const hasVerificationQuestions = item.verificationQuestions && item.verificationQuestions.length > 0;
-
-                  return (
-                    <Card key={item.id}>
-                      <CardContent className="flex items-center justify-between gap-4 p-4">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-bold">{item.name}</h4>
-                            <Badge 
-                              variant={isInVerification ? "secondary" : hasVerificationQuestions ? "warning" : "outline"} 
-                              className="text-xs"
-                            >
-                              {isInVerification ? "In Verification" : hasVerificationQuestions ? "Questions Set" : "New Report"}
-                            </Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">Location: {item.location}</p>
-                          <p className="text-sm">Description: {item.description}</p>
-                          <p className="text-sm">Student ID: {item.studentId}</p>
-                          {hasVerificationQuestions && (
-                            <p className="text-sm text-muted-foreground mt-2 italic">
-                              Verification questions have been set for this item
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex flex-col gap-2">
-                          {isInVerification ? (
-                            // Show verification status buttons
-                            <>
-                              <Button 
-                                variant="secondary" 
-                                className="w-full"
-                                onClick={() => {
-                                  setActiveTab("verification");
-                                  setTimeout(() => {
-                                    const itemElement = document.getElementById(`verification-${item.id}`);
-                                    if (itemElement) {
-                                      itemElement.scrollIntoView({ behavior: 'smooth' });
-                                      itemElement.classList.add('highlight-animation');
-                                    }
-                                  }, 100);
-                                }}
-                              >
-                                <span className="text-blue-600 font-medium">→</span>
-                                &nbsp;View Verification Status
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                className="w-full"
-                                onClick={() => {
-                                  const notification = notifications.find(
-                                    n => n.type === 'verification' && n.item?.id === item.id
-                                  );
-                                  if (notification) {
-                                    onResolveNotification(notification.id);
-                                    onUpdateItemStatus(item.id, "lost");
-                                  }
-                                }}
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel Verification
-                              </Button>
-                            </>
-                          ) : hasVerificationQuestions ? (
-                            // Show when questions are set but verification hasn't started
-                            <div className="flex flex-col gap-2">
-                              <Button 
-                                variant="destructive" 
-                                onClick={() => {
-                                  // Reset verification questions and status
-                                  onUpdateItemStatus(item.id, "lost");
-                                }}
-                                className="w-full"
-                              >
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Cancel Questions
-                              </Button>
-                              <Button 
-                                variant="destructive" 
-                                onClick={() => onDelete(item.id)}
-                                size="icon"
-                              >
-                                <Trash className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          ) : (
-                            // Show default buttons for new reports
-                            <div className="flex flex-col gap-2">
-                              <div className="flex gap-2">
-                                <Button 
-                                  variant="default"
-                                  className="flex-1"
-                                  onClick={() => {
-                                    onApprove(item.id, "posted");
-                                  }}
-                                >
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Approve Post
-                                </Button>
-                                <Button 
-                                  variant="destructive" 
-                                  onClick={() => onDelete(item.id)}
-                                  size="icon"
-                                >
-                                  <Trash className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button variant="secondary" className="w-full">
-                                    <span className="text-green-600 font-medium">✓</span>
-                                    &nbsp;Item Found - Verify Owner
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent>
-                                  <DialogHeader>
-                                    <DialogTitle>Set Verification Questions</DialogTitle>
-                                    <DialogDescription>
-                                      Please set verification questions for the item owner
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <Textarea
-                                    placeholder="Enter verification questions (one per line)"
-                                    value={verificationQuestions}
-                                    onChange={(e) => setVerificationQuestions(e.target.value)}
-                                    rows={4}
-                                  />
-                                  <DialogFooter>
-                                    <Button onClick={() => {
-                                      onApprove(item.id, "in_possession", verificationQuestions.split('\n'));
-                                      setVerificationQuestions("");
-                                    }}>
-                                      Send for Verification
-                                    </Button>
-                                  </DialogFooter>
-                                </DialogContent>
-                              </Dialog>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+            <TabsContent value="statistics">
+              <StatisticsSection />
             </TabsContent>
 
-            <TabsContent value="found" className="space-y-4 mt-4">
-              <h3 className="text-lg font-semibold">Surrendered Found Items</h3>
-              {surrenderedItems.map((item) => (
-                <Card key={item.id}>
-                  <CardContent className="flex items-center justify-between gap-4 p-4">
-                    <div>
-                      <h4 className="font-bold">{item.name}</h4>
-                      <p className="text-sm text-muted-foreground">Location: {item.location}</p>
-                      <p className="text-sm">Found by Student ID: {item.studentId}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        onClick={() => {
-                          setSelectedFoundItem(item);
-                          setShowApproveFoundDialog(true);
-                        }}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve and Post
-                      </Button>
-                      <Button variant="destructive" onClick={() => onDelete(item.id)}>
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <TabsContent value="reports">
+              <LostReportsTab 
+                items={allItems}
+                isCountsLoading={isCountsLoading}
+                getPendingApprovalCount={getPendingApprovalCount}
+                getInVerificationCount={getInVerificationCount}
+                getPendingRetrievalCount={getPendingRetrievalCount}
+                onViewDetails={handleViewDetails}
+                onApprove={onApprove}
+                onDelete={onDelete}
+                onItemInPossession={onUpdateItemStatus}
+              />
             </TabsContent>
 
-            <TabsContent value="verifications" className="space-y-4 mt-4">
-              <h3 className="text-lg font-semibold">Verification Requests</h3>
-              {notifications.filter(n => n.type === 'verification' && n.item).map((notification) => (
-                <Card 
-                  key={notification.id}
-                  id={`verification-${notification.item.id}`}
-                >
-                  <CardContent className="p-4">
-                    <h4 className="font-bold mb-2">
-                      Verification for {notification.item?.name || 'Unknown Item'}
-                    </h4>
-                    <div className="space-y-4 mb-4">
-                      {notification.verificationQuestions?.map((question, index) => (
-                        <div key={index} className="bg-muted p-3 rounded-lg">
-                          <p className="font-medium">Q: {question}</p>
-                          <p className="text-muted-foreground">A: {notification.answers?.[index] || 'No answer'}</p>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 justify-end">
-                      <Button 
-                        variant="default"
-                        onClick={() => handleVerificationResult(notification.id, true, notification.item.id)}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Correct
-                      </Button>
-                      <Button 
-                        variant="destructive"
-                        onClick={() => handleVerificationResult(notification.id, false, notification.item.id)}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        Incorrect
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <TabsContent value="found">
+              <FoundItemsTab 
+                surrenderedItems={surrenderedItems}
+                onApproveAndPost={onApprove}
+                onDelete={onDelete}
+              />
             </TabsContent>
 
-            <TabsContent value="pending" className="space-y-4 mt-4">
-              <h3 className="text-lg font-semibold">All Pending Processes</h3>
-              {pendingProcesses.map((process) => (
-                <Card key={process.id}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-bold">{process.item.name}</h4>
-                      <Badge variant="secondary">{process.status}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      {process.message}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        className="w-full"
-                        onClick={() => console.log('View details for admin')}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Details
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-              {pendingProcesses.length === 0 && (
-                <Card>
-                  <CardContent className="p-4 text-center text-muted-foreground">
-                    No pending processes
-                  </CardContent>
-                </Card>
-              )}
+            <TabsContent value="verifications">
+              <VerificationsTab 
+                notifications={notifications}
+                onVerificationResult={handleVerificationResult}
+              />
             </TabsContent>
 
-            <TabsContent value="retrieval" className="space-y-4 mt-4">
-              <h3 className="text-lg font-semibold">Ongoing Retrievals</h3>
-              {items.filter(item => item.status === "pending_retrieval").map((item) => (
-                <Card key={item.id}>
-                  <CardContent className="flex items-center justify-between gap-4 p-4">
-                    <div>
-                      <h4 className="font-bold">{item.name}</h4>
-                      <p className="text-sm">Student ID: {item.studentId}</p>
-                      <Badge variant="secondary">Pending Retrieval at Student Center</Badge>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="default"
-                        onClick={() => handleRetrievalStatus(item.id, "retrieved")}
-                      >
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                        Retrieved
-                      </Button>
-                      <Button 
-                        variant="destructive"
-                        onClick={() => handleRetrievalStatus(item.id, "no_show")}
-                      >
-                        <XCircle className="h-4 w-4 mr-2" />
-                        No Show
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <TabsContent value="pending">
+              <PendingProcessesTab 
+                pendingProcesses={pendingProcesses}
+                onViewDetails={handleViewDetails}
+              />
+            </TabsContent>
+
+            <TabsContent value="retrieval">
+              <PendingRetrievalTab 
+                items={allItems}
+                onHandOver={onHandOver}
+                onNoShow={(itemId) => {
+                  setNoShowItemId(itemId);
+                  setShowNoShowDialog(true);
+                }}
+              />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -720,6 +489,61 @@ export default function AdminSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Details Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Item Details</DialogTitle>
+          </DialogHeader>
+          {selectedItemDetails && (
+            <div className="space-y-4">
+              {/* Image */}
+              {selectedItemDetails.ImageUrl && (
+                <div className="w-full h-64 bg-muted rounded-lg overflow-hidden">
+                  <img 
+                    src={selectedItemDetails.ImageUrl} 
+                    alt={selectedItemDetails.Name} 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              )}
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <h4 className="font-semibold">Basic Information</h4>
+                  <div className="space-y-2 mt-2">
+                    <p><strong>Name:</strong> {selectedItemDetails.Name}</p>
+                    <p><strong>Category:</strong> {selectedItemDetails.Category}</p>
+                    <p><strong>Location:</strong> {selectedItemDetails.Location}</p>
+                    <p><strong>Student ID:</strong> {selectedItemDetails.StudentId || 'N/A'}</p>
+                  </div>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Description</h4>
+                  <p className="mt-2 text-sm">{selectedItemDetails.Description}</p>
+                </div>
+              </div>
+
+              {/* Additional Descriptions */}
+              {selectedItemDetails.AdditionalDescriptions?.length > 0 && (
+                <div>
+                  <h4 className="font-semibold mb-2">Additional Details</h4>
+                  <div className="space-y-2">
+                    {selectedItemDetails.AdditionalDescriptions.map((desc, index) => (
+                      <div key={index} className="bg-muted p-3 rounded">
+                        <p className="font-medium">{desc.Title}</p>
+                        <p className="text-sm">{desc.Description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 

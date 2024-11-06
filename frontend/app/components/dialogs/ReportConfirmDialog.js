@@ -8,14 +8,15 @@ export default function ReportConfirmDialog({ open, onOpenChange, onConfirm }) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Report Submitted</DialogTitle>
+          <DialogTitle>Report Submitted Successfully</DialogTitle>
           <DialogDescription>
             Our admin will check if the item is in possession. If not, then this will be posted.
+            You can check the status of your report in the Pending Processes section.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button onClick={onConfirm}>
-            Okay
+            View Pending Processes
           </Button>
         </DialogFooter>
       </DialogContent>
