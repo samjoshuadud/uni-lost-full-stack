@@ -31,7 +31,7 @@ export default function ProfileSection() {
                 </div>
               )}
               <Badge className="absolute -bottom-2 right-0 px-3" variant="secondary">
-                {userData?.role || "Student"}
+                {userData?.isAdmin ? "Admin" : "User"}
               </Badge>
             </div>
 

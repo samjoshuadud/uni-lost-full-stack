@@ -1,23 +1,62 @@
 "use client"
 
+import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Trash, Loader2 } from "lucide-react"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
-export default function PendingProcessSection({ 
-  pendingProcesses, 
-  onCancelRequest, 
-  onVerify,
-  onViewPost 
-}) {
-  const { userData } = useAuth();
+export default function PendingProcessSection({ onCancelRequest, onVerify, onViewPost }) {
+  const { user, userData } = useAuth();
+  const [pendingProcesses, setPendingProcesses] = useState([]);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [processToCancelId, setProcessToCancelId] = useState(null);
+  const [deletingProcessId, setDeletingProcessId] = useState(null);
+
+  useEffect(() => {
+    const fetchPendingProcesses = async () => {
+      try {
+        setIsLoading(true);
+        if (!user?.uid) {
+          console.log("No user ID available");
+          return;
+        }
+
+        const response = await fetch(`http://localhost:5067/api/item/pending/user/${user.uid}`);
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch pending processes: ${await response.text()}`);
+        }
+        
+        const data = await response.json();
+        console.log("Fetched pending processes:", data);
+
+        // Ensure we're working with an array
+        const processesArray = Array.isArray(data) ? data : [data].filter(Boolean);
+        setPendingProcesses(processesArray);
+      } catch (error) {
+        console.error("Error fetching pending processes:", error);
+        setError(error.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchPendingProcesses();
+    }
+  }, [user]);
 
   const getStatusMessage = (process) => {
-    switch (process.status) {
+    if (!process) return "Status unknown";
+    
+    switch (process.Status) { // Note the capital S in Status
       case "pending_approval":
-        return "Your report is pending approval from admin.";
+        return process.Message || "Your report is pending approval from admin."; // Note the capital M in Message
       case "posted":
         return "We don't have the item yet, but we've posted it. Click below to view the post.";
       case "verification_needed":
@@ -27,12 +66,14 @@ export default function PendingProcessSection({
       case "verified":
         return "Verified! Please proceed to the student center to retrieve your item.";
       default:
-        return "Status unknown";
+        return process.Message || "Status unknown";
     }
   };
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case "pending_approval":
+        return <Badge>Pending Approval</Badge>;
       case "posted":
         return <Badge variant="secondary">Posted</Badge>;
       case "verification_needed":
@@ -46,55 +87,158 @@ export default function PendingProcessSection({
     }
   };
 
+  const handleCancelProcess = async (processId) => {
+    try {
+      setDeletingProcessId(processId);
+      
+      const response = await fetch(`http://localhost:5067/api/item/pending/${processId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel process');
+      }
+
+      // Remove the process from local state
+      setPendingProcesses(prevProcesses => 
+        prevProcesses.filter(process => process.Id !== processId)
+      );
+
+      setShowCancelDialog(false);
+      setProcessToCancelId(null);
+    } catch (error) {
+      console.error('Error canceling process:', error);
+      setError('Failed to cancel process');
+    } finally {
+      setDeletingProcessId(null);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Loading pending processes...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-4 text-center text-destructive">
+          Error: {error}
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <h2 className="text-xl font-semibold mb-4">Pending Processes</h2>
-      {pendingProcesses.map((process) => (
-        <Card key={process.id}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-bold">{process.item.name}</h3>
-              {getStatusBadge(process.status)}
-            </div>
-            <p className="text-sm text-muted-foreground mb-4">
-              {getStatusMessage(process)}
-            </p>
-            <div className="flex gap-2">
-              {process.status === "posted" && (
+      <div className="space-y-4">
+        {pendingProcesses.map((process) => (
+          <Card key={process.Id}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold">
+                  {process.Item?.Name || 'Unnamed Item'}
+                </h3>
+                {getStatusBadge(process.Status)}
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Category: {process.Item?.Category || 'N/A'}</p>
+                <p>Location: {process.Item?.Location || 'N/A'}</p>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {getStatusMessage(process)}
+              </p>
+              <div className="flex gap-2">
+                {process.Status === "posted" && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => onViewPost?.(process.Item)}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Post
+                  </Button>
+                )}
+                {process.Status === "verification_needed" && (
+                  <Button 
+                    variant="default" 
+                    className="w-full"
+                    onClick={() => onVerify?.(process)}
+                  >
+                    Verify Now
+                  </Button>
+                )}
                 <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => onViewPost(process.item)}
+                  variant="destructive"
+                  onClick={() => {
+                    setProcessToCancelId(process.Id);
+                    setShowCancelDialog(true);
+                  }}
+                  disabled={deletingProcessId === process.Id}
                 >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Post
+                  {deletingProcessId === process.Id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Request</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel this request? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={() => {
+                setShowCancelDialog(false);
+                setProcessToCancelId(null);
+              }}
+              disabled={deletingProcessId !== null}
+            >
+              No, keep it
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleCancelProcess(processToCancelId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingProcessId !== null}
+            >
+              {deletingProcessId === processToCancelId ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Canceling...
+                </>
+              ) : (
+                "Yes, cancel it"
               )}
-              {process.status === "verification_needed" && (
-                <Button 
-                  variant="default" 
-                  className="w-full"
-                  onClick={() => onVerify(process)}
-                >
-                  Verify Now
-                </Button>
-              )}
-              {process.status !== "verified" && userData?.role === "student" && (
-                <Button 
-                  variant="destructive" 
-                  onClick={() => onCancelRequest(process.id)}
-                >
-                  Cancel Request
-                </Button>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
-      {pendingProcesses.length === 0 && (
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {(!pendingProcesses || pendingProcesses.length === 0) && (
         <Card>
           <CardContent className="p-4 text-center text-muted-foreground">
-            No pending processes
+            No pending processes for {userData?.displayName || 'user'}
           </CardContent>
         </Card>
       )}

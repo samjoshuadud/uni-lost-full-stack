@@ -26,18 +26,7 @@ public class ItemController : ControllerBase
     {
         try
         {
-            _logger.LogInformation($"Received form data: {System.Text.Json.JsonSerializer.Serialize(new
-            {
-                createDto.Name,
-                createDto.Description,
-                createDto.Location,
-                createDto.Category,
-                createDto.Status,
-                createDto.ReporterId,
-                createDto.StudentId,
-                createDto.UniversityId,
-                HasImage = createDto.Image != null
-            })}");
+            _logger.LogInformation($"Creating item with name: {createDto.Name}");
             
             string imageUrl = string.Empty;
             
@@ -64,20 +53,19 @@ public class ItemController : ControllerBase
                 imageUrl = $"/uploads/{fileName}";
             }
 
-            List<UniLostAndFound.API.Models.AdditionalDescription> additionalDescriptions;
+            List<Models.AdditionalDescription> additionalDescriptions;
             if (!string.IsNullOrEmpty(createDto.AdditionalDescriptions))
             {
                 _logger.LogInformation($"Received additional descriptions: {createDto.AdditionalDescriptions}");
-                var dtoDescriptions = JsonSerializer.Deserialize<List<UniLostAndFound.API.DTOs.AdditionalDescription>>(
+                var dtoDescriptions = JsonSerializer.Deserialize<List<DTOs.AdditionalDescription>>(
                     createDto.AdditionalDescriptions,
                     new JsonSerializerOptions 
                     { 
                         PropertyNameCaseInsensitive = true 
                     }
-                ) ?? new List<UniLostAndFound.API.DTOs.AdditionalDescription>();
+                ) ?? new List<DTOs.AdditionalDescription>();
 
-                // Convert DTO to Model
-                additionalDescriptions = dtoDescriptions.Select(dto => new UniLostAndFound.API.Models.AdditionalDescription
+                additionalDescriptions = dtoDescriptions.Select(dto => new Models.AdditionalDescription
                 {
                     Title = dto.Title,
                     Description = dto.Description
@@ -85,10 +73,8 @@ public class ItemController : ControllerBase
             }
             else
             {
-                additionalDescriptions = new List<UniLostAndFound.API.Models.AdditionalDescription>();
+                additionalDescriptions = new List<Models.AdditionalDescription>();
             }
-
-            _logger.LogInformation($"Deserialized {additionalDescriptions.Count} additional descriptions");
 
             var now = DateTime.UtcNow;
 
@@ -104,17 +90,30 @@ public class ItemController : ControllerBase
                 StudentId = createDto.StudentId,
                 UniversityId = createDto.UniversityId,
                 Approved = false,
-                VerificationQuestions = new List<string>(),
                 ImageUrl = imageUrl,
                 AdditionalDescriptions = additionalDescriptions,
                 CreatedAt = now,
                 UpdatedAt = now
             };
 
-            _logger.LogInformation($"Creating item: {System.Text.Json.JsonSerializer.Serialize(item)}");
+            _logger.LogInformation($"Creating item: {JsonSerializer.Serialize(item)}");
 
             var id = await _firestoreService.CreateItemAsync(item);
-            return Ok(new { id });
+
+            // Create a pending process
+            var pendingProcess = new PendingProcess
+            {
+                ItemId = id,
+                UserId = createDto.ReporterId,
+                Status = "pending_approval",
+                Message = "Waiting for the admin to approve the post, also checking if we have the item in possession.",
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            var processId = await _firestoreService.CreatePendingProcessAsync(pendingProcess);
+
+            return Ok(new { itemId = id, processId });
         }
         catch (Exception ex)
         {
@@ -159,7 +158,6 @@ public class ItemController : ControllerBase
         if (updateDto.Status != null) existingItem.Status = updateDto.Status;
         if (updateDto.Location != null) existingItem.Location = updateDto.Location;
         if (updateDto.Approved.HasValue) existingItem.Approved = updateDto.Approved.Value;
-        if (updateDto.VerificationQuestions != null) existingItem.VerificationQuestions = updateDto.VerificationQuestions;
 
         await _firestoreService.UpdateItemAsync(id, existingItem);
         return NoContent();
@@ -179,5 +177,76 @@ public class ItemController : ControllerBase
     {
         await _firestoreService.DeleteItemAsync(id);
         return NoContent();
+    }
+
+    [HttpGet("pending/user/{userId}")]
+    public async Task<ActionResult<List<PendingProcess>>> GetPendingProcessesByUser(string userId)
+    {
+        try
+        {
+            _logger.LogInformation($"Fetching pending processes for user: {userId}");
+            
+            var pendingProcesses = await _firestoreService.GetPendingProcessesByUserIdAsync(userId);
+            
+            _logger.LogInformation($"Found {pendingProcesses.Count} pending processes");
+            
+            if (pendingProcesses.Count == 0)
+            {
+                _logger.LogInformation("No pending processes found");
+                return Ok(new List<PendingProcess>()); // Return empty list instead of null
+            }
+
+            return Ok(pendingProcesses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error in GetPendingProcessesByUser: {ex.Message}");
+            _logger.LogError(ex.StackTrace);
+            return StatusCode(500, new { error = "Internal server error", details = ex.Message });
+        }
+    }
+
+    [HttpGet("pending/all")]
+    public async Task<ActionResult<List<PendingProcess>>> GetAllPendingProcesses()
+    {
+        try
+        {
+            var pendingProcesses = await _firestoreService.GetAllPendingProcessesAsync();
+            return Ok(pendingProcesses);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching all pending processes: {ex.Message}");
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpDelete("pending/{processId}")]
+    public async Task<ActionResult> DeletePendingProcess(string processId)
+    {
+        try
+        {
+            // Get the pending process first to get the itemId
+            var pendingProcesses = await _firestoreService.GetPendingProcessesByIdAsync(processId);
+            var process = pendingProcesses.FirstOrDefault();
+            
+            if (process == null)
+            {
+                return NotFound("Pending process not found");
+            }
+
+            if (string.IsNullOrEmpty(process.ItemId))
+            {
+                return BadRequest("Invalid item ID in pending process");
+            }
+
+            await _firestoreService.DeletePendingProcessAndItemAsync(processId, process.ItemId);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error deleting pending process: {ex.Message}");
+            return StatusCode(500, new { error = "Failed to delete pending process", details = ex.Message });
+        }
     }
 } 

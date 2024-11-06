@@ -65,5 +65,4 @@ public class UpdateItemDto
     public string? Category { get; set; }
     public string? Status { get; set; }
     public bool? Approved { get; set; }
-    public List<string>? VerificationQuestions { get; set; }
 } 

@@ -15,9 +15,6 @@ public class User
     public string DisplayName { get; set; } = string.Empty;
 
     [FirestoreProperty]
-    public string Role { get; set; } = "select"; // "admin", "student", "teacher", or "select"
-
-    [FirestoreProperty]
     public string? StudentId { get; set; }
 
     [FirestoreProperty]
