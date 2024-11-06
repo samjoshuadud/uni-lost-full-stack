@@ -313,9 +313,11 @@ export default function AdminSection({
 
             <TabsContent value="found">
               <FoundItemsTab 
-                surrenderedItems={surrenderedItems}
+                items={allItems}
+                isLoading={isItemsLoading}
                 onApproveAndPost={onApprove}
                 onDelete={onDelete}
+                onViewDetails={handleViewDetails}
               />
             </TabsContent>
 
