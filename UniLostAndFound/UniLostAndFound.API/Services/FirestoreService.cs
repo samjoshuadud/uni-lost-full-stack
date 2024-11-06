@@ -1,6 +1,7 @@
 using Google.Cloud.Firestore;
 using UniLostAndFound.API.Models;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace UniLostAndFound.API.Services;
 
@@ -11,6 +12,7 @@ public class FirestoreService
     private const string UsersCollection = "users";
     private const string UserAccessCollection = "userAccess";
     private const string ITEMS_COLLECTION = "items";
+    private const string PENDING_PROCESSES_COLLECTION = "pendingProcesses";
 
     public FirestoreService(string projectId, ILogger<FirestoreService> logger)
     {
@@ -34,39 +36,35 @@ public class FirestoreService
         }
     }
 
-    public async Task<User> GetOrCreateUser(string uid, string email, string displayName, string defaultRole = "select")
+    public async Task<User> GetOrCreateUser(string uid, string email, string displayName)
     {
-        var userRef = _db.Collection(UsersCollection).Document(uid);
-        var userDoc = await userRef.GetSnapshotAsync();
-
-        if (userDoc.Exists)
+        try
         {
-            var user = userDoc.ConvertTo<User>();
-            return user;
+            var userRef = _db.Collection(UsersCollection).Document(uid);
+            var userDoc = await userRef.GetSnapshotAsync();
+
+            if (userDoc.Exists)
+            {
+                return userDoc.ConvertTo<User>();
+            }
+
+            var newUser = new User
+            {
+                Id = uid,
+                Email = email,
+                DisplayName = displayName,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await userRef.SetAsync(newUser);
+            return newUser;
         }
-
-        var newUser = new User
+        catch (Exception ex)
         {
-            Id = uid,
-            Email = email,
-            DisplayName = displayName,
-            Role = defaultRole,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        await userRef.SetAsync(newUser);
-        return newUser;
-    }
-
-    public async Task UpdateUserRole(string userId, string role)
-    {
-        var userRef = _db.Collection(UsersCollection).Document(userId);
-        await userRef.UpdateAsync(new Dictionary<string, object>
-        {
-            { "role", role },
-            { "updatedAt", DateTime.UtcNow }
-        });
+            _logger.LogError($"Error in GetOrCreateUser: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<User?> GetUser(string uid)
@@ -171,5 +169,191 @@ public class FirestoreService
     {
         var docRef = _db.Collection(ITEMS_COLLECTION).Document(id);
         await docRef.DeleteAsync();
+    }
+
+    public async Task<string> CreatePendingProcessAsync(PendingProcess process)
+    {
+        try
+        {
+            _logger.LogInformation($"Creating pending process for item: {process.ItemId}");
+            
+            var collection = _db.Collection(PENDING_PROCESSES_COLLECTION);
+            
+            var data = new Dictionary<string, object>
+            {
+                { "itemId", process.ItemId },
+                { "userId", process.UserId },
+                { "status", process.Status },
+                { "message", process.Message },
+                { "createdAt", FieldValue.ServerTimestamp },
+                { "updatedAt", FieldValue.ServerTimestamp }
+            };
+
+            var docRef = await collection.AddAsync(data);
+            _logger.LogInformation($"Created pending process with ID: {docRef.Id}");
+            
+            return docRef.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error creating pending process: {ex.Message}");
+            _logger.LogError(ex.StackTrace);
+            throw;
+        }
+    }
+
+    public async Task<List<PendingProcess>> GetPendingProcessesByUserIdAsync(string userId)
+    {
+        try
+        {
+            _logger.LogInformation($"Fetching pending processes for user: {userId}");
+            
+            var query = _db.Collection(PENDING_PROCESSES_COLLECTION)
+                .WhereEqualTo("userId", userId);
+            
+            var snapshot = await query.GetSnapshotAsync();
+            var processes = new List<PendingProcess>();
+            
+            foreach (var doc in snapshot.Documents)
+            {
+                try
+                {
+                    var data = doc.ToDictionary();
+                    _logger.LogInformation($"Processing document data: {JsonSerializer.Serialize(data)}");
+
+                    var process = new PendingProcess
+                    {
+                        Id = doc.Id,
+                        ItemId = data.GetValueOrDefault("itemId", "").ToString(),
+                        UserId = data.GetValueOrDefault("userId", "").ToString(),
+                        Status = data.GetValueOrDefault("status", "").ToString(),
+                        Message = data.GetValueOrDefault("message", "").ToString(),
+                    };
+
+                    // Fetch the referenced item
+                    if (!string.IsNullOrEmpty(process.ItemId))
+                    {
+                        var itemDoc = await _db.Collection(ITEMS_COLLECTION).Document(process.ItemId).GetSnapshotAsync();
+                        if (itemDoc.Exists)
+                        {
+                            process.Item = itemDoc.ConvertTo<Item>();
+                            process.Item.Id = itemDoc.Id; // Make sure to set the ID
+                            _logger.LogInformation($"Found item: {JsonSerializer.Serialize(process.Item)}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Item {process.ItemId} not found");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"No ItemId found for process {doc.Id}");
+                    }
+
+                    processes.Add(process);
+                    _logger.LogInformation($"Successfully added process {doc.Id} with item data");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Error processing document {doc.Id}: {ex.Message}");
+                    _logger.LogError(ex.StackTrace);
+                }
+            }
+
+            _logger.LogInformation($"Returning {processes.Count} processes");
+            return processes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching pending processes: {ex.Message}");
+            _logger.LogError(ex.StackTrace);
+            throw;
+        }
+    }
+
+    public async Task<List<PendingProcess>> GetAllPendingProcessesAsync()
+    {
+        try
+        {
+            var query = _db.Collection(PENDING_PROCESSES_COLLECTION);
+            var snapshot = await query.GetSnapshotAsync();
+
+            return snapshot.Documents
+                .Select(doc => doc.ConvertTo<PendingProcess>())
+                .ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching all pending processes: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task DeletePendingProcessAndItemAsync(string processId, string itemId)
+    {
+        try
+        {
+            _logger.LogInformation($"Deleting pending process {processId} and item {itemId}");
+            
+            // Delete the pending process
+            var processRef = _db.Collection(PENDING_PROCESSES_COLLECTION).Document(processId);
+            await processRef.DeleteAsync();
+            
+            // Delete the associated item
+            var itemRef = _db.Collection(ITEMS_COLLECTION).Document(itemId);
+            await itemRef.DeleteAsync();
+            
+            _logger.LogInformation("Successfully deleted pending process and item");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error deleting pending process and item: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<List<PendingProcess>> GetPendingProcessesByIdAsync(string processId)
+    {
+        try
+        {
+            _logger.LogInformation($"Fetching pending process: {processId}");
+            
+            var docRef = _db.Collection(PENDING_PROCESSES_COLLECTION).Document(processId);
+            var snapshot = await docRef.GetSnapshotAsync();
+            var processes = new List<PendingProcess>();
+            
+            if (snapshot.Exists)
+            {
+                var data = snapshot.ToDictionary();
+                var process = new PendingProcess
+                {
+                    Id = snapshot.Id,
+                    ItemId = data.GetValueOrDefault("itemId", "").ToString(),
+                    UserId = data.GetValueOrDefault("userId", "").ToString(),
+                    Status = data.GetValueOrDefault("status", "").ToString(),
+                    Message = data.GetValueOrDefault("message", "").ToString(),
+                };
+
+                // Fetch the referenced item
+                if (!string.IsNullOrEmpty(process.ItemId))
+                {
+                    var itemDoc = await _db.Collection(ITEMS_COLLECTION).Document(process.ItemId).GetSnapshotAsync();
+                    if (itemDoc.Exists)
+                    {
+                        process.Item = itemDoc.ConvertTo<Item>();
+                        process.Item.Id = itemDoc.Id;
+                    }
+                }
+
+                processes.Add(process);
+            }
+
+            return processes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error fetching pending process: {ex.Message}");
+            throw;
+        }
     }
 } 

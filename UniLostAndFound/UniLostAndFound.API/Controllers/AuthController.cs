@@ -27,55 +27,54 @@ public class AuthController : ControllerBase
         {
             if (!Request.Headers.TryGetValue("Authorization", out var authHeader))
             {
-                _logger.LogWarning("[Debug] No Authorization header found");
+                _logger.LogWarning("No Authorization header found");
                 return Unauthorized(new { message = "No Authorization header found" });
             }
 
             string authHeaderStr = authHeader.ToString();
-            _logger.LogInformation($"[Debug] Received auth header: {authHeaderStr}");
-
             if (string.IsNullOrEmpty(authHeaderStr) || !authHeaderStr.StartsWith("Bearer "))
             {
-                _logger.LogWarning("[Debug] Invalid Authorization header format");
+                _logger.LogWarning("Invalid Authorization header format");
                 return Unauthorized(new { message = "Invalid Authorization header format" });
             }
 
             string idToken = authHeaderStr.Substring("Bearer ".Length);
-            _logger.LogInformation($"[Debug] Token length: {idToken.Length}");
+            _logger.LogInformation($"Processing token for authentication");
 
             try
             {
                 var firebaseToken = await FirebaseAuth.DefaultInstance.VerifyIdTokenAsync(idToken);
                 string email = firebaseToken.Claims.GetValueOrDefault("email", "").ToString();
+                _logger.LogInformation($"Authenticating user with email: {email}");
 
                 var settings = await _firestoreService.GetUserAccessSettings();
                 if (settings == null)
                 {
-                    _logger.LogError("[Debug] Failed to retrieve user access settings");
+                    _logger.LogError("Failed to retrieve user access settings");
                     return StatusCode(500, new { message = "Failed to retrieve settings" });
                 }
 
-                // Check if email is allowed
-                bool isAllowed = settings.AllowedDomains.Any(domain => email.EndsWith($"@{domain}")) 
-                             || settings.DevelopmentEmails.Contains(email);
+                // Check if email is in development emails or matches allowed domains
+                bool isDevelopmentEmail = settings.DevelopmentEmails.Contains(email);
+                bool isAllowedDomain = settings.AllowedDomains.Any(domain => email.EndsWith($"@{domain}"));
+                bool isAdmin = settings.AdminEmails.Contains(email);
 
-                _logger.LogInformation($"[Debug] Email check - Email: {email}, IsAllowed: {isAllowed}");
+                _logger.LogInformation($"Access check - isDev: {isDevelopmentEmail}, isAllowedDomain: {isAllowedDomain}, isAdmin: {isAdmin}");
 
-                if (!isAllowed)
+                // Allow access if it's a development email OR has an allowed domain
+                if (!isDevelopmentEmail && !isAllowedDomain)
                 {
+                    _logger.LogWarning($"Access denied for email: {email}");
                     return Unauthorized(new { message = "Please use your UMAK email" });
                 }
 
-                // Get admin status from Firestore
-                bool isAdmin = settings.AdminEmails.Contains(email);
-
-                // Get or create user in Firestore
                 var user = await _firestoreService.GetOrCreateUser(
                     firebaseToken.Uid,
                     email,
-                    firebaseToken.Claims.GetValueOrDefault("name", "").ToString(),
-                    isAdmin ? "admin" : "select"
+                    firebaseToken.Claims.GetValueOrDefault("name", "").ToString()
                 );
+
+                _logger.LogInformation($"Authentication successful for user: {user.Id}");
 
                 return Ok(new 
                 { 
@@ -85,93 +84,22 @@ public class AuthController : ControllerBase
                         uid = user.Id,
                         email = user.Email,
                         name = user.DisplayName,
-                        role = user.Role,
                         isAdmin = isAdmin,
-                        needsRoleSelection = !isAdmin && user.Role == "select"
+                        displayName = user.DisplayName
                     }
                 });
             }
             catch (FirebaseAuthException ex)
             {
-                _logger.LogWarning($"[Debug] Firebase auth error: {ex.Message}");
+                _logger.LogError($"Firebase auth error: {ex.Message}");
                 return Unauthorized(new { message = ex.Message });
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError($"[Debug] Unexpected error: {ex.Message}");
-            _logger.LogError($"[Debug] Stack trace: {ex.StackTrace}");
+            _logger.LogError($"Unexpected error: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return StatusCode(500, new { message = "Internal server error" });
-        }
-    }
-
-    [HttpPost("role")]
-    public async Task<ActionResult> UpdateRole([FromBody] UpdateRoleRequest request)
-    {
-        try
-        {
-            if (string.IsNullOrEmpty(request.Role) || 
-                (request.Role != "student" && request.Role != "teacher"))
-            {
-                return BadRequest(new { message = "Invalid role selected" });
-            }
-
-            await _firestoreService.UpdateUserRole(request.UserId, request.Role);
-
-            return Ok(new { 
-                message = "Role updated successfully",
-                role = request.Role
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"[Debug] Error updating role: {ex}");
-            return StatusCode(500, new { message = "Failed to update role" });
-        }
-    }
-
-    [HttpGet("test-connection")]
-    public async Task<ActionResult> TestFirestoreConnection()
-    {
-        try
-        {
-            _logger.LogInformation("[Debug] Starting Firestore connection test");
-
-            // Test userAccess collection
-            var settingsDoc = await _firestoreService.GetUserAccessSettings();
-            
-            if (settingsDoc == null)
-            {
-                _logger.LogError("[Debug] Failed to retrieve settings document");
-                return BadRequest(new { 
-                    message = "Failed to retrieve settings",
-                    connected = false 
-                });
-            }
-
-            // Log all retrieved data
-            return Ok(new
-            {
-                message = "Firestore connection successful",
-                connected = true,
-                settings = new
-                {
-                    adminEmails = settingsDoc.AdminEmails,
-                    developmentEmails = settingsDoc.DevelopmentEmails,
-                    allowedDomains = settingsDoc.AllowedDomains
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"[Debug] Firestore connection error: {ex.Message}");
-            _logger.LogError($"[Debug] Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new
-            {
-                message = "Firestore connection failed",
-                error = ex.Message,
-                connected = false
-            });
         }
     }
 
@@ -220,12 +148,6 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { message = "Failed to assign admin" });
         }
     }
-}
-
-public class UpdateRoleRequest
-{
-    public string UserId { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
 }
 
 public class AssignAdminRequest

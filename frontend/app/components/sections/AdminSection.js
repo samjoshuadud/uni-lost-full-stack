@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Trash, UserPlus, CheckCircle, XCircle, ClipboardList, Package, Bell, Users } from "lucide-react"
+import { Trash, UserPlus, CheckCircle, XCircle, ClipboardList, Package, Bell, Users, ExternalLink } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 
 export default function AdminSection({ 
@@ -37,6 +37,22 @@ export default function AdminSection({
   const [showAdminDialog, setShowAdminDialog] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
   const [feedbackMessage, setFeedbackMessage] = useState({ title: "", message: "" })
+  const [pendingProcesses, setPendingProcesses] = useState([])
+
+  useEffect(() => {
+    const fetchAllPendingProcesses = async () => {
+      try {
+        const response = await fetch(`http://localhost:5067/api/item/pending/all`);
+        if (!response.ok) throw new Error("Failed to fetch all pending processes");
+        const data = await response.json();
+        setPendingProcesses(data);
+      } catch (error) {
+        console.error("Error fetching all pending processes:", error);
+      }
+    };
+
+    fetchAllPendingProcesses();
+  }, []);
 
   // Only allow access if user is admin
   if (!isAdmin) {
@@ -217,10 +233,11 @@ export default function AdminSection({
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="reports">Lost Item Reports</TabsTrigger>
               <TabsTrigger value="found">Found Items</TabsTrigger>
               <TabsTrigger value="verifications">Verifications</TabsTrigger>
+              <TabsTrigger value="pending">Pending Processes</TabsTrigger>
             </TabsList>
 
             <TabsContent value="reports" className="space-y-4 mt-4">
@@ -491,6 +508,40 @@ export default function AdminSection({
                   </CardContent>
                 </Card>
               ))}
+            </TabsContent>
+
+            <TabsContent value="pending" className="space-y-4 mt-4">
+              <h3 className="text-lg font-semibold">All Pending Processes</h3>
+              {pendingProcesses.map((process) => (
+                <Card key={process.id}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-bold">{process.item.name}</h4>
+                      <Badge variant="secondary">{process.status}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {process.message}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => console.log('View details for admin')}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {pendingProcesses.length === 0 && (
+                <Card>
+                  <CardContent className="p-4 text-center text-muted-foreground">
+                    No pending processes
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             <TabsContent value="retrieval" className="space-y-4 mt-4">

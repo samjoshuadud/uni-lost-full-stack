@@ -75,6 +75,7 @@ export default function ReportSection({ onSubmit }) {
       setIsSubmitting(true);
       
       const formData = new FormData();
+      
       formData.append('name', name.trim());
       formData.append('description', description.trim());
       formData.append('location', location.trim());
@@ -82,7 +83,7 @@ export default function ReportSection({ onSubmit }) {
       formData.append('status', ItemStatus.LOST);
       formData.append('reporterId', user.uid);
       formData.append('studentId', studentId.trim());
-      formData.append('universityId', user.email.split('@')[1]);
+      formData.append('universityId', userData?.universityId || user.email.split('@')[1]);
       
       if (additionalDescriptions.length > 0) {
         formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
@@ -92,29 +93,39 @@ export default function ReportSection({ onSubmit }) {
         formData.append('image', selectedImage);
       }
 
-      console.log('Form data entries:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value instanceof File ? 'File: ' + value.name : value}`);
+      try {
+        for (let pair of formData.entries()) {
+          console.log(pair[0] + ': ' + (pair[1] instanceof File ? 'File: ' + pair[1].name : pair[1]));
+        }
+      } catch (e) {
+        console.log('Error logging form data:', e);
       }
-
-      console.log('Selected image type:', selectedImage?.type);
 
       const response = await fetch('http://localhost:5067/api/item', {
         method: 'POST',
-        body: formData
+        body: formData,
       });
 
-      const rawResponse = await response.text();
-      console.log('Raw server response:', rawResponse);
-
       if (!response.ok) {
-        throw new Error(`Failed to submit report: ${rawResponse}`);
+        const errorText = await response.text();
+        throw new Error(`Failed to submit report: ${errorText}`);
       }
       
-      const data = JSON.parse(rawResponse);
-      console.log('Parsed response:', data);
+      const data = await response.json();
+      console.log('Report submitted successfully:', data);
 
-      // Reset form
+      if (onSubmit) {
+        onSubmit({
+          ...data,
+          name,
+          description,
+          category,
+          location,
+          studentId,
+          universityId: userData?.universityId || user.email.split('@')[1]
+        });
+      }
+
       setName("");
       setDescription("");
       setLocation("");
@@ -124,6 +135,7 @@ export default function ReportSection({ onSubmit }) {
       setSelectedImage(null);
       setImagePreview(null);
       setShowConfirmDialog(false);
+
     } catch (error) {
       console.error('Error submitting report:', error);
     } finally {
@@ -274,12 +286,9 @@ export default function ReportSection({ onSubmit }) {
             <p><strong>Category:</strong> {category}</p>
             {additionalDescriptions.length > 0 && (
               <div>
-                <p><strong>Additional Descriptions:</strong></p>
-                <ul className="list-disc pl-4">
-                  {additionalDescriptions.map((desc, index) => (
-                    <li key={index}>{desc.title}</li>
-                  ))}
-                </ul>
+                {additionalDescriptions.map((desc, index) => (
+                  <p key={index}><strong>{desc.title}:</strong> {desc.description}</p>
+                ))}
               </div>
             )}
           </div>

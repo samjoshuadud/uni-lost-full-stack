@@ -34,7 +34,7 @@ public class Item : BaseEntity
     public string Category { get; set; } = string.Empty;
 
     [FirestoreProperty]
-    public string Status { get; set; } = ItemStatus.Lost;
+    public string Status { get; set; } = string.Empty;
 
     [FirestoreProperty]
     public string Location { get; set; } = string.Empty;
@@ -49,16 +49,13 @@ public class Item : BaseEntity
     public string ReporterId { get; set; } = string.Empty;
 
     [FirestoreProperty]
+    public string StudentId { get; set; } = string.Empty;
+
+    [FirestoreProperty]
     public string UniversityId { get; set; } = string.Empty;
 
     [FirestoreProperty]
     public bool Approved { get; set; }
-
-    [FirestoreProperty]
-    public List<string> VerificationQuestions { get; set; } = new();
-
-    [FirestoreProperty]
-    public string StudentId { get; set; } = string.Empty;
 
     [FirestoreProperty]
     public List<AdditionalDescription> AdditionalDescriptions { get; set; } = new();

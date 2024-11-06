@@ -24,6 +24,8 @@ import VerificationDialog from "./components/dialogs/VerificationDialog"
 import VerificationSuccessDialog from "./components/dialogs/VerificationSuccessDialog"
 import VerificationFailDialog from "./components/dialogs/VerificationFailDialog"
 
+import { ItemStatus } from "@/lib/constants";
+
 export default function UniLostAndFound() {
   const { user, loading, isAdmin } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -101,48 +103,40 @@ export default function UniLostAndFound() {
     try {
       setIsSubmitting(true);
       
-      // Log the form data for debugging
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
-      }
-
-      const response = await fetch('http://localhost:5067/api/item', {
-        method: 'POST',
-        body: formData // Let the browser handle the Content-Type header
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Server response:', errorText);
-        throw new Error(`Failed to submit report: ${errorText}`);
-      }
+      console.log('Report submitted successfully:', formData);
       
-      const data = await response.json();
-      console.log('Report submitted successfully:', data);
-      
-      // Update local state with new item
+      // Create new item using the data passed from ReportSection
       const newItem = {
-        id: data,
-        name: formData.get('name'),
-        description: formData.get('description'),
-        category: formData.get('category'),
-        status: formData.get('status'),
-        location: formData.get('location'),
-        reporterId: formData.get('reporterId'),
-        studentId: formData.get('studentId'),
-        universityId: formData.get('universityId'),
-        imageUrl: '', // Will be updated from backend response
+        id: formData.itemId,
+        name: formData.name,
+        description: formData.description,
+        category: formData.category,
+        status: ItemStatus.LOST,
+        location: formData.location,
+        reporterId: user.uid,
+        studentId: formData.studentId,
+        universityId: formData.universityId,
+        imageUrl: '', 
         dateReported: new Date().toISOString(),
-        approved: false,
-        verificationQuestions: []
+        approved: false
       };
 
       setItems(prevItems => [...prevItems, newItem]);
+      
+      // Add to pending processes
+      const newProcess = {
+        id: formData.processId,
+        item: newItem,
+        status: "pending_approval",
+        message: "Waiting for the admin to approve the post, also checking if we have the item in possession."
+      };
+      
+      setPendingProcesses(prevProcesses => [...prevProcesses, newProcess]);
       setPendingReport(null);
       setShowReportConfirmDialog(false);
       setActiveSection("pending_process");
     } catch (error) {
-      console.error('Error submitting report:', error);
+      console.error('Error handling report submission:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -454,6 +448,28 @@ export default function UniLostAndFound() {
       setShowReportConfirmDialog(false);
       setCurrentNotification(null);
       setPendingReport(null);
+    }
+  }, [user]);
+
+  // Add useEffect to fetch pending processes for the current user
+  useEffect(() => {
+    const fetchUserPendingProcesses = async () => {
+      if (!user?.uid) return;
+
+      try {
+        const response = await fetch(`http://localhost:5067/api/item/pending/user/${user.uid}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch pending processes');
+        }
+        const data = await response.json();
+        setPendingProcesses(Array.isArray(data) ? data : [data].filter(Boolean));
+      } catch (error) {
+        console.error('Error fetching pending processes:', error);
+      }
+    };
+
+    if (user) {
+      fetchUserPendingProcesses();
     }
   }, [user]);
 
