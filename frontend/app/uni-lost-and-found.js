@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bell, Search, User } from "lucide-react"
+import { Bell, Search, User, Loader2 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import LoginButton from "./components/login-button"
 import { useAuth } from "@/lib/AuthContext"
@@ -50,6 +50,9 @@ export default function UniLostAndFound() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
+
+  const [pendingProcessCount, setPendingProcessCount] = useState(0);
+  const [isProcessCountLoading, setIsProcessCountLoading] = useState(true);
 
   const filteredItems = items.filter(item => 
     item.approved &&
@@ -453,7 +456,7 @@ export default function UniLostAndFound() {
 
   // Add useEffect to fetch pending processes for the current user
   useEffect(() => {
-    const fetchUserPendingProcesses = async () => {
+    const fetchPendingProcesses = async () => {
       if (!user?.uid) return;
 
       try {
@@ -468,10 +471,55 @@ export default function UniLostAndFound() {
       }
     };
 
+    
+
+    // Initial fetch
     if (user) {
-      fetchUserPendingProcesses();
+      fetchPendingProcesses();
     }
-  }, [user]);
+
+    // Set up polling interval
+    const interval = setInterval(() => {
+      if (user) {
+        fetchPendingProcesses();
+      }
+    }, 5000); // Poll every 5 seconds
+
+    // Cleanup
+    return () => clearInterval(interval);
+  }, [user]); // Depend on user to restart polling when user changes
+
+  useEffect(() => {
+    const fetchPendingProcessCount = async () => {
+      if (!isAdmin) return;
+      
+      try {
+        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        if (!response.ok) throw new Error('Failed to fetch pending processes');
+        const data = await response.json();
+        
+        // Only update if count has changed
+        if (data.length !== pendingProcessCount) {
+          setPendingProcessCount(data.length);
+        }
+        
+      } catch (error) {
+        console.error('Error fetching pending process count:', error);
+      } finally {
+        // Only show loading on initial fetch
+        if (isProcessCountLoading) {
+          setIsProcessCountLoading(false);
+        }
+      }
+    };
+
+    // Initial fetch and polling setup
+    if (isAdmin) {
+      fetchPendingProcessCount();
+      const interval = setInterval(fetchPendingProcessCount, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]); // Only depend on isAdmin
 
   // Show loading state while checking auth and admin status
   if (loading) {
@@ -555,7 +603,13 @@ export default function UniLostAndFound() {
                     <div>
                       <h3 className="font-semibold text-lg">Pending Actions</h3>
                       <p className="text-muted-foreground">
-                        {adminNotifications.length} items need attention
+                        {isProcessCountLoading ? (
+                          <Loader2 className="h-4 w-4 inline animate-spin mr-2" />
+                        ) : (
+                          <>
+                            <span className="font-medium">{pendingProcessCount}</span> items need attention
+                          </>
+                        )}
                       </p>
                     </div>
                     <Button 

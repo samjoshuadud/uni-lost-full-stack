@@ -35,9 +35,15 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
         const data = await response.json();
         console.log("Fetched pending processes:", data);
 
-        // Ensure we're working with an array
+        // Ensure we're working with an array and sort by Item.DateReported
         const processesArray = Array.isArray(data) ? data : [data].filter(Boolean);
-        setPendingProcesses(processesArray);
+        const sortedProcesses = processesArray.sort((a, b) => {
+          const dateA = new Date(a.Item?.DateReported || 0);
+          const dateB = new Date(b.Item?.DateReported || 0);
+          return dateB - dateA; // Sort in descending order (newest first)
+        });
+        
+        setPendingProcesses(sortedProcesses);
       } catch (error) {
         console.error("Error fetching pending processes:", error);
         setError(error.message);
@@ -141,9 +147,20 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
           <Card key={process.Id}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="font-bold">
-                  {process.Item?.Name || 'Unnamed Item'}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">
+                    {process.Item?.Name || 'Unnamed Item'}
+                  </h3>
+                  <Badge variant="outline" className={
+                    process.Item?.Status === "lost" ? "bg-red-100 text-red-800" :
+                    process.Item?.Status === "found" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {process.Item?.Status === "lost" ? "Lost" :
+                     process.Item?.Status === "found" ? "Found" :
+                     "Unknown"}
+                  </Badge>
+                </div>
                 {getStatusBadge(process.Status)}
               </div>
               <div className="text-sm text-muted-foreground mb-2">

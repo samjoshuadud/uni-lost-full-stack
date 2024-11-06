@@ -129,9 +129,14 @@ public class FirestoreService
     {
         try
         {
+            if (string.IsNullOrEmpty(item.Status))
+            {
+                item.Status = ItemStatus.Lost;
+            }
+
             var collection = _db.Collection(ITEMS_COLLECTION);
             var docRef = await collection.AddAsync(item);
-            _logger.LogInformation($"Created item with ID: {docRef.Id}");
+            _logger.LogInformation($"Created item with ID: {docRef.Id} and status: {item.Status}");
             return docRef.Id;
         }
         catch (Exception ex)
@@ -275,16 +280,89 @@ public class FirestoreService
     {
         try
         {
+            _logger.LogInformation("Fetching all pending processes");
+            
             var query = _db.Collection(PENDING_PROCESSES_COLLECTION);
             var snapshot = await query.GetSnapshotAsync();
+            var processes = new List<PendingProcess>();
+            
+            foreach (var doc in snapshot.Documents)
+            {
+                try
+                {
+                    var data = doc.ToDictionary();
+                    _logger.LogInformation($"Processing document data: {JsonSerializer.Serialize(data)}");
 
-            return snapshot.Documents
-                .Select(doc => doc.ConvertTo<PendingProcess>())
-                .ToList();
+                    var process = new PendingProcess
+                    {
+                        Id = doc.Id,
+                        ItemId = data["itemId"]?.ToString() ?? "",
+                        UserId = data["userId"]?.ToString() ?? "",
+                        Status = data["status"]?.ToString() ?? "",
+                        Message = data["message"]?.ToString() ?? "",
+                        CreatedAt = (data["createdAt"] as Timestamp?)?.ToDateTime() ?? DateTime.UtcNow,
+                        UpdatedAt = (data["updatedAt"] as Timestamp?)?.ToDateTime() ?? DateTime.UtcNow
+                    };
+
+                    // Fetch the referenced item
+                    if (!string.IsNullOrEmpty(process.ItemId))
+                    {
+                        var itemDoc = await _db.Collection(ITEMS_COLLECTION).Document(process.ItemId).GetSnapshotAsync();
+                        if (itemDoc.Exists)
+                        {
+                            var item = new Item
+                            {
+                                Id = itemDoc.Id,
+                                Name = itemDoc.GetValue<string>("Name"),
+                                Description = itemDoc.GetValue<string>("Description"),
+                                Category = itemDoc.GetValue<string>("Category"),
+                                Status = itemDoc.GetValue<string>("Status"),
+                                Location = itemDoc.GetValue<string>("Location"),
+                                ImageUrl = itemDoc.GetValue<string>("ImageUrl"),
+                                ReporterId = itemDoc.GetValue<string>("ReporterId"),
+                                DateReported = (itemDoc.GetValue<Timestamp>("DateReported")).ToDateTime(),
+                                Approved = itemDoc.GetValue<bool>("Approved"),
+                                CreatedAt = (itemDoc.GetValue<Timestamp>("CreatedAt")).ToDateTime(),
+                                UpdatedAt = (itemDoc.GetValue<Timestamp>("UpdatedAt")).ToDateTime()
+                            };
+
+                            // Handle AdditionalDescriptions if they exist
+                            if (itemDoc.ContainsField("AdditionalDescriptions"))
+                            {
+                                var additionalDescs = itemDoc.GetValue<List<Dictionary<string, object>>>("AdditionalDescriptions");
+                                item.AdditionalDescriptions = additionalDescs.Select(desc => new AdditionalDescription
+                                {
+                                    Title = desc["Title"]?.ToString() ?? "",
+                                    Description = desc["Description"]?.ToString() ?? ""
+                                }).ToList();
+                            }
+
+                            process.Item = item;
+                            _logger.LogInformation($"Found item: {JsonSerializer.Serialize(item)}");
+                        }
+                        else
+                        {
+                            _logger.LogWarning($"Item {process.ItemId} not found");
+                        }
+                    }
+
+                    processes.Add(process);
+                    _logger.LogInformation($"Successfully added process {doc.Id} with item data");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError($"Error processing document {doc.Id}: {ex.Message}");
+                    _logger.LogError(ex.StackTrace);
+                }
+            }
+
+            _logger.LogInformation($"Returning {processes.Count} processes");
+            return processes;
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error fetching all pending processes: {ex.Message}");
+            _logger.LogError(ex.StackTrace);
             throw;
         }
     }

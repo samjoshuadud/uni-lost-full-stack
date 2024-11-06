@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ItemStatus } from "@/lib/constants"
-import { Plus, X, Upload } from "lucide-react"
+import { Plus, X, Upload, Bell } from "lucide-react"
 
 export default function ReportSection({ onSubmit }) {
   const { user, userData } = useAuth();
@@ -23,6 +23,7 @@ export default function ReportSection({ onSubmit }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+  const [itemStatus, setItemStatus] = useState("")
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -53,22 +54,9 @@ export default function ReportSection({ onSubmit }) {
   }
 
   const handleSubmit = (e) => {
-    e.preventDefault()
-    
-    const report = {
-      name,
-      description,
-      location,
-      category,
-      status: ItemStatus.LOST,
-      reporterId: user.uid,
-      studentId,
-      universityId: userData?.universityId || user.email.split('@')[1],
-      additionalDescriptions
-    }
-
-    setShowConfirmDialog(true)
-  }
+    e.preventDefault();
+    setShowConfirmDialog(true);
+  };
 
   const handleConfirmSubmit = async () => {
     try {
@@ -80,7 +68,7 @@ export default function ReportSection({ onSubmit }) {
       formData.append('description', description.trim());
       formData.append('location', location.trim());
       formData.append('category', category);
-      formData.append('status', ItemStatus.LOST);
+      formData.append('status', itemStatus);
       formData.append('reporterId', user.uid);
       formData.append('studentId', studentId.trim());
       formData.append('universityId', userData?.universityId || user.email.split('@')[1]);
@@ -130,11 +118,14 @@ export default function ReportSection({ onSubmit }) {
       setDescription("");
       setLocation("");
       setCategory("");
+      setItemStatus("");
       setStudentId(userData?.studentId || "");
       setAdditionalDescriptions([]);
       setSelectedImage(null);
       setImagePreview(null);
       setShowConfirmDialog(false);
+
+      window.location.href = '#pending_process';
 
     } catch (error) {
       console.error('Error submitting report:', error);
@@ -147,10 +138,22 @@ export default function ReportSection({ onSubmit }) {
     <div className="max-w-2xl mx-auto">
       <Card>
         <CardHeader>
-          <CardTitle>Report Lost Item</CardTitle>
+          <CardTitle>Report Item</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Report Type</label>
+              <Select value={itemStatus} onValueChange={setItemStatus} required>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select report type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
+                  <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div>
               <label className="text-sm font-medium">Student ID</label>
               <Input
@@ -264,7 +267,7 @@ export default function ReportSection({ onSubmit }) {
               </div>
             </div>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button type="submit" className="w-full" disabled={isSubmitting || !itemStatus}>
               {isSubmitting ? "Submitting..." : "Submit Report"}
             </Button>
           </form>
@@ -274,23 +277,57 @@ export default function ReportSection({ onSubmit }) {
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm Report</DialogTitle>
+            <DialogTitle>Report Summary</DialogTitle>
             <DialogDescription>
-              Are you sure you want to submit this report? Please make sure all information is accurate.
+              <div className="space-y-2">
+                <div>Please review your report details before submitting.</div>
+                <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-primary/20 rounded-full">
+                      <Bell className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="font-semibold text-primary mb-1">Admin Review Process</div>
+                      <div className="text-sm text-muted-foreground">
+                        Our admin will check if the item is in possession. If not, then this will be posted.
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <p><strong>Student ID:</strong> {studentId}</p>
-            <p><strong>Item:</strong> {name}</p>
-            <p><strong>Location:</strong> {location}</p>
-            <p><strong>Category:</strong> {category}</p>
-            {additionalDescriptions.length > 0 && (
-              <div>
-                {additionalDescriptions.map((desc, index) => (
-                  <p key={index}><strong>{desc.title}:</strong> {desc.description}</p>
-                ))}
+          <div className="space-y-4">
+            {/* Image preview */}
+            {imagePreview && (
+              <div className="w-full">
+                <div className="font-medium mb-2"><strong>Image:</strong></div>
+                <div className="w-full h-48 rounded-lg overflow-hidden bg-muted">
+                  <img 
+                    src={imagePreview} 
+                    alt="Item preview" 
+                    className="w-full h-full object-contain"
+                  />
+                </div>
               </div>
             )}
+            
+            {/* Report details */}
+            <div className="space-y-2">
+              <div><strong>Report Type:</strong> {itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"}</div>
+              <div><strong>Student ID:</strong> {studentId}</div>
+              <div><strong>Item:</strong> {name}</div>
+              <div><strong>Location:</strong> {location}</div>
+              <div><strong>Category:</strong> {category}</div>
+              {additionalDescriptions.length > 0 && (
+                <div>
+                  <div className="font-medium mt-2">Additional Descriptions:</div>
+                  {additionalDescriptions.map((desc, index) => (
+                    <div key={index}><strong>{desc.title}:</strong> {desc.description}</div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button 
@@ -298,13 +335,13 @@ export default function ReportSection({ onSubmit }) {
               onClick={() => setShowConfirmDialog(false)}
               disabled={isSubmitting}
             >
-              Cancel
+              Edit Report
             </Button>
             <Button 
               onClick={handleConfirmSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Submitting..." : "Confirm Submit"}
+              {isSubmitting ? "Submitting..." : "Submit Report"}
             </Button>
           </DialogFooter>
         </DialogContent>
