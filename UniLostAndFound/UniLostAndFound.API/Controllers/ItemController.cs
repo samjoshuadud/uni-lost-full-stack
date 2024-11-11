@@ -105,7 +105,7 @@ public class ItemController : ControllerBase
             {
                 ItemId = id,
                 UserId = createDto.ReporterId,
-                Status = "pending_approval",
+                status = "pending_approval",
                 Message = "Waiting for the admin to approve the post, also checking if we have the item in possession.",
                 CreatedAt = now,
                 UpdatedAt = now
@@ -247,6 +247,34 @@ public class ItemController : ControllerBase
         {
             _logger.LogError($"Error deleting pending process: {ex.Message}");
             return StatusCode(500, new { error = "Failed to delete pending process", details = ex.Message });
+        }
+    }
+
+    [HttpPut("{id}/approve")]
+    public async Task<IActionResult> ApproveItem(string id, [FromBody] ApproveItemDto dto)
+    {
+        try
+        {
+            await _firestoreService.UpdateItemApprovalStatus(id, dto.Approved);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
+        }
+    }
+
+    [HttpPut("process/{itemId}/status")]
+    public async Task<IActionResult> UpdateProcessStatus(string itemId, [FromBody] UpdateProcessStatusDto dto)
+    {
+        try
+        {
+            await _firestoreService.UpdatePendingProcessStatus(itemId, dto.Status);
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
         }
     }
 } 

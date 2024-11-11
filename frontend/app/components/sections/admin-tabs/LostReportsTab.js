@@ -16,6 +16,39 @@ export default function LostReportsTab({
   onDelete,
   onItemInPossession
 }) {
+  const handleApprove = async (itemId) => {
+    try {
+      // Update item's Approved status
+      const itemResponse = await fetch(`http://localhost:5067/api/item/${itemId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ approved: true })
+      });
+
+      if (!itemResponse.ok) throw new Error('Failed to approve item');
+
+      // Update pending process status
+      const processResponse = await fetch(`http://localhost:5067/api/item/process/${itemId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'approved' })
+      });
+
+      if (!processResponse.ok) throw new Error('Failed to update process status');
+
+      // Call the parent's onApprove callback to refresh data
+      onApprove(itemId);
+
+    } catch (error) {
+      console.error('Error approving item:', error);
+      // You might want to add error handling UI here
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -156,7 +189,7 @@ export default function LostReportsTab({
                         variant="default" 
                         size="sm"
                         className="w-full"
-                        onClick={() => onApprove(item.Id)}
+                        onClick={() => handleApprove(item.Id)}
                       >
                         <CheckCircle className="h-4 w-4 mr-2" />
                         Approve Post
