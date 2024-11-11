@@ -76,7 +76,7 @@ try
         options.AddPolicy("AllowNextJS",
             builder =>
             {
-                builder.WithOrigins("http://localhost:3000")
+                builder.WithOrigins("http://localhost:3000", "http://192.168.100.23:3000")
                        .AllowAnyMethod()
                        .AllowAnyHeader()
                        .AllowCredentials();

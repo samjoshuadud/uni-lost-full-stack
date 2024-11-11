@@ -159,7 +159,7 @@ export default function AdminSection({
 
   const getPendingApprovalCount = () => {
     const count = pendingProcesses.filter(process => 
-      process.Status === "pending_approval" && 
+      process.status === "pending_approval" && 
       process.Item?.Status === "lost"
     ).length;
     

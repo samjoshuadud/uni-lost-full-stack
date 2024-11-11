@@ -188,7 +188,7 @@ public class FirestoreService
             {
                 { "itemId", process.ItemId },
                 { "userId", process.UserId },
-                { "status", process.Status },
+                { "status", process.status },
                 { "message", process.Message },
                 { "createdAt", FieldValue.ServerTimestamp },
                 { "updatedAt", FieldValue.ServerTimestamp }
@@ -231,7 +231,7 @@ public class FirestoreService
                         Id = doc.Id,
                         ItemId = data.GetValueOrDefault("itemId", "").ToString(),
                         UserId = data.GetValueOrDefault("userId", "").ToString(),
-                        Status = data.GetValueOrDefault("status", "").ToString(),
+                        status = data.GetValueOrDefault("status", "").ToString(),
                         Message = data.GetValueOrDefault("message", "").ToString(),
                     };
 
@@ -298,7 +298,7 @@ public class FirestoreService
                         Id = doc.Id,
                         ItemId = data["itemId"]?.ToString() ?? "",
                         UserId = data["userId"]?.ToString() ?? "",
-                        Status = data["status"]?.ToString() ?? "",
+                        status = data["status"]?.ToString() ?? "",
                         Message = data["message"]?.ToString() ?? "",
                         CreatedAt = (data["createdAt"] as Timestamp?)?.ToDateTime() ?? DateTime.UtcNow,
                         UpdatedAt = (data["updatedAt"] as Timestamp?)?.ToDateTime() ?? DateTime.UtcNow
@@ -408,7 +408,7 @@ public class FirestoreService
                     Id = snapshot.Id,
                     ItemId = data.GetValueOrDefault("itemId", "").ToString(),
                     UserId = data.GetValueOrDefault("userId", "").ToString(),
-                    Status = data.GetValueOrDefault("status", "").ToString(),
+                    status = data.GetValueOrDefault("status", "").ToString(),
                     Message = data.GetValueOrDefault("message", "").ToString(),
                 };
 
@@ -431,6 +431,54 @@ public class FirestoreService
         catch (Exception ex)
         {
             _logger.LogError($"Error fetching pending process: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task UpdateItemApprovalStatus(string itemId, bool approved)
+    {
+        var itemRef = _db.Collection("items").Document(itemId);
+        await itemRef.UpdateAsync(new Dictionary<string, object>
+        {
+            { "Approved", approved }
+        });
+    }
+
+    public async Task UpdatePendingProcessStatus(string itemId, string status)
+    {
+        try
+        {
+            _logger.LogInformation($"Updating process status for itemId {itemId} to {status}");
+            
+            // Get all pending processes for this item
+            var processQuery = _db.Collection(PENDING_PROCESSES_COLLECTION)
+                .WhereEqualTo("itemId", itemId);
+            
+            var snapshot = await processQuery.GetSnapshotAsync();
+            
+            if (!snapshot.Any())
+            {
+                _logger.LogWarning($"No pending process found for itemId {itemId}");
+                return;
+            }
+
+            foreach (var processDoc in snapshot.Documents)
+            {
+                await processDoc.Reference.UpdateAsync(new Dictionary<string, object>
+                {
+                    { "status", status }, // Use lowercase to match the model
+                    { "message", status == "pending_approval" ? 
+                        "Waiting for the admin to approve the post, also checking if we have the item in possession." : 
+                        "Item has been approved by admin" },
+                    { "updatedAt", FieldValue.ServerTimestamp }
+                });
+                
+                _logger.LogInformation($"Successfully updated process {processDoc.Id} status to {status}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error updating process status: {ex.Message}");
             throw;
         }
     }

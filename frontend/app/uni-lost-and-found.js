@@ -67,7 +67,12 @@ export default function UniLostAndFound() {
       case "dashboard":
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
       case "lost":
-        return <ItemSection items={filteredItems.filter(item => item.status === "lost")} onSeeMore={setSelectedItem} title="Lost Items" />
+        return <ItemSection 
+          items={filteredItems.filter(item => item.status === "lost")} 
+          onSeeMore={setSelectedItem} 
+          title="Lost Items" 
+          isAdmin={isAdmin} 
+        />
       case "found":
         return <ItemSection items={filteredItems.filter(item => item.status === "found")} onSeeMore={setSelectedItem} title="Found Items" />
       case "history":
@@ -492,17 +497,20 @@ export default function UniLostAndFound() {
   useEffect(() => {
     const fetchPendingProcessCount = async () => {
       if (!isAdmin) return;
-      
+  
       try {
         const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
         if (!response.ok) throw new Error('Failed to fetch pending processes');
         const data = await response.json();
-        
-        // Only update if count has changed
-        if (data.length !== pendingProcessCount) {
-          setPendingProcessCount(data.length);
+  
+        // Filter items where Item.Approved is false
+        const pendingItems = data.filter((item) => item.Item?.Approved === false);
+  
+        // Update state if count has changed
+        if (pendingItems.length !== pendingProcessCount) {
+          setPendingProcessCount(pendingItems.length);
         }
-        
+  
       } catch (error) {
         console.error('Error fetching pending process count:', error);
       } finally {

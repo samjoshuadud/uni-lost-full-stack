@@ -3,15 +3,47 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Trash, Package, Loader2 } from "lucide-react"
+import { CheckCircle, Trash, Package, Loader2, ExternalLink } from "lucide-react"
 
 export default function FoundItemsTab({ 
   items = [], 
   isLoading,
-  onApproveAndPost,
   onDelete,
   onViewDetails
 }) {
+
+  const handleApprove = async (itemId) => {
+    try {
+      // Update item's Approved status
+      const itemResponse = await fetch(`http://localhost:5067/api/item/${itemId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ approved: true })
+      });
+
+      if (!itemResponse.ok) throw new Error('Failed to approve item');
+
+      // Update pending process status
+      const processResponse = await fetch(`http://localhost:5067/api/item/process/${itemId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'approved' })
+      });
+
+      if (!processResponse.ok) throw new Error('Failed to update process status');
+
+      // Call the parent's onApprove callback to refresh data
+      onApprove(itemId);
+
+    } catch (error) {
+      console.error('Error approving item:', error);
+      // You might want to add error handling UI here
+    }
+  };
   // Function to count pending approval items
   const getPendingApprovalCount = () => {
     return items.filter(item => 
@@ -110,11 +142,21 @@ export default function FoundItemsTab({
 
                       {/* Actions Section */}
                       <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="w-full"
+                        onClick={() => onViewDetails(item)}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
                         <Button 
                           variant="default" 
                           size="sm"
                           className="w-full"
-                          onClick={() => onApproveAndPost(item)}
+                          onClick={() => handleApprove(item.Id)}
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Approve & Post

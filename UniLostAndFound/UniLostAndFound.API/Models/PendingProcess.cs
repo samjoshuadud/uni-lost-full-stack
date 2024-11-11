@@ -12,7 +12,7 @@ public class PendingProcess : BaseEntity
     public string UserId { get; set; } = string.Empty;
 
     [FirestoreProperty]
-    public string Status { get; set; } = string.Empty;
+    public string status { get; set; } = string.Empty;
 
     [FirestoreProperty]
     public string Message { get; set; } = string.Empty;
