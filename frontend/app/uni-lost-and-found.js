@@ -55,28 +55,56 @@ export default function UniLostAndFound() {
   const [isProcessCountLoading, setIsProcessCountLoading] = useState(true);
 
   const filteredItems = items.filter(item => 
-    item.approved &&
-    (searchCategory === "all" || item.category === searchCategory) &&
-    (item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    item.Item?.Approved &&
+    (searchCategory === "all" || item.Item?.Category === searchCategory) &&
+    (item.Item?.Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.Item?.Location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.Item?.Description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
+
+  console.log("Initial filteredItems:", filteredItems);
 
   const renderSection = () => {
     switch (activeSection) {
       case "dashboard":
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
       case "lost":
+        console.log("All filtered items:", filteredItems);
+        const lostItems = filteredItems.filter(item => item.status?.toLowerCase() === "lost");
+        console.log("Lost items:", lostItems);
         return <ItemSection 
-          items={filteredItems.filter(item => item.status === "lost")} 
+          items={lostItems}
           onSeeMore={setSelectedItem} 
           title="Lost Items" 
           isAdmin={isAdmin} 
         />
       case "found":
-        return <ItemSection items={filteredItems.filter(item => item.status === "found")} onSeeMore={setSelectedItem} title="Found Items" />
+        console.log("Before filter:", filteredItems);
+        const foundItems = filteredItems.filter(item => 
+          item.Item?.Status?.toLowerCase() === "found"
+        );
+        console.log("Found items:", foundItems);
+        return <ItemSection 
+          items={foundItems.map(item => ({
+            id: item.Item.Id,
+            name: item.Item.Name,
+            description: item.Item.Description,
+            location: item.Item.Location,
+            status: item.Item.Status,
+            imageUrl: item.Item.ImageUrl,
+            additionalDescriptions: item.Item.AdditionalDescriptions,
+            approved: item.Item.Approved
+          }))}
+          onSeeMore={setSelectedItem} 
+          title="Found Items" 
+          isAdmin={isAdmin} 
+        />
       case "history":
-        return <ItemSection items={filteredItems.filter(item => item.status === "handed_over")} onSeeMore={setSelectedItem} title="Handed Over Items" />
+        return <ItemSection 
+          items={filteredItems.filter(item => item.Status === "handed_over")} 
+          onSeeMore={setSelectedItem} 
+          title="Handed Over Items" 
+        />
       case "report":
         return <ReportSection onSubmit={handleReportSubmit} />
       case "admin":
@@ -528,6 +556,28 @@ export default function UniLostAndFound() {
       return () => clearInterval(interval);
     }
   }, [isAdmin]); // Only depend on isAdmin
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch('http://localhost:5067/api/Item/pending/all');
+        if (!response.ok) {
+          throw new Error('Failed to fetch items');
+        }
+        const data = await response.json();
+        console.log("Fetched items:", data);
+        setItems(data);
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        setError('Failed to fetch items');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, []); // Empty dependency array means this runs once when component mounts
 
   // Show loading state while checking auth and admin status
   if (loading) {
