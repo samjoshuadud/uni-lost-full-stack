@@ -266,6 +266,60 @@ export default function AdminSection({
     setShowDetailsDialog(true);
   };
 
+  const refreshFoundItems = async () => {
+    try {
+      setIsFoundItemsLoading(true);
+      const response = await fetch('http://localhost:5067/api/Item/pending/all');
+      if (!response.ok) throw new Error('Failed to fetch found items');
+      const data = await response.json();
+      
+      // Update all states with the new data
+      setPendingProcesses(data);
+      
+      const items = data
+        .filter(process => process.Item)
+        .map(process => ({
+          ...process.Item,
+          processId: process.Id,
+          processStatus: process.Status
+        }));
+      
+      setAllItems(items);
+      setIsFoundItemsLoading(false);
+    } catch (error) {
+      console.error('Error refreshing found items:', error);
+      setIsFoundItemsLoading(false);
+    }
+  };
+
+  const handleDelete = async (itemId) => {
+    try {
+      // Find the process associated with this item
+      const process = pendingProcesses.find(p => p.Item?.Id === itemId);
+      if (!process) throw new Error('No process found for this item');
+
+      // Delete the process first
+      const deleteProcessResponse = await fetch(`http://localhost:5067/api/Item/pending/${process.Id}`, {
+        method: 'DELETE'
+      });
+
+      if (!deleteProcessResponse.ok) throw new Error('Failed to delete process');
+
+      // Then delete the item
+      const deleteItemResponse = await fetch(`http://localhost:5067/api/item/${itemId}`, {
+        method: 'DELETE'
+      });
+
+      if (!deleteItemResponse.ok) throw new Error('Failed to delete item');
+
+      // Refresh the data
+      refreshFoundItems();
+
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Admin Dashboard Overview Card */}
@@ -314,10 +368,10 @@ export default function AdminSection({
             <TabsContent value="found">
               <FoundItemsTab 
                 items={allItems}
-                isLoading={isItemsLoading}
-                onApproveAndPost={onApprove}
-                onDelete={onDelete}
+                isLoading={isFoundItemsLoading}
+                onDelete={handleDelete}
                 onViewDetails={handleViewDetails}
+                onRefresh={refreshFoundItems}
               />
             </TabsContent>
 

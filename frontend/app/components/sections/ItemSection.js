@@ -1,56 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants'
 import { Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function ItemSection({ onSeeMore, title, isAdmin }) {
-  const [items, setItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+export default function ItemSection({ items: initialItems, onSeeMore, title, isAdmin }) {
+  const [items, setItems] = useState(initialItems);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchApprovedItems = async () => {
-      try {
-        setIsLoading(true);
-        const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
-        if (!processResponse.ok) throw new Error('Failed to fetch processes');
-        const processes = await processResponse.json();
-
-        const approvedItems = processes
-          .filter(process => process.Item && process.Item.Approved)
-          .map(process => ({
-            id: process.Item.Id,
-            name: process.Item.Name,
-            description: process.Item.Description,
-            location: process.Item.Location,
-            category: process.Item.Category,
-            status: process.Item.Status,
-            imageUrl: process.Item.ImageUrl,
-            studentId: process.Item.StudentId,
-            dateReported: process.Item.DateReported,
-            additionalDescriptions: process.Item.AdditionalDescriptions,
-            approved: process.Item.Approved
-          }));
-
-        setItems(approvedItems);
-      } catch (error) {
-        console.error('Error fetching approved items:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchApprovedItems();
-  }, []);
-
-  const getStatusBadge = (status) => (
-    <Badge variant={ItemStatusVariants[status] || 'default'}>
-      {ItemStatusLabels[status] || status}
-    </Badge>
-  );
+    setItems(initialItems);
+  },[]);
 
   const handleUnapprove = async (itemId) => {
     try {
@@ -76,26 +39,7 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
 
       if (!processResponse.ok) throw new Error('Failed to update process status');
 
-      const updatedProcessResponse = await fetch('http://localhost:5067/api/Item/pending/all');
-      if (updatedProcessResponse.ok) {
-        const processes = await updatedProcessResponse.json();
-        const approvedItems = processes
-          .filter(process => process.Item && process.Item.Approved)
-          .map(process => ({
-            id: process.Item.Id,
-            name: process.Item.Name,
-            description: process.Item.Description,
-            location: process.Item.Location,
-            category: process.Item.Category,
-            status: process.Item.Status,
-            imageUrl: process.Item.ImageUrl,
-            studentId: process.Item.StudentId,
-            dateReported: process.Item.DateReported,
-            additionalDescriptions: process.Item.AdditionalDescriptions,
-            approved: process.Item.Approved
-          }));
-        setItems(approvedItems);
-      }
+      setItems(prevItems => prevItems.filter(item => item.id !== itemId));
     } catch (error) {
       console.error('Error unapproving item:', error);
     }
@@ -128,7 +72,6 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
     }
   };
 
-
   if (isLoading) {
     return (
       <Card>
@@ -140,19 +83,26 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
     );
   }
 
+  const getStatusBadge = (status) => (
+    <Badge variant={ItemStatusVariants[status] || 'default'}>
+      {ItemStatusLabels[status] || status}
+    </Badge>
+  );
+
   return (
     <Card>
       <CardContent>
         <div className="space-y-4">
-          {items.length > 0 ? (
+          {items?.length > 0 ? (
             items.map((item) => (
-              <Card key={item.id} className="overflow-hidden">
+              <Card key={item.id} className="overflow-hidden cursor-pointer" onClick={() => onSeeMore(item)}>
                 <CardContent className="p-6">
                   <div className="flex gap-6">
+                    {/* Image Section */}
                     <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                       {item.imageUrl ? (
                         <img 
-                          src={item.imageUrl} 
+                          src={item.imageUrl}
                           alt={item.name} 
                           className="w-full h-full object-cover"
                         />
@@ -163,6 +113,7 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
                       )}
                     </div>
 
+                    {/* Content Section */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-3">
                         <h3 className="font-bold text-lg truncate">{item.name}</h3>
@@ -174,13 +125,14 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
                         {item.additionalDescriptions?.length > 0 && (
                           <div className="mt-2">
                             <p className="text-sm text-muted-foreground">
-                              +{item.additionalDescriptions.length} additional details
+                              {item.additionalDescriptions.length} additional details
                             </p>
                           </div>
                         )}
                       </div>
                     </div>
 
+                    {/* Admin Actions */}
                     {isAdmin && (
                       <div className="flex flex-col gap-2 justify-start min-w-[140px]">
                         {item.approved && (
@@ -188,7 +140,10 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
                             variant="secondary" 
                             size="sm"
                             className="w-full"
-                            onClick={() => handleUnapprove(item.id)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleUnapprove(item.id);
+                            }}
                           >
                             Unapprove
                           </Button>
@@ -197,7 +152,10 @@ export default function ItemSection({ onSeeMore, title, isAdmin }) {
                           variant="destructive" 
                           size="sm"
                           className="w-full"
-                          onClick={() => handleDelete(item.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(item.id);
+                          }}
                         >
                           Delete
                         </Button>
