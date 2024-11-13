@@ -22,12 +22,10 @@ export default function AdminSection({
   items = [], 
   surrenderedItems = [], 
   notifications = [], 
-  onApprove, 
   onHandOver, 
   onResolveNotification, 
   onDelete,
   onUpdateItemStatus,
-  isLoading
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
   const [verificationQuestions, setVerificationQuestions] = useState("")
@@ -54,6 +52,9 @@ export default function AdminSection({
   const [selectedItemDetails, setSelectedItemDetails] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [approvingItems, setApprovingItems] = useState(new Set());
+  const [isLoading, setIsLoading] = useState(false);
+  const [deletingItems, setDeletingItems] = useState(new Set());
 
   useEffect(() => {
     const fetchPendingProcesses = async () => {
@@ -90,7 +91,21 @@ export default function AdminSection({
     console.log("Items:", items);
   }, [pendingProcesses, items]);
 
-  // Only allow access if user is admin
+  // Handle delete function
+  const handleDelete = async (itemId) => {
+    try {
+      setDeletingItems(prev => new Set(prev).add(itemId));
+      await onDelete(itemId);
+    } finally {
+      setDeletingItems(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  };
+
+  // Early return after all hooks
   if (!isAdmin) {
     return (
       <Card>
@@ -108,7 +123,7 @@ export default function AdminSection({
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
         <p className="mt-4 text-muted-foreground">Loading...</p>
       </div>
-    )
+    );
   }
 
   const handleAssignAdmin = async () => {
@@ -266,15 +281,94 @@ export default function AdminSection({
     setShowDetailsDialog(true);
   };
 
-  const refreshFoundItems = async () => {
+  const onApprove = async (itemId) => {
     try {
-      setIsFoundItemsLoading(true);
+      // Update item's Approved status
+      const itemResponse = await fetch(`http://localhost:5067/api/Item/${itemId}/approve`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ approved: true })
+      });
+
+      if (!itemResponse.ok) throw new Error('Failed to approve item');
+
+      // Update pending process status
+      const processResponse = await fetch(`http://localhost:5067/api/Item/process/${itemId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: 'approved' })
+      });
+
+      if (!processResponse.ok) throw new Error('Failed to update process status');
+
+      // Immediately update local state
+      setAllItems(prevItems => 
+        prevItems.map(item => 
+          item.Id === itemId 
+            ? { ...item, Approved: true }
+            : item
+        )
+      );
+
+      // Also update pending processes
+      setPendingProcesses(prevProcesses =>
+        prevProcesses.map(process =>
+          process.Item?.Id === itemId
+            ? { ...process, Status: 'approved', Item: { ...process.Item, Approved: true } }
+            : process
+        )
+      );
+
+      // Still call the refresh function for complete sync
+      if (onRefresh) {
+        await onRefresh();
+      }
+
+    } catch (error) {
+      console.error('Error approving item:', error);
+      throw error; // Re-throw the error to be caught by the handler in LostReportsTab
+    }
+  };
+
+  const handleTabChange = async (value) => {
+    setActiveTab(value);
+    if (value === "reports" || value === "found") {
+      setIsCountsLoading(true);
+      try {
+        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        if (!response.ok) throw new Error("Failed to fetch all pending processes");
+        const data = await response.json();
+        
+        setPendingProcesses(data);
+        
+        const items = data
+          .filter(process => process.Item)
+          .map(process => ({
+            ...process.Item,
+            processId: process.Id,
+            processStatus: process.Status
+          }));
+        
+        setAllItems(items);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsCountsLoading(false);
+      }
+    }
+  };
+
+  // Add refresh function // remove this if not used
+  const refreshData = async () => {
+    try {
+      setIsLoading(true);
       const response = await fetch('http://localhost:5067/api/Item/pending/all');
-      if (!response.ok) throw new Error('Failed to fetch found items');
+      if (!response.ok) throw new Error('Failed to fetch items');
       const data = await response.json();
-      
-      // Update all states with the new data
-      setPendingProcesses(data);
       
       const items = data
         .filter(process => process.Item)
@@ -285,38 +379,10 @@ export default function AdminSection({
         }));
       
       setAllItems(items);
-      setIsFoundItemsLoading(false);
     } catch (error) {
-      console.error('Error refreshing found items:', error);
-      setIsFoundItemsLoading(false);
-    }
-  };
-
-  const handleDelete = async (itemId) => {
-    try {
-      // Find the process associated with this item
-      const process = pendingProcesses.find(p => p.Item?.Id === itemId);
-      if (!process) throw new Error('No process found for this item');
-
-      // Delete the process first
-      const deleteProcessResponse = await fetch(`http://localhost:5067/api/Item/pending/${process.Id}`, {
-        method: 'DELETE'
-      });
-
-      if (!deleteProcessResponse.ok) throw new Error('Failed to delete process');
-
-      // Then delete the item
-      const deleteItemResponse = await fetch(`http://localhost:5067/api/item/${itemId}`, {
-        method: 'DELETE'
-      });
-
-      if (!deleteItemResponse.ok) throw new Error('Failed to delete item');
-
-      // Refresh the data
-      refreshFoundItems();
-
-    } catch (error) {
-      console.error('Error deleting item:', error);
+      console.error('Error refreshing data:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -337,10 +403,10 @@ export default function AdminSection({
       {/* Main Content */}
       <Card className="border-t-4 border-t-primary">
         <CardContent className="p-6">
-          <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="statistics" className="w-full">
+          <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="statistics" className="w-full">
             <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1 rounded-lg">
               <TabsTrigger value="statistics">Statistics</TabsTrigger>
-              <TabsTrigger value="reports">Lost Reports</TabsTrigger>
+              <TabsTrigger value="reports" >Lost Reports</TabsTrigger>
               <TabsTrigger value="found">Found Items</TabsTrigger>
               <TabsTrigger value="verifications">Verifications</TabsTrigger>
               <TabsTrigger value="pending">Processes</TabsTrigger>
@@ -360,18 +426,21 @@ export default function AdminSection({
                 getPendingRetrievalCount={getPendingRetrievalCount}
                 onViewDetails={handleViewDetails}
                 onApprove={onApprove}
-                onDelete={onDelete}
+                onDelete={handleDelete}
                 onItemInPossession={onUpdateItemStatus}
+                approvingItems={approvingItems}
+                deletingItems={deletingItems}
               />
             </TabsContent>
 
             <TabsContent value="found">
               <FoundItemsTab 
                 items={allItems}
-                isLoading={isFoundItemsLoading}
-                onDelete={handleDelete}
+                isCountsLoading={isCountsLoading}
                 onViewDetails={handleViewDetails}
-                onRefresh={refreshFoundItems}
+                onApprove={onApprove}
+                onDelete={handleDelete}
+                deletingItems={deletingItems}
               />
             </TabsContent>
 
@@ -471,7 +540,7 @@ export default function AdminSection({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Approve Found Item Dialog */}
+      {/* Approve Found Item Dialog Not Working Yet */}
       <AlertDialog open={showApproveFoundDialog} onOpenChange={setShowApproveFoundDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
