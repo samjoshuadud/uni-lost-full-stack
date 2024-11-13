@@ -47,6 +47,8 @@ export default function UniLostAndFound() {
   const [showVerificationFailDialog, setShowVerificationFailDialog] = useState(false)
   const [adminUsers, setAdminUsers] = useState([])
 
+
+
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState(null)
@@ -112,7 +114,6 @@ export default function UniLostAndFound() {
           items={items.filter(item => !item.approved)}
           surrenderedItems={surrenderedItems}
           notifications={adminNotifications}
-          onApprove={handleApproveItem} 
           onHandOver={handleHandOverItem}
           onResolveNotification={handleResolveNotification}
           onDelete={handleDelete}
@@ -203,6 +204,7 @@ export default function UniLostAndFound() {
     setPendingReport(null);
   }
 
+  // delete this if useless anymore
   const handleApproveItem = async (id, status, itemData = null) => {
     try {
       const response = await fetch(`http://localhost:5067/api/item/${id}`, {
@@ -263,21 +265,43 @@ export default function UniLostAndFound() {
     setAdminNotifications(adminNotifications.filter(notification => notification.id !== notificationId))
   }
 
-  const handleDelete = async (id) => {
+
+
+  const handleDelete = async (itemId) => {
     try {
-      const response = await fetch(`http://localhost:5067/api/item/${id}`, {
+      console.log('Starting delete operation for itemId:', itemId);
+      console.log('Current pendingProcesses:', pendingProcesses);
+      
+      const process = pendingProcesses.find(p => p.Item?.Id === itemId);
+      console.log('Found process:', process);
+
+      if (process) {
+        // Delete the process first if it exists
+        const deleteProcessResponse = await fetch(`http://localhost:5067/api/Item/pending/${process.Id}`, {
+          method: 'DELETE'
+        });
+
+        if (!deleteProcessResponse.ok) throw new Error('Failed to delete process');
+      }
+
+      // Then delete the item
+      const deleteItemResponse = await fetch(`http://localhost:5067/api/Item/${itemId}`, {
         method: 'DELETE'
-      })
+      });
 
-      if (!response.ok) throw new Error('Failed to delete item')
+      if (!deleteItemResponse.ok) throw new Error('Failed to delete item'); 
 
-      // Update local state after successful deletion
-      setItems(items.filter(item => item.id !== id))
+      // Update local state
+      setItems(prevItems => prevItems.filter(item => item.Id !== itemId));
+      setPendingProcesses(prevProcesses => 
+        prevProcesses.filter(process => process.Item?.Id !== itemId)
+      );
+
     } catch (error) {
-      setError('Failed to delete item')
-      console.error('Error deleting item:', error)
+      console.error('Error deleting item:', error);
+      throw error;
     }
-  }
+  };
 
   const generateVerificationQuestions = (item) => {
     const questions = [
@@ -578,6 +602,23 @@ export default function UniLostAndFound() {
 
     fetchItems();
   }, []); // Empty dependency array means this runs once when component mounts
+
+  // Add this useEffect to fetch pending processes
+  useEffect(() => {
+    const fetchPendingProcesses = async () => {
+      try {
+        const response = await fetch('http://localhost:5067/api/Item/pending/all');
+        if (!response.ok) throw new Error('Failed to fetch pending processes');
+        const data = await response.json();
+        console.log('Fetched pending processes:', data);
+        setPendingProcesses(data);
+      } catch (error) {
+        console.error('Error fetching pending processes:', error);
+      }
+    };
+
+    fetchPendingProcesses();
+  }, []); // Empty dependency array means this runs once on mount
 
   // Show loading state while checking auth and admin status
   if (loading) {
