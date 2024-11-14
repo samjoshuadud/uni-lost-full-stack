@@ -22,7 +22,6 @@ export default function DashboardSection({ onSeeMore }) {
           throw new Error('Failed to fetch items');
         }
         const data = await response.json();
-        console.log("Fetched raw data:", data);
         
         // Filter for approved items only and transform the data
         const approvedItems = data
@@ -39,7 +38,6 @@ export default function DashboardSection({ onSeeMore }) {
             approved: item.Item.Approved
           }));
         
-        console.log("Transformed items:", approvedItems);
         setItems(approvedItems);
       } catch (error) {
         console.error('Error fetching items:', error);

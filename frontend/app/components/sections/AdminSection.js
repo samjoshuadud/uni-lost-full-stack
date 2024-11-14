@@ -1,48 +1,83 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Trash, UserPlus, CheckCircle, XCircle, ClipboardList, Package, Bell, Users, ExternalLink, Loader2, BarChart, PieChart, Activity, TrendingUp } from "lucide-react"
-import { useAuth } from "@/lib/AuthContext"
-import StatisticsSection from "./admin-tabs/StatisticsSection"
-import LostReportsTab from "./admin-tabs/LostReportsTab"
-import FoundItemsTab from "./admin-tabs/FoundItemsTab"
-import VerificationsTab from "./admin-tabs/VerificationsTab"
-import PendingProcessesTab from "./admin-tabs/PendingProcessesTab"
-import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Trash,
+  UserPlus,
+  CheckCircle,
+  XCircle,
+  ClipboardList,
+  Package,
+  Bell,
+  Users,
+  ExternalLink,
+  Loader2,
+  BarChart,
+  PieChart,
+  Activity,
+  TrendingUp,
+} from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import StatisticsSection from "./admin-tabs/StatisticsSection";
+import LostReportsTab from "./admin-tabs/LostReportsTab";
+import FoundItemsTab from "./admin-tabs/FoundItemsTab";
+import VerificationsTab from "./admin-tabs/VerificationsTab";
+import PendingProcessesTab from "./admin-tabs/PendingProcessesTab";
+import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab";
 
-export default function AdminSection({ 
-  items = [], 
-  surrenderedItems = [], 
-  notifications = [], 
-  onHandOver, 
-  onResolveNotification, 
+export default function AdminSection({
+  items = [],
+  surrenderedItems = [],
+  notifications = [],
+  onHandOver,
+  onResolveNotification,
   onDelete,
   onUpdateItemStatus,
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
-  const [verificationQuestions, setVerificationQuestions] = useState("")
-  const [selectedItem, setSelectedItem] = useState(null)
-  const [newAdminEmail, setNewAdminEmail] = useState("")
-  const [activeTab, setActiveTab] = useState("statistics")
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
-  const [showFailDialog, setShowFailDialog] = useState(false)
-  const [showNoShowDialog, setShowNoShowDialog] = useState(false)
-  const [noShowItemId, setNoShowItemId] = useState(null)
-  const [showApproveFoundDialog, setShowApproveFoundDialog] = useState(false)
-  const [selectedFoundItem, setSelectedFoundItem] = useState(null)
-  const [showAdminDialog, setShowAdminDialog] = useState(false)
-  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
-  const [feedbackMessage, setFeedbackMessage] = useState({ title: "", message: "" })
-  const [pendingProcesses, setPendingProcesses] = useState([])
-  const [isCountsLoading, setIsCountsLoading] = useState(true)
+  const [verificationQuestions, setVerificationQuestions] = useState("");
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [activeTab, setActiveTab] = useState("statistics");
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [showFailDialog, setShowFailDialog] = useState(false);
+  const [showNoShowDialog, setShowNoShowDialog] = useState(false);
+  const [noShowItemId, setNoShowItemId] = useState(null);
+  const [showApproveFoundDialog, setShowApproveFoundDialog] = useState(false);
+  const [selectedFoundItem, setSelectedFoundItem] = useState(null);
+  const [showAdminDialog, setShowAdminDialog] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState({
+    title: "",
+    message: "",
+  });
+  const [pendingProcesses, setPendingProcesses] = useState([]);
+  const [isCountsLoading, setIsCountsLoading] = useState(true);
   const [allItems, setAllItems] = useState([]);
   const [isItemsLoading, setIsItemsLoading] = useState(true);
   const [pendingAttentionCount, setPendingAttentionCount] = useState(0);
@@ -55,24 +90,28 @@ export default function AdminSection({
   const [approvingItems, setApprovingItems] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [deletingItems, setDeletingItems] = useState(new Set());
-
+  const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
+  const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
   useEffect(() => {
     const fetchPendingProcesses = async () => {
       try {
-        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
-        if (!response.ok) throw new Error("Failed to fetch all pending processes");
+        const response = await fetch(
+          `http://localhost:5067/api/Item/pending/all`,
+        );
+        if (!response.ok)
+          throw new Error("Failed to fetch all pending processes");
         const data = await response.json();
-        
+
         setPendingProcesses(data);
-        
+
         const items = data
-          .filter(process => process.Item)
-          .map(process => ({
+          .filter((process) => process.Item)
+          .map((process) => ({
             ...process.Item,
             processId: process.Id,
-            processStatus: process.Status
+            processStatus: process.Status,
           }));
-        
+
         setAllItems(items);
         setIsCountsLoading(false);
         setIsItemsLoading(false);
@@ -85,19 +124,13 @@ export default function AdminSection({
     fetchPendingProcesses();
   }, []);
 
-  // Add console logs to debug the data
-  useEffect(() => {
-    console.log("Pending Processes:", pendingProcesses);
-    console.log("Items:", items);
-  }, [pendingProcesses, items]);
-
   // Handle delete function
   const handleDelete = async (itemId) => {
     try {
-      setDeletingItems(prev => new Set(prev).add(itemId));
+      setDeletingItems((prev) => new Set(prev).add(itemId));
       await onDelete(itemId);
     } finally {
-      setDeletingItems(prev => {
+      setDeletingItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
         return next;
@@ -111,7 +144,9 @@ export default function AdminSection({
       <Card>
         <CardContent className="p-8 text-center">
           <h2 className="text-xl font-bold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">You don't have permission to access this section.</p>
+          <p className="text-muted-foreground">
+            You don't have permission to access this section.
+          </p>
         </CardContent>
       </Card>
     );
@@ -130,7 +165,7 @@ export default function AdminSection({
     if (!newAdminEmail) {
       setFeedbackMessage({
         title: "Error",
-        message: "Please enter an email address"
+        message: "Please enter an email address",
       });
       setShowFeedbackDialog(true);
       return;
@@ -138,32 +173,32 @@ export default function AdminSection({
 
     try {
       const response = await makeAuthenticatedRequest(
-        'http://localhost:5067/api/auth/assign-admin',
+        "http://localhost:5067/api/auth/assign-admin",
         {
-          method: 'POST',
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json'
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email: newAdminEmail.trim() })
-        }
+          body: JSON.stringify({ email: newAdminEmail.trim() }),
+        },
       );
 
       if (response) {
         setFeedbackMessage({
           title: "Success",
-          message: `${newAdminEmail} has been assigned as admin`
+          message: `${newAdminEmail} has been assigned as admin`,
         });
       } else {
         setFeedbackMessage({
           title: "Error",
-          message: "Failed to assign admin. Please try again."
+          message: "Failed to assign admin. Please try again.",
         });
       }
     } catch (error) {
-      console.error('Error assigning admin:', error);
+      console.error("Error assigning admin:", error);
       setFeedbackMessage({
         title: "Error",
-        message: "Failed to assign admin. Please try again."
+        message: "Failed to assign admin. Please try again.",
       });
     }
 
@@ -172,29 +207,13 @@ export default function AdminSection({
     setShowFeedbackDialog(true);
   };
 
-  const getPendingApprovalCount = () => {
-    const count = pendingProcesses.filter(process => 
-      process.status === "pending_approval" && 
-      process.Item?.Status === "lost"
-    ).length;
-    
-    console.log("Pending approval processes count:", count);
-    return count;
-  };
-
-  const getPendingFoundApprovalCount = () => {
-    return items.filter(item => 
-      !item.approved && item.status === "found" && 
-      !notifications.some(n => n.type === 'verification' && n.item?.id === item.id)
-    ).length;
-  };
-
   const getInVerificationCount = () => {
-    return notifications.filter(n => n.type === 'verification' && n.item).length;
+    return notifications.filter((n) => n.type === "verification" && n.item)
+      .length;
   };
 
   const getPendingRetrievalCount = () => {
-    return items.filter(item => item.status === "pending_retrieval").length;
+    return items.filter((item) => item.status === "pending_retrieval").length;
   };
 
   const handleVerificationResult = (notificationId, isCorrect, itemId) => {
@@ -237,12 +256,15 @@ export default function AdminSection({
   useEffect(() => {
     const fetchPendingAttentionCount = async () => {
       try {
-        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        const response = await fetch(
+          `http://localhost:5067/api/Item/pending/all`,
+        );
         if (!response.ok) throw new Error("Failed to fetch pending processes");
         const data = await response.json();
-        const count = data.filter(process => 
-          process.Status === "pending_approval" && 
-          process.Item?.Status === "lost"
+        const count = data.filter(
+          (process) =>
+            process.Status === "pending_approval" &&
+            process.Item?.Status === "lost",
         ).length;
         setPendingAttentionCount(count);
       } catch (error) {
@@ -258,13 +280,17 @@ export default function AdminSection({
   useEffect(() => {
     const fetchFoundItems = async () => {
       if (activeTab !== "found") return;
-      
+
       try {
         setIsFoundItemsLoading(true);
-        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        const response = await fetch(
+          `http://localhost:5067/api/Item/pending/all`,
+        );
         if (!response.ok) throw new Error("Failed to fetch found items");
         const data = await response.json();
-        const foundItems = data.filter(process => process.Item?.Status === "found");
+        const foundItems = data.filter(
+          (process) => process.Item?.Status === "found",
+        );
         setFoundItems(foundItems);
       } catch (error) {
         console.error("Error fetching found items:", error);
@@ -281,55 +307,86 @@ export default function AdminSection({
     setShowDetailsDialog(true);
   };
 
+  // Add refresh function // remove this if not used
+  const refreshData = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch(
+        "http://localhost:5067/api/Item/pending/all",
+      );
+      if (!response.ok) throw new Error("Failed to fetch items");
+      const data = await response.json();
+
+      const items = data
+        .filter((process) => process.Item)
+        .map((process) => ({
+          ...process.Item,
+          processId: process.Id,
+          processStatus: process.Status,
+        }));
+
+      setAllItems(items);
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const onApprove = async (itemId) => {
     try {
       // Update item's Approved status
-      const itemResponse = await fetch(`http://localhost:5067/api/Item/${itemId}/approve`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
+      const itemResponse = await fetch(
+        `http://localhost:5067/api/Item/${itemId}/approve`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ approved: true }),
         },
-        body: JSON.stringify({ approved: true })
-      });
+      );
 
-      if (!itemResponse.ok) throw new Error('Failed to approve item');
+      if (!itemResponse.ok) throw new Error("Failed to approve item");
 
       // Update pending process status
-      const processResponse = await fetch(`http://localhost:5067/api/Item/process/${itemId}/status`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
+      const processResponse = await fetch(
+        `http://localhost:5067/api/Item/process/${itemId}/status`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ status: "approved" }),
         },
-        body: JSON.stringify({ status: 'approved' })
-      });
+      );
 
-      if (!processResponse.ok) throw new Error('Failed to update process status');
+      if (!processResponse.ok)
+        throw new Error("Failed to update process status");
 
       // Immediately update local state
-      setAllItems(prevItems => 
-        prevItems.map(item => 
-          item.Id === itemId 
-            ? { ...item, Approved: true }
-            : item
-        )
+      setAllItems((prevItems) =>
+        prevItems.map((item) =>
+          item.Id === itemId ? { ...item, Approved: true } : item,
+        ),
       );
 
       // Also update pending processes
-      setPendingProcesses(prevProcesses =>
-        prevProcesses.map(process =>
+      setPendingProcesses((prevProcesses) =>
+        prevProcesses.map((process) =>
           process.Item?.Id === itemId
-            ? { ...process, Status: 'approved', Item: { ...process.Item, Approved: true } }
-            : process
-        )
+            ? {
+                ...process,
+                Status: "approved",
+                Item: { ...process.Item, Approved: true },
+              }
+            : process,
+        ),
       );
 
-      // Still call the refresh function for complete sync
-      if (onRefresh) {
-        await onRefresh();
-      }
-
+      // Still call the refresh function for complete sync / remove later if causing error
     } catch (error) {
-      console.error('Error approving item:', error);
+      console.error("Error approving item:", error);
       throw error; // Re-throw the error to be caught by the handler in LostReportsTab
     }
   };
@@ -339,53 +396,31 @@ export default function AdminSection({
     if (value === "reports" || value === "found") {
       setIsCountsLoading(true);
       try {
-        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
-        if (!response.ok) throw new Error("Failed to fetch all pending processes");
+        const response = await fetch(
+          `http://localhost:5067/api/Item/pending/all`,
+        );
+        if (!response.ok)
+          throw new Error("Failed to fetch all pending processes");
         const data = await response.json();
-        
+
         setPendingProcesses(data);
-        
+
         const items = data
-          .filter(process => process.Item)
-          .map(process => ({
+          .filter((process) => process.Item)
+          .map((process) => ({
             ...process.Item,
             processId: process.Id,
-            processStatus: process.Status
+            processStatus: process.Status,
           }));
-        
+
         setAllItems(items);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error("Error fetching data:", error);
       } finally {
         setIsCountsLoading(false);
       }
     }
   };
-
-  // Add refresh function // remove this if not used
-  const refreshData = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch('http://localhost:5067/api/Item/pending/all');
-      if (!response.ok) throw new Error('Failed to fetch items');
-      const data = await response.json();
-      
-      const items = data
-        .filter(process => process.Item)
-        .map(process => ({
-          ...process.Item,
-          processId: process.Id,
-          processStatus: process.Status
-        }));
-      
-      setAllItems(items);
-    } catch (error) {
-      console.error('Error refreshing data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="space-y-8">
       {/* Admin Dashboard Overview Card */}
@@ -403,10 +438,15 @@ export default function AdminSection({
       {/* Main Content */}
       <Card className="border-t-4 border-t-primary">
         <CardContent className="p-6">
-          <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="statistics" className="w-full">
+          <Tabs
+            value={activeTab}
+            onValueChange={handleTabChange}
+            defaultValue="statistics"
+            className="w-full"
+          >
             <TabsList className="grid w-full grid-cols-6 bg-muted/50 p-1 rounded-lg">
               <TabsTrigger value="statistics">Statistics</TabsTrigger>
-              <TabsTrigger value="reports" >Lost Reports</TabsTrigger>
+              <TabsTrigger value="reports">Lost Reports</TabsTrigger>
               <TabsTrigger value="found">Found Items</TabsTrigger>
               <TabsTrigger value="verifications">Verifications</TabsTrigger>
               <TabsTrigger value="pending">Processes</TabsTrigger>
@@ -418,10 +458,10 @@ export default function AdminSection({
             </TabsContent>
 
             <TabsContent value="reports">
-              <LostReportsTab 
+              <LostReportsTab
                 items={allItems}
                 isCountsLoading={isCountsLoading}
-                getPendingApprovalCount={getPendingApprovalCount}
+                setPendingLostApprovalCount={setPendingLostApprovalCount}
                 getInVerificationCount={getInVerificationCount}
                 getPendingRetrievalCount={getPendingRetrievalCount}
                 onViewDetails={handleViewDetails}
@@ -432,10 +472,10 @@ export default function AdminSection({
                 deletingItems={deletingItems}
               />
             </TabsContent>
-
             <TabsContent value="found">
-              <FoundItemsTab 
+              <FoundItemsTab
                 items={allItems}
+                setPendingFoundApprovalCount={setPendingFoundApprovalCount}
                 isCountsLoading={isCountsLoading}
                 onViewDetails={handleViewDetails}
                 onApprove={onApprove}
@@ -445,21 +485,21 @@ export default function AdminSection({
             </TabsContent>
 
             <TabsContent value="verifications">
-              <VerificationsTab 
+              <VerificationsTab
                 notifications={notifications}
                 onVerificationResult={handleVerificationResult}
               />
             </TabsContent>
 
             <TabsContent value="pending">
-              <PendingProcessesTab 
+              <PendingProcessesTab
                 pendingProcesses={pendingProcesses}
                 onViewDetails={handleViewDetails}
               />
             </TabsContent>
 
             <TabsContent value="retrieval">
-              <PendingRetrievalTab 
+              <PendingRetrievalTab
                 items={allItems}
                 onHandOver={onHandOver}
                 onNoShow={(itemId) => {
@@ -478,14 +518,17 @@ export default function AdminSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Verification Successful!</AlertDialogTitle>
             <AlertDialogDescription>
-              The owner has correctly verified their ownership. They can now proceed to retrieve their item at the Student Center.
+              The owner has correctly verified their ownership. They can now
+              proceed to retrieve their item at the Student Center.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => {
-              setShowSuccessDialog(false);
-              setActiveTab("retrieval");
-            }}>
+            <AlertDialogAction
+              onClick={() => {
+                setShowSuccessDialog(false);
+                setActiveTab("retrieval");
+              }}
+            >
               View in Retrievals
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -498,14 +541,17 @@ export default function AdminSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Verification Failed</AlertDialogTitle>
             <AlertDialogDescription>
-              The verification answers were incorrect. The item will remain posted and the user can try again.
+              The verification answers were incorrect. The item will remain
+              posted and the user can try again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => {
-              setShowFailDialog(false);
-              setActiveTab("lost");
-            }}>
+            <AlertDialogAction
+              onClick={() => {
+                setShowFailDialog(false);
+                setActiveTab("lost");
+              }}
+            >
               Return to Lost Items
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -518,7 +564,8 @@ export default function AdminSection({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm No Show</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark this as no show? This will reset the verification process and the item will remain posted.
+              Are you sure you want to mark this as no show? This will reset the
+              verification process and the item will remain posted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -541,19 +588,25 @@ export default function AdminSection({
       </AlertDialog>
 
       {/* Approve Found Item Dialog Not Working Yet */}
-      <AlertDialog open={showApproveFoundDialog} onOpenChange={setShowApproveFoundDialog}>
+      <AlertDialog
+        open={showApproveFoundDialog}
+        onOpenChange={setShowApproveFoundDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Approve Found Item</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to approve and post this found item? This will make it visible to all users.
+              Are you sure you want to approve and post this found item? This
+              will make it visible to all users.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => {
-              setShowApproveFoundDialog(false);
-              setSelectedFoundItem(null);
-            }}>
+            <AlertDialogCancel
+              onClick={() => {
+                setShowApproveFoundDialog(false);
+                setSelectedFoundItem(null);
+              }}
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -580,7 +633,8 @@ export default function AdminSection({
           <DialogHeader>
             <DialogTitle>Assign New Admin</DialogTitle>
             <DialogDescription>
-              Enter the UMAK email address of the user you want to assign as admin.
+              Enter the UMAK email address of the user you want to assign as
+              admin.
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-4">
@@ -599,7 +653,10 @@ export default function AdminSection({
       </Dialog>
 
       {/* Feedback Dialog */}
-      <AlertDialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog}>
+      <AlertDialog
+        open={showFeedbackDialog}
+        onOpenChange={setShowFeedbackDialog}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{feedbackMessage.title}</AlertDialogTitle>
@@ -626,9 +683,9 @@ export default function AdminSection({
               {/* Image */}
               {selectedItemDetails.ImageUrl && (
                 <div className="w-full h-64 bg-muted rounded-lg overflow-hidden">
-                  <img 
-                    src={selectedItemDetails.ImageUrl} 
-                    alt={selectedItemDetails.Name} 
+                  <img
+                    src={selectedItemDetails.ImageUrl}
+                    alt={selectedItemDetails.Name}
                     className="w-full h-full object-contain"
                   />
                 </div>
@@ -639,15 +696,26 @@ export default function AdminSection({
                 <div>
                   <h4 className="font-semibold">Basic Information</h4>
                   <div className="space-y-2 mt-2">
-                    <p><strong>Name:</strong> {selectedItemDetails.Name}</p>
-                    <p><strong>Category:</strong> {selectedItemDetails.Category}</p>
-                    <p><strong>Location:</strong> {selectedItemDetails.Location}</p>
-                    <p><strong>Student ID:</strong> {selectedItemDetails.StudentId || 'N/A'}</p>
+                    <p>
+                      <strong>Name:</strong> {selectedItemDetails.Name}
+                    </p>
+                    <p>
+                      <strong>Category:</strong> {selectedItemDetails.Category}
+                    </p>
+                    <p>
+                      <strong>Location:</strong> {selectedItemDetails.Location}
+                    </p>
+                    <p>
+                      <strong>Student ID:</strong>{" "}
+                      {selectedItemDetails.StudentId || "N/A"}
+                    </p>
                   </div>
                 </div>
                 <div>
                   <h4 className="font-semibold">Description</h4>
-                  <p className="mt-2 text-sm">{selectedItemDetails.Description}</p>
+                  <p className="mt-2 text-sm">
+                    {selectedItemDetails.Description}
+                  </p>
                 </div>
               </div>
 
@@ -656,12 +724,14 @@ export default function AdminSection({
                 <div>
                   <h4 className="font-semibold mb-2">Additional Details</h4>
                   <div className="space-y-2">
-                    {selectedItemDetails.AdditionalDescriptions.map((desc, index) => (
-                      <div key={index} className="bg-muted p-3 rounded">
-                        <p className="font-medium">{desc.Title}</p>
-                        <p className="text-sm">{desc.Description}</p>
-                      </div>
-                    ))}
+                    {selectedItemDetails.AdditionalDescriptions.map(
+                      (desc, index) => (
+                        <div key={index} className="bg-muted p-3 rounded">
+                          <p className="font-medium">{desc.Title}</p>
+                          <p className="text-sm">{desc.Description}</p>
+                        </div>
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -670,5 +740,5 @@ export default function AdminSection({
         </DialogContent>
       </Dialog>
     </div>
-  )
-} 
+  );
+}
