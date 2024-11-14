@@ -8,13 +8,25 @@ import { useEffect, useState } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export default function FoundItemsTab({ 
-  items = [], 
+  items = [],
   isCountsLoading,
   onDelete,
   onViewDetails,
   onApprove,
 }) {
   const [approvingItems, setApprovingItems] = useState(new Set());
+  
+  const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
+
+  const [deletingItems, setDeletingItems] = useState(new Set());
+  const [allItems, setAllItems] = useState(items);
+
+  useEffect(() => {
+    setPendingFoundApprovalCount(
+      allItems.filter((item) => !item.Approved && item.Status === "found")
+        .length,
+    );
+  }, [allItems]);
 
   const handleApprove = async (itemId) => {
     try {
@@ -29,11 +41,18 @@ export default function FoundItemsTab({
     }
   };
 
-  // Function to count pending approval items
-  const getPendingApprovalCount = () => {
-    return items.filter(item => 
-      !item.Approved && item.Status === "found"
-    ).length;
+  const handleDelete = async (itemId) => {
+    try {
+      setDeletingItems((prev) => new Set(prev).add(itemId));
+      await onDelete(itemId);
+      setAllItems((prevItems) => prevItems.filter(item => item.Id !== itemId));
+    } finally {
+      setDeletingItems((prev) => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
   };
 
   return (
@@ -65,7 +84,7 @@ export default function FoundItemsTab({
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
-                <p className="text-2xl font-bold">{getPendingApprovalCount()}</p>
+                <p className="text-2xl font-bold">{pendingFoundApprovalCount}</p>
               </div>
             </div>
           </CardContent>
@@ -113,7 +132,7 @@ export default function FoundItemsTab({
                   </Card>
                 ))}
               </>
-            ) : items.filter(item => !item.Approved && item.Status === "found").length === 0 ? (
+            ) : allItems.filter(item => !item.Approved && item.Status === "found").length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
@@ -122,8 +141,7 @@ export default function FoundItemsTab({
                 </CardContent>
               </Card>
             ) : (
-              // Your existing items mapping
-              items.filter(item => !item.Approved && item.Status === "found").map((item) => (
+              allItems.filter(item => !item.Approved && item.Status === "found").map((item) => (
                 <Card key={item.Id} className="overflow-hidden">
                   <CardContent className="p-6">
                     <div className="flex gap-6">
@@ -208,10 +226,20 @@ export default function FoundItemsTab({
                           variant="destructive" 
                           size="sm"
                           className="w-full"
-                          onClick={() => onDelete(item.Id)}
+                          onClick={() => handleDelete(item.Id)}
+                          disabled={deletingItems.has(item.Id)}
                         >
-                          <Trash className="h-4 w-4 mr-2" />
-                          Delete
+                          {deletingItems.has(item.Id) ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash className="h-4 w-4 mr-2" />
+                              Delete
+                            </>
+                          )}
                         </Button>
                       </div>
                     </div>

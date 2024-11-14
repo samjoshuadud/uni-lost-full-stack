@@ -9,6 +9,7 @@ import LoginButton from "./components/login-button"
 import { useAuth } from "@/lib/AuthContext"
 import AuthRequiredDialog from "./components/dialogs/AuthRequiredDialog"
 import {Card, CardContent, CardHeader, CardTitle} from "@/components/ui/card"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 // Import sections
 import DashboardSection from "./components/sections/DashboardSection"
 import ItemSection from "./components/sections/ItemSection"
@@ -46,6 +47,10 @@ export default function UniLostAndFound() {
   const [showVerificationSuccessDialog, setShowVerificationSuccessDialog] = useState(false)
   const [showVerificationFailDialog, setShowVerificationFailDialog] = useState(false)
   const [adminUsers, setAdminUsers] = useState([])
+  const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+
+
 
 
 
@@ -64,7 +69,36 @@ export default function UniLostAndFound() {
     item.Item?.Description.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
-  console.log("Initial filteredItems:", filteredItems);
+  // Move this useEffect up here with other useEffects
+  useEffect(() => {
+    const checkQuotaTimezone = () => {
+      const now = new Date();
+      
+      // Log different timezone representations
+      console.log('=== Firebase Quota Timing ===');
+      console.log('Local time:', now.toLocaleString());
+      console.log('UTC time:', now.toUTCString());
+      console.log('PT time:', now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+      
+      // Calculate time until next reset (assuming PT timezone)
+      const pt = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
+      const tomorrow = new Date(pt);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0,0,0,0);
+      
+      const msUntilReset = tomorrow - pt;
+      const hoursUntilReset = Math.floor(msUntilReset / (1000 * 60 * 60));
+      
+      console.log(`Firebase quota resets in approximately ${hoursUntilReset} hours`);
+      console.log('===========================');
+    };
+
+    // Check immediately and then every hour
+    checkQuotaTimezone();
+    const interval = setInterval(checkQuotaTimezone, 1000 * 60 * 60); // Check every hour
+
+    return () => clearInterval(interval);
+  }, []); // Empty dependency array means this runs once on mount
 
   const renderSection = () => {
     switch (activeSection) {
@@ -266,40 +300,43 @@ export default function UniLostAndFound() {
   }
 
 
-
   const handleDelete = async (itemId) => {
     try {
-      console.log('Starting delete operation for itemId:', itemId);
-      console.log('Current pendingProcesses:', pendingProcesses);
-      
+      const respone = await fetch('http://localhost:5067/api/Item/pending/all');
+      const pendingProcesses = await respone.json();
       const process = pendingProcesses.find(p => p.Item?.Id === itemId);
-      console.log('Found process:', process);
+      if (!process) {
+        // Trigger error dialog if no process is found
+        setIsErrorDialogOpen(true);
+        throw new Error('Item deletion process not found');
+      } else {
 
-      if (process) {
-        // Delete the process first if it exists
-        const deleteProcessResponse = await fetch(`http://localhost:5067/api/Item/pending/${process.Id}`, {
-          method: 'DELETE'
-        });
+      // Delete the process first if it exists
+      const deleteProcessResponse = await fetch(`http://localhost:5067/api/Item/pending/${process.Id}`, {
+        method: 'DELETE'
+      });
 
-        if (!deleteProcessResponse.ok) throw new Error('Failed to delete process');
-      }
+      if (!deleteProcessResponse.ok) throw new Error('Failed to delete process');
 
       // Then delete the item
       const deleteItemResponse = await fetch(`http://localhost:5067/api/Item/${itemId}`, {
         method: 'DELETE'
       });
 
-      if (!deleteItemResponse.ok) throw new Error('Failed to delete item'); 
-
-      // Update local state
+      if (!deleteItemResponse.ok) throw new Error('Failed to delete item');
+      }
+      // Update local state if both deletions are successful
       setItems(prevItems => prevItems.filter(item => item.Id !== itemId));
       setPendingProcesses(prevProcesses => 
         prevProcesses.filter(process => process.Item?.Id !== itemId)
       );
 
+      // Trigger success dialog if deletion is successful
+      setIsSuccessDialogOpen(true);
     } catch (error) {
       console.error('Error deleting item:', error);
-      throw error;
+      // If any error occurs, show the error dialog
+      setIsErrorDialogOpen(true);
     }
   };
 
@@ -590,7 +627,6 @@ export default function UniLostAndFound() {
           throw new Error('Failed to fetch items');
         }
         const data = await response.json();
-        console.log("Fetched items:", data);
         setItems(data);
       } catch (error) {
         console.error('Error fetching items:', error);
@@ -634,6 +670,31 @@ export default function UniLostAndFound() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item Deleted Successfully!</DialogTitle>
+            <DialogDescription>The item has been successfully deleted.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Error Dialog */}
+      <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item Not Deleted - Error</DialogTitle>
+            <DialogDescription>There was an issue with deleting the item. Please try again later.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsErrorDialogOpen(false)}>Okay</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <header className="bg-primary text-primary-foreground p-4">
         <div className="container mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-bold">UniLostAndFound</h1>
