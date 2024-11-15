@@ -7,6 +7,7 @@ using Microsoft.IdentityModel.Tokens;
 using UniLostAndFound.API.Services;
 using Google.Cloud.Firestore;
 using Microsoft.AspNetCore.Http.Features;
+using Newtonsoft.Json.Linq;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,6 +18,17 @@ try
     Console.WriteLine($"[Debug] Looking for credentials at: {credentialPath}");
     Console.WriteLine($"[Debug] File exists: {File.Exists(credentialPath)}");
 
+    if (!File.Exists(credentialPath))
+    {
+        throw new FileNotFoundException($"Firebase config file not found at path: {credentialPath}");
+    }
+
+    // Read the project ID from the JSON configuration file
+    string fromWho = WhoConfigFromJson(credentialPath);
+    string projectId = GetProjectIdFromJson(credentialPath);
+    Console.WriteLine($"[Debug] Extracted Project ID: {projectId}");
+    Console.WriteLine($"[Debug] This Firebase Config is from: {fromWho}");
+
     Environment.SetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS", credentialPath);
 
     // Initialize Firebase Admin
@@ -25,7 +37,7 @@ try
         FirebaseApp.Create(new AppOptions
         {
             Credential = GoogleCredential.FromFile(credentialPath),
-            ProjectId = "unilostandfound"
+            ProjectId = projectId
         });
         Console.WriteLine("[Debug] Firebase Admin initialized successfully");
     }
@@ -57,7 +69,7 @@ try
         try
         {
             var service = new FirestoreService(
-                "unilostandfound",
+                projectId,
                 provider.GetRequiredService<ILogger<FirestoreService>>()
             );
             Console.WriteLine("[Debug] FirestoreService initialized successfully");
@@ -118,3 +130,47 @@ catch (Exception ex)
     Console.WriteLine($"[Debug] Stack trace: {ex.StackTrace}");
     throw;
 }
+
+// Helper function to extract the project ID from the JSON file
+static string GetProjectIdFromJson(string filePath)
+{
+    try
+    {
+        // Read the JSON content
+        var jsonContent = File.ReadAllText(filePath);
+
+        // Parse the JSON content
+        var jsonObject = JObject.Parse(jsonContent);
+
+        // Extract and return the project ID
+        return jsonObject["project_id"]?.ToString() 
+               ?? throw new Exception("Project ID not found in the JSON configuration file.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Debug] Error reading project ID: {ex.Message}");
+        throw;
+    }
+}
+
+static string WhoConfigFromJson(string filePath)
+{
+    try
+    {
+        // Read the JSON content
+        var jsonContent = File.ReadAllText(filePath);
+
+        // Parse the JSON content
+        var jsonObject = JObject.Parse(jsonContent);
+
+        // Extract and return the project ID
+        return jsonObject["config_from"]?.ToString() 
+               ?? throw new Exception("Project ID not found in the JSON configuration file.");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Debug] Error reading project ID: {ex.Message}");
+        throw;
+    }
+}
+
