@@ -49,6 +49,7 @@ import FoundItemsTab from "./admin-tabs/FoundItemsTab";
 import VerificationsTab from "./admin-tabs/VerificationsTab";
 import PendingProcessesTab from "./admin-tabs/PendingProcessesTab";
 import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab";
+import { itemApi } from "@/lib/api-client";
 
 export default function AdminSection({
   items = [],
@@ -421,6 +422,27 @@ export default function AdminSection({
       }
     }
   };
+
+  const handleApproveItem = async (itemId) => {
+    try {
+      const token = await user.getIdToken(true);
+      await itemApi.approveItem(token, itemId, true);
+      // Update local state or trigger refresh
+    } catch (error) {
+      console.error('Error approving item:', error);
+    }
+  };
+
+  const handleUpdateStatus = async (itemId, status) => {
+    try {
+      const token = await user.getIdToken(true);
+      await itemApi.updateProcessStatus(token, itemId, status);
+      onUpdateItemStatus(itemId, status);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Admin Dashboard Overview Card */}

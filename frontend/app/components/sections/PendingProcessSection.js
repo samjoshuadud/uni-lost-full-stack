@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
 import { ExternalLink, Trash, Loader2 } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { itemApi } from "@/lib/api-client"
 
 export default function PendingProcessSection({ onCancelRequest, onVerify, onViewPost }) {
   const { user, userData } = useAuth();
@@ -35,15 +36,67 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
         const data = await response.json();
         console.log("Fetched pending processes:", data);
 
-        // Ensure we're working with an array and sort by Item.DateReported
-        const processesArray = Array.isArray(data) ? data : [data].filter(Boolean);
-        const sortedProcesses = processesArray.sort((a, b) => {
-          const dateA = new Date(a.Item?.DateReported || 0);
-          const dateB = new Date(b.Item?.DateReported || 0);
-          return dateB - dateA; // Sort in descending order (newest first)
+        // Create a map to store all objects by their $id
+        const objectsMap = new Map();
+
+        // First pass: collect all objects with $id
+        const collectObjects = (obj) => {
+          if (!obj || typeof obj !== 'object') return;
+          if (obj.$id) {
+            objectsMap.set(obj.$id, { ...obj });
+          }
+          if (Array.isArray(obj)) {
+            obj.forEach(collectObjects);
+          } else {
+            Object.entries(obj).forEach(([key, value]) => {
+              if (value && typeof value === 'object') {
+                collectObjects(value);
+              }
+            });
+          }
+        };
+
+        // Collect all objects from the entire response
+        collectObjects(data);
+
+        // Get the processes array
+        const processesArray = data.$values || [];
+
+        // Resolve references for each process
+        const resolvedProcesses = processesArray.map(process => {
+          // If it's a reference, get the full object
+          if (process.$ref) {
+            process = objectsMap.get(process.$ref);
+          }
+
+          // Create a new object with resolved references
+          const resolved = { ...process };
+
+          // Resolve item reference
+          if (process.item?.$ref) {
+            resolved.item = objectsMap.get(process.item.$ref);
+          }
+
+          // Resolve user reference
+          if (process.user?.$ref) {
+            resolved.user = objectsMap.get(process.user.$ref);
+          }
+
+          return resolved;
         });
+
+        console.log("Resolved processes:", resolvedProcesses);
         
-        setPendingProcesses(sortedProcesses);
+        // Filter and sort processes
+        const validProcesses = resolvedProcesses
+          .filter(process => process && process.item)
+          .sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+          });
+
+        setPendingProcesses(validProcesses);
       } catch (error) {
         console.error("Error fetching pending processes:", error);
         setError(error.message);
@@ -57,27 +110,8 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
     }
   }, [user]);
 
-  const getStatusMessage = (process) => {
-    if (!process) return "Status unknown";
-    
-    switch (process.Status) { // Note the capital S in Status
-      case "pending_approval":
-        return process.Message || "Your report is pending approval from admin."; // Note the capital M in Message
-      case "posted":
-        return "We don't have the item yet, but we've posted it. Click below to view the post.";
-      case "verification_needed":
-        return "Please answer the verification questions.";
-      case "pending_verification":
-        return "Your verification answers are being reviewed.";
-      case "verified":
-        return "Verified! Please proceed to the student center to retrieve your item.";
-      default:
-        return process.Message || "Status unknown";
-    }
-  };
-
   const getStatusBadge = (status) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "pending_approval":
         return <Badge>Pending Approval</Badge>;
       case "posted":
@@ -89,7 +123,26 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
       case "verified":
         return <Badge variant="success">Verified</Badge>;
       default:
-        return <Badge>Pending</Badge>;
+        return <Badge variant="outline">{status || 'Unknown'}</Badge>;
+    }
+  };
+
+  const getStatusMessage = (process) => {
+    if (!process) return "Status unknown";
+    
+    switch (process.status?.toLowerCase()) {
+      case "pending_approval":
+        return process.message || "Your report is pending approval from admin.";
+      case "posted":
+        return "We don't have the item yet, but we've posted it. Click below to view the post.";
+      case "verification_needed":
+        return "Please answer the verification questions.";
+      case "pending_verification":
+        return "Your verification answers are being reviewed.";
+      case "verified":
+        return "Verified! Please proceed to the student center to retrieve your item.";
+      default:
+        return process.message || `Status: ${process.status || 'unknown'}`;
     }
   };
 
@@ -98,25 +151,113 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
       setDeletingProcessId(processId);
       
       const response = await fetch(`http://localhost:5067/api/item/pending/${processId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${user.email}`,
+          'FirebaseUID': user.uid,
+        }
       });
 
       if (!response.ok) {
         throw new Error('Failed to cancel process');
       }
 
-      // Remove the process from local state
+      // Remove the process from local state immediately
       setPendingProcesses(prevProcesses => 
-        prevProcesses.filter(process => process.Id !== processId)
+        prevProcesses.filter(process => process.id !== processId)
       );
 
+      // Close the dialog
       setShowCancelDialog(false);
       setProcessToCancelId(null);
+
+      // Fetch the updated list
+      const updatedResponse = await fetch(`http://localhost:5067/api/item/pending/user/${user.uid}`, {
+        headers: {
+          'Authorization': `Bearer ${user.email}`,
+          'FirebaseUID': user.uid,
+        }
+      });
+      
+      if (updatedResponse.ok) {
+        const data = await updatedResponse.json();
+        
+        // Create a map to store all objects by their $id
+        const objectsMap = new Map();
+
+        // First pass: collect all objects with $id
+        const collectObjects = (obj) => {
+          if (!obj || typeof obj !== 'object') return;
+          if (obj.$id) {
+            objectsMap.set(obj.$id, { ...obj });
+          }
+          if (Array.isArray(obj)) {
+            obj.forEach(collectObjects);
+          } else {
+            Object.entries(obj).forEach(([key, value]) => {
+              if (value && typeof value === 'object') {
+                collectObjects(value);
+              }
+            });
+          }
+        };
+
+        // Collect all objects from the entire response
+        collectObjects(data);
+
+        // Get the processes array
+        const processesArray = data.$values || [];
+
+        // Resolve references for each process
+        const resolvedProcesses = processesArray.map(process => {
+          // If it's a reference, get the full object
+          if (process.$ref) {
+            process = objectsMap.get(process.$ref);
+          }
+
+          // Create a new object with resolved references
+          const resolved = { ...process };
+
+          // Resolve item reference
+          if (process.item?.$ref) {
+            resolved.item = objectsMap.get(process.item.$ref);
+          }
+
+          // Resolve user reference
+          if (process.user?.$ref) {
+            resolved.user = objectsMap.get(process.user.$ref);
+          }
+
+          return resolved;
+        });
+
+        // Filter and sort processes
+        const validProcesses = resolvedProcesses
+          .filter(process => process && process.item)
+          .sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0);
+            const dateB = new Date(b.createdAt || 0);
+            return dateB - dateA;
+          });
+
+        setPendingProcesses(validProcesses);
+      }
+
     } catch (error) {
       console.error('Error canceling process:', error);
       setError('Failed to cancel process');
     } finally {
       setDeletingProcessId(null);
+    }
+  };
+
+  const handleCancelRequest = async (processId) => {
+    try {
+      const token = await user.getIdToken(true);
+      await itemApi.deletePendingProcess(token, processId);
+      onCancelRequest(processId);
+    } catch (error) {
+      console.error('Error canceling request:', error);
     }
   };
 
@@ -144,44 +285,44 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
       <h2 className="text-xl font-semibold mb-4">Pending Processes</h2>
       <div className="space-y-4">
         {pendingProcesses.map((process) => (
-          <Card key={process.Id}>
+          <Card key={process.id}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <h3 className="font-bold">
-                    {process.Item?.Name || 'Unnamed Item'}
+                    {process.item.name || 'Unnamed Item'}
                   </h3>
                   <Badge variant="outline" className={
-                    process.Item?.Status === "lost" ? "bg-red-100 text-red-800" :
-                    process.Item?.Status === "found" ? "bg-green-100 text-green-800" :
+                    process.item.status === "lost" ? "bg-red-100 text-red-800" :
+                    process.item.status === "found" ? "bg-green-100 text-green-800" :
                     "bg-gray-100 text-gray-800"
                   }>
-                    {process.Item?.Status === "lost" ? "Lost" :
-                     process.Item?.Status === "found" ? "Found" :
+                    {process.item.status === "lost" ? "Lost" :
+                     process.item.status === "found" ? "Found" :
                      "Unknown"}
                   </Badge>
                 </div>
-                {getStatusBadge(process.Status)}
+                {getStatusBadge(process.status)}
               </div>
               <div className="text-sm text-muted-foreground mb-2">
-                <p>Category: {process.Item?.Category || 'N/A'}</p>
-                <p>Location: {process.Item?.Location || 'N/A'}</p>
+                <p>Category: {process.item.category || 'N/A'}</p>
+                <p>Location: {process.item.location || 'N/A'}</p>
               </div>
               <p className="text-sm text-muted-foreground mb-4">
                 {getStatusMessage(process)}
               </p>
               <div className="flex gap-2">
-                {process.Status === "posted" && (
+                {process.status === "posted" && (
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    onClick={() => onViewPost?.(process.Item)}
+                    onClick={() => onViewPost?.(process.item)}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     View Post
                   </Button>
                 )}
-                {process.Status === "verification_needed" && (
+                {process.status === "verification_needed" && (
                   <Button 
                     variant="default" 
                     className="w-full"
@@ -193,12 +334,12 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
                 <Button 
                   variant="destructive"
                   onClick={() => {
-                    setProcessToCancelId(process.Id);
+                    setProcessToCancelId(process.id);
                     setShowCancelDialog(true);
                   }}
-                  disabled={deletingProcessId === process.Id}
+                  disabled={deletingProcessId === process.id}
                 >
-                  {deletingProcessId === process.Id ? (
+                  {deletingProcessId === process.id ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                       Canceling...

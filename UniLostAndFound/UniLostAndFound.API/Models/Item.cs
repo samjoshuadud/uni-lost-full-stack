@@ -1,8 +1,9 @@
-using Google.Cloud.Firestore;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UniLostAndFound.API.Models;
 
-public class ItemStatus
+public static class ItemStatus
 {
     public const string Lost = "lost";
     public const string Found = "found";
@@ -11,52 +12,37 @@ public class ItemStatus
     public const string HandedOver = "handed_over";
 }
 
-[FirestoreData]
-public class AdditionalDescription
-{
-    [FirestoreProperty]
-    public string Title { get; set; } = string.Empty;
-
-    [FirestoreProperty]
-    public string Description { get; set; } = string.Empty;
-}
-
-[FirestoreData]
 public class Item : BaseEntity
 {
-    [FirestoreProperty]
+    [Required]
+    [MaxLength(255)]
     public string Name { get; set; } = string.Empty;
 
-    [FirestoreProperty]
     public string Description { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [MaxLength(50)]
     public string Category { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [MaxLength(50)]
     public string Status { get; set; } = ItemStatus.Lost;
 
-    [FirestoreProperty]
+    [MaxLength(255)]
     public string Location { get; set; } = string.Empty;
 
-    [FirestoreProperty]
     public DateTime DateReported { get; set; }
 
-    [FirestoreProperty]
+    [MaxLength(2048)]
     public string ImageUrl { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [ForeignKey("Reporter")]
     public string ReporterId { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [MaxLength(50)]
     public string StudentId { get; set; } = string.Empty;
 
-    [FirestoreProperty]
-    public string UniversityId { get; set; } = string.Empty;
-
-    [FirestoreProperty]
     public bool Approved { get; set; }
 
-    [FirestoreProperty]
-    public List<AdditionalDescription> AdditionalDescriptions { get; set; } = new();
+    // Navigation properties
+    public virtual ICollection<AdditionalDescription> AdditionalDescriptions { get; set; } = new List<AdditionalDescription>();
+    public virtual User? Reporter { get; set; }
 } 
