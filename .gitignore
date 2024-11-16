@@ -34,6 +34,9 @@ frontend/.env.development.local
 frontend/.env.test.local
 frontend/.env.production.local
 
+# UniLostAndFound/
+# UniLostAndFound/*
+# UniLostAndFound/**
 # Debug
 frontend/npm-debug.log*
 frontend/yarn-debug.log*
@@ -68,6 +71,8 @@ UniLostAndFound/**/[Oo]bj/
 firebase-config.json
 **/firebase-adminsdk*.json
 
+#package
+package-lock.json
 # IDE
 .idea/
 *.swp
