@@ -71,6 +71,8 @@ UniLostAndFound/**/[Oo]bj/
 firebase-config.json
 **/firebase-adminsdk*.json
 
+#package
+package-lock.json
 # IDE
 .idea/
 *.swp
