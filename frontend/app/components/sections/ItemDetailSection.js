@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ChevronLeft, Trash } from "lucide-react"
+import { ChevronLeft, Trash, Loader2 } from "lucide-react"
 import { useAuth } from "@/lib/AuthContext"
 import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 
@@ -16,6 +16,7 @@ export default function ItemDetailSection({ item, onBack, onClaim, onFound, onDe
   const [verificationAnswers, setVerificationAnswers] = useState(Array(item.verificationQuestions?.length || 0).fill(""))
   const [showVerification, setShowVerification] = useState(false)
   const [showAuthDialog, setShowAuthDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const handleAction = (action) => {
     if (!user) {
@@ -31,6 +32,18 @@ export default function ItemDetailSection({ item, onBack, onClaim, onFound, onDe
     setVerificationAnswers(newAnswers)
   }
 
+  const handleDelete = async () => {
+    try {
+      setIsDeleting(true);
+      await onDelete?.(item.id);
+      onBack();
+    } catch (error) {
+      console.error('Error deleting item:', error);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -43,8 +56,17 @@ export default function ItemDetailSection({ item, onBack, onClaim, onFound, onDe
             <CardTitle>{item.name}</CardTitle>
           </div>
           {isAdmin && (
-            <Button variant="destructive" size="icon" onClick={() => onDelete?.(item.id)}>
-              <Trash className="h-4 w-4" />
+            <Button 
+              variant="destructive" 
+              size="icon" 
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash className="h-4 w-4" />
+              )}
             </Button>
           )}
         </div>
@@ -57,7 +79,7 @@ export default function ItemDetailSection({ item, onBack, onClaim, onFound, onDe
           </Badge>
         </div>
         <div>
-          <h3 className="font-semibold">Location</h3>
+       <h3 className="font-semibold">Location</h3>
           <p>{item.location}</p>
         </div>
         <div>
