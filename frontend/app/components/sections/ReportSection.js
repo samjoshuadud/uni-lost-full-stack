@@ -12,12 +12,12 @@ import { ItemStatus } from "@/lib/constants"
 import { Plus, X, Upload, Bell } from "lucide-react"
 
 export default function ReportSection({ onSubmit }) {
-  const { user, userData } = useAuth();
+  const { user, makeAuthenticatedRequest } = useAuth();
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [location, setLocation] = useState("")
   const [category, setCategory] = useState("")
-  const [studentId, setStudentId] = useState(userData?.studentId || "")
+  const [studentId, setStudentId] = useState("")
   const [additionalDescriptions, setAdditionalDescriptions] = useState([])
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -53,82 +53,85 @@ export default function ReportSection({ onSubmit }) {
     setAdditionalDescriptions(newDescriptions)
   }
 
-  const handleSubmit = (e) => {
+  const handlePreSubmit = (e) => {
     e.preventDefault();
+    // Show confirmation dialog with summary
     setShowConfirmDialog(true);
   };
 
-  const handleConfirmSubmit = async () => {
+  const handleSubmit = async () => {
+    if (!user) return;
+    
+    setIsSubmitting(true);
+    setShowConfirmDialog(false);  // Close the confirmation dialog
+
     try {
-      setIsSubmitting(true);
-      
+      // Create FormData object
       const formData = new FormData();
-      
-      formData.append('name', name.trim());
-      formData.append('description', description.trim());
-      formData.append('location', location.trim());
-      formData.append('category', category);
+      formData.append('name', name);
+      formData.append('description', description);
+      formData.append('location', location);
+      formData.append('category', category || 'Books');  // Add default value
       formData.append('status', itemStatus);
       formData.append('reporterId', user.uid);
-      formData.append('studentId', studentId.trim());
-      formData.append('universityId', userData?.universityId || user.email.split('@')[1]);
-      
+      formData.append('studentId', studentId);
+
+      // Format additional descriptions
       if (additionalDescriptions.length > 0) {
-        formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
+        const validDescriptions = additionalDescriptions.filter(
+          desc => desc.title && desc.description
+        );
+        if (validDescriptions.length > 0) {
+          console.log('Sending additional descriptions:', validDescriptions);
+          formData.append('additionalDescriptions', JSON.stringify(validDescriptions));
+        }
       }
-      
+
+      // Add image if selected
       if (selectedImage) {
         formData.append('image', selectedImage);
       }
 
-      try {
-        for (let pair of formData.entries()) {
-          console.log(pair[0] + ': ' + (pair[1] instanceof File ? 'File: ' + pair[1].name : pair[1]));
-        }
-      } catch (e) {
-        console.log('Error logging form data:', e);
-      }
+      console.log('Submitting form data:', Object.fromEntries(formData));
 
-      const response = await fetch('http://localhost:5067/api/item', {
+      // Make the request
+      const response = await fetch('http://localhost:5067/api/Item', {
         method: 'POST',
-        body: formData,
+        headers: {
+          'Authorization': `Bearer ${user.email}`,
+          'FirebaseUID': user.uid,
+        },
+        body: formData
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to submit report: ${errorText}`);
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
+        throw new Error('Failed to submit report');
       }
-      
+
       const data = await response.json();
       console.log('Report submitted successfully:', data);
-
-      if (onSubmit) {
-        onSubmit({
-          ...data,
-          name,
-          description,
-          category,
-          location,
-          studentId,
-          universityId: userData?.universityId || user.email.split('@')[1]
-        });
-      }
-
-      setName("");
-      setDescription("");
-      setLocation("");
-      setCategory("");
-      setItemStatus("");
-      setStudentId(userData?.studentId || "");
+      
+      // Clear form
+      setName('');
+      setDescription('');
+      setLocation('');
+      setCategory('');
+      setStudentId('');
+      setItemStatus('');
       setAdditionalDescriptions([]);
       setSelectedImage(null);
       setImagePreview(null);
-      setShowConfirmDialog(false);
 
-      window.location.href = '#pending_process';
+      // Call onSubmit with the response data
+      if (onSubmit) {
+        onSubmit(data);
+      }
 
     } catch (error) {
       console.error('Error submitting report:', error);
+      // You might want to show an error message to the user here
     } finally {
       setIsSubmitting(false);
     }
@@ -141,7 +144,7 @@ export default function ReportSection({ onSubmit }) {
           <CardTitle>Report Item</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handlePreSubmit} className="space-y-4">
             <div>
               <label className="text-sm font-medium">Report Type</label>
               <Select value={itemStatus} onValueChange={setItemStatus} required>
@@ -268,12 +271,13 @@ export default function ReportSection({ onSubmit }) {
             </div>
 
             <Button type="submit" className="w-full" disabled={isSubmitting || !itemStatus}>
-              {isSubmitting ? "Submitting..." : "Submit Report"}
+              Preview Report
             </Button>
           </form>
         </CardContent>
       </Card>
 
+      {/* Summary Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <DialogContent>
           <DialogHeader>
@@ -336,10 +340,17 @@ export default function ReportSection({ onSubmit }) {
               Edit Report
             </Button>
             <Button 
-              onClick={handleConfirmSubmit}
+              onClick={handleSubmit}
               disabled={isSubmitting}
             >
-              {isSubmitting ? "Submitting..." : "Submit Report"}
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  Submitting...
+                </>
+              ) : (
+                "Submit Report"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -11,11 +11,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { useState, useEffect } from "react"
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
+import { getAuth } from "firebase/auth";
 import ErrorDialog from "./dialogs/ErrorDialog";
 
 export default function LoginButton() {
-  const { user, userData } = useAuth();
+  const { user, isAdmin, signInWithGoogle, logout } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [showErrorDialog, setShowErrorDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,43 +33,10 @@ export default function LoginButton() {
   const handleContinue = async () => {
     try {
       setIsLoading(true);
-      const auth = getAuth();
-      const provider = new GoogleAuthProvider();
-      
-      // Get the result from Google sign in
-      const result = await signInWithPopup(auth, provider);
-      
-      // Check if email is allowed
-      const response = await fetch('http://localhost:5067/api/auth/protected', {
-        headers: {
-          'Authorization': `Bearer ${await result.user.getIdToken()}`
-        }
-      });
-
-      if (!response.ok) {
-        // If not allowed, sign out and show error dialog
-        await auth.signOut();
-        
-        // Get the error message from the response
-        const message = response.status === 401 
-          ? "Please use your UMAK email address (@umak.edu.ph) to sign in."
-          : "An error occurred during sign in. Please try again.";
-        
-        setErrorMessage(message);
-        localStorage.setItem("authError", message);
-        setShowErrorDialog(true);
-        setShowModal(false);
-        return;
-      }
-
-      // If successful, close the modal
+      await signInWithGoogle();
       setShowModal(false);
     } catch (error) {
-      console.error('Google sign-in error:', error);
-      const auth = getAuth();
-      if (auth.currentUser) {
-        await auth.signOut();
-      }
+      console.error('Sign-in error:', error);
       const message = "An error occurred during sign in. Please try again.";
       setErrorMessage(message);
       localStorage.setItem("authError", message);
@@ -86,14 +53,11 @@ export default function LoginButton() {
       <div className="flex items-center gap-2">
         <span className="text-sm">
           {user.email} 
-          {userData?.isAdmin && " (Admin)"}
+          {isAdmin && " (Admin)"}
         </span>
         <Button 
           variant="ghost" 
-          onClick={async () => {
-            const auth = getAuth();
-            await auth.signOut();
-          }}
+          onClick={logout}
         >
           Logout
         </Button>

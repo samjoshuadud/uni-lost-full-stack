@@ -23,19 +23,74 @@ export default function DashboardSection({ onSeeMore }) {
         }
         const data = await response.json();
         
-        // Filter for approved items only and transform the data
-        const approvedItems = data
-          .filter(item => item.Item.Approved === true)
-          .map(item => ({
-            id: item.Item.Id,
-            name: item.Item.Name,
-            description: item.Item.Description,
-            location: item.Item.Location,
-            status: item.Item.Status,
-            imageUrl: item.Item.ImageUrl,
-            dateReported: item.Item.DateReported,
-            additionalDescriptions: item.Item.AdditionalDescriptions,
-            approved: item.Item.Approved
+        // Create a map to store all objects by their $id
+        const objectsMap = new Map();
+        const seenObjects = new WeakSet();
+
+        const traverse = (obj) => {
+          if (!obj || typeof obj !== 'object' || seenObjects.has(obj)) return;
+          seenObjects.add(obj);
+
+          if (obj.$id) {
+            objectsMap.set(obj.$id, { ...obj });
+          }
+          Object.values(obj).forEach(value => {
+            if (Array.isArray(value)) {
+              value.forEach(item => {
+                if (item && typeof item === 'object' && !seenObjects.has(item)) {
+                  traverse(item);
+                }
+              });
+            } else if (value && typeof value === 'object' && !seenObjects.has(value)) {
+              traverse(value);
+            }
+          });
+        };
+
+        traverse(data);
+
+        // Helper function to resolve references
+        const resolveReferences = (obj, seen = new WeakSet()) => {
+          if (!obj || typeof obj !== 'object' || seen.has(obj)) return obj;
+          seen.add(obj);
+
+          if (obj.$ref) {
+            const resolved = objectsMap.get(obj.$ref);
+            return resolved ? resolveReferences(resolved, seen) : obj;
+          }
+          
+          const resolved = Array.isArray(obj) ? [...obj] : { ...obj };
+          Object.entries(resolved).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+              resolved[key] = value.map(item => 
+                item && typeof item === 'object' && !seen.has(item) 
+                  ? resolveReferences(item, seen) 
+                  : item
+              );
+            } else if (value && typeof value === 'object' && !seen.has(value)) {
+              resolved[key] = resolveReferences(value, seen);
+            }
+          });
+          return resolved;
+        };
+
+        // Extract and resolve processes
+        const processesArray = data.processes?.$values || [];
+        const resolvedProcesses = processesArray.map(process => resolveReferences(process));
+        
+        // Transform and filter approved items
+        const approvedItems = resolvedProcesses
+          .filter(process => process?.item?.approved === true)
+          .map(process => ({
+            id: process.item.id,
+            name: process.item.name,
+            description: process.item.description,
+            location: process.item.location,
+            status: process.item.status,
+            imageUrl: process.item.imageUrl,
+            dateReported: process.item.dateReported,
+            additionalDescriptions: process.item.additionalDescriptions?.$values || [],
+            approved: process.item.approved
           }));
         
         setItems(approvedItems);
