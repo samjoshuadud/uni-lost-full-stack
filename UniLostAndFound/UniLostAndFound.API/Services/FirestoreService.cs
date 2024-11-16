@@ -78,7 +78,6 @@ public class FirestoreService
         try
         {
             var settingsDoc = await _db.Collection(UserAccessCollection).Document("settings").GetSnapshotAsync();
-            _logger.LogInformation($"[Debug] Settings document exists: {settingsDoc.Exists}");
 
             if (!settingsDoc.Exists) return null;
 
@@ -88,12 +87,6 @@ public class FirestoreService
                 DevelopmentEmails = settingsDoc.GetValue<List<string>>("developmentEmails") ?? new(),
                 AllowedDomains = settingsDoc.GetValue<List<string>>("allowedDomains") ?? new()
             };
-
-            // Debug log the settings
-            _logger.LogInformation("[Debug] Settings retrieved:");
-            _logger.LogInformation($"[Debug] Admin Emails: {string.Join(", ", settings.AdminEmails)}");
-            _logger.LogInformation($"[Debug] Development Emails: {string.Join(", ", settings.DevelopmentEmails)}");
-            _logger.LogInformation($"[Debug] Allowed Domains: {string.Join(", ", settings.AllowedDomains)}");
 
             return settings;
         }
@@ -195,7 +188,6 @@ public class FirestoreService
             };
 
             var docRef = await collection.AddAsync(data);
-            _logger.LogInformation($"Created pending process with ID: {docRef.Id}");
             
             return docRef.Id;
         }
@@ -224,7 +216,6 @@ public class FirestoreService
                 try
                 {
                     var data = doc.ToDictionary();
-                    _logger.LogInformation($"Processing document data: {JsonSerializer.Serialize(data)}");
 
                     var process = new PendingProcess
                     {
@@ -243,7 +234,6 @@ public class FirestoreService
                         {
                             process.Item = itemDoc.ConvertTo<Item>();
                             process.Item.Id = itemDoc.Id; // Make sure to set the ID
-                            _logger.LogInformation($"Found item: {JsonSerializer.Serialize(process.Item)}");
                         }
                         else
                         {
@@ -291,7 +281,6 @@ public class FirestoreService
                 try
                 {
                     var data = doc.ToDictionary();
-                    _logger.LogInformation($"Processing document data: {JsonSerializer.Serialize(data)}");
 
                     var process = new PendingProcess
                     {
