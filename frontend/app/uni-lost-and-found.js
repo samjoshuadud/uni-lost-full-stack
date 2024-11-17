@@ -187,6 +187,7 @@ export default function UniLostAndFound() {
           onCancelRequest={handleCancelRequest}
           onVerify={handleVerification}
           onViewPost={handleViewPost}
+          onViewDetails={handleViewDetails}
         />
       default:
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
@@ -283,15 +284,18 @@ export default function UniLostAndFound() {
   const handleDelete = async (itemId) => {
     try {
       const token = await user.getIdToken(true);
-      const pendingProcesses = await itemApi.getAllPending(token);
-      const process = pendingProcesses.find(p => p.Item?.Id === itemId);
-      
-      if (!process) {
-        setIsErrorDialogOpen(true);
-        throw new Error('Item deletion process not found');
+
+      // First try to find the pending process
+      const response = await makeAuthenticatedRequest(`/api/Item/pending/user/${user.uid}`);
+      const processes = response?.$values || [];
+      const process = processes.find(p => p.Item?.Id === itemId);
+
+      // If there's a pending process, delete it first
+      if (process) {
+        await itemApi.deletePendingProcess(token, process.Id);
       }
 
-      await itemApi.deletePendingProcess(token, process.Id);
+      // Then delete the item
       await itemApi.deleteItem(token, itemId);
 
       // Update local state
@@ -510,6 +514,52 @@ export default function UniLostAndFound() {
     }
   };
 
+  const handleViewDetails = (item) => {
+    if (!item) {
+      console.log('Item is null or undefined');
+      return;
+    }
+    
+    console.log('Raw item received:', item);
+    
+    // Check if the item is from pending process (has Item property)
+    const sourceItem = item.Item || item;
+    console.log('Source item after checking .Item:', sourceItem);
+    
+    // Log each property we're trying to access with correct casing
+    console.log('Property check:', {
+      id: sourceItem.id || sourceItem.$id,
+      name: sourceItem.name,
+      description: sourceItem.description,
+      category: sourceItem.category,
+      status: sourceItem.status,
+      location: sourceItem.location,
+      imageUrl: sourceItem.imageUrl,
+      dateReported: sourceItem.dateReported,
+      studentId: sourceItem.studentId,
+      additionalDescriptions: sourceItem.additionalDescriptions,
+      approved: sourceItem.approved
+    });
+
+    // Convert the Item property to match the expected format using correct casing
+    const formattedItem = {
+      id: sourceItem.id || sourceItem.$id,
+      name: sourceItem.name,
+      description: sourceItem.description,
+      category: sourceItem.category,
+      status: sourceItem.status,
+      location: sourceItem.location,
+      imageUrl: sourceItem.imageUrl,
+      dateReported: sourceItem.dateReported,
+      studentId: sourceItem.studentId,
+      additionalDescriptions: sourceItem.additionalDescriptions?.$values || sourceItem.additionalDescriptions || [],
+      approved: sourceItem.approved
+    };
+
+    console.log('Final formatted item:', formattedItem);
+    setSelectedItem(formattedItem);
+  };
+
   // Helper function to check if action requires auth
   const requireAuth = (action) => {
     if (!user) {
@@ -603,7 +653,7 @@ export default function UniLostAndFound() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Item Deleted Successfully!</DialogTitle>
-            <DialogDescription>The item has been successfully deleted.</DialogDescription>
+            <DialogDescription>The item has been successfully cancelled/deleted.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
