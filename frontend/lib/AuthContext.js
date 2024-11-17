@@ -76,22 +76,15 @@ export function AuthProvider({ children }) {
       const provider = new GoogleAuthProvider();
       console.log('Starting Google sign in...');
       
+      // Get the credential first without setting auth state
       const result = await signInWithPopup(auth, provider);
       const email = result.user.email;
-      console.log('Google sign in successful:', {
-        email: email,
-        displayName: result.user.displayName,
-        uid: result.user.uid
-      });
       
       // First check if it's a UMAK email
       const isUmakEmail = email.endsWith('@umak.edu.ph');
       console.log('Is UMAK email:', isUmakEmail);
       
-      // Add a small delay to ensure Firebase user is set
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Make the request with the result.user instead of waiting for useAuthState
+      // Make the request to check if email is allowed
       const response = await fetch('http://localhost:5067/api/Auth/protected', {
         headers: {
           'Authorization': `Bearer ${email}`,
@@ -103,10 +96,10 @@ export function AuthProvider({ children }) {
       });
 
       const data = await response.json();
-      console.log('Protected response:', data);
 
       if (!response.ok) {
         console.error('Protected endpoint error:', response.status);
+        // Sign out immediately
         await signOut(auth);
         showError(
           'Authentication Failed',
@@ -116,23 +109,23 @@ export function AuthProvider({ children }) {
       }
 
       if (!isUmakEmail) {
-        // If not UMAK email, check if it's a development email
-        const isDevelopmentEmail = data.settings?.developmentEmails
-          ?.some(devEmail => devEmail.toLowerCase() === email.toLowerCase());
-        
-        console.log('Development email check:', {
-          isDevelopmentEmail,
-          availableDevelopmentEmails: data.settings?.developmentEmails
-        });
+        const devEmails = data.settings?.developmentEmails;
+        const developmentEmails = Array.isArray(devEmails) 
+            ? devEmails 
+            : (devEmails?.$values || []);
 
+        const isDevelopmentEmail = developmentEmails.some(devEmail => 
+            devEmail.toLowerCase() === email.toLowerCase()
+        );
+        
         if (!isDevelopmentEmail) {
-          console.log('Email not allowed, signing out...');
-          await signOut(auth);
-          showError(
-            'Email Not Allowed',
-            'Please use your UMAK email address (@umak.edu.ph)'
-          );
-          return;
+            // Sign out immediately and prevent state update
+            await signOut(auth);
+            showError(
+                'Email Not Allowed',
+                'Please use your UMAK email address (@umak.edu.ph)'
+            );
+            return;
         }
       }
 
@@ -142,15 +135,14 @@ export function AuthProvider({ children }) {
         email: data.user?.email
       });
 
-      // Set admin status if the authentication was successful
       if (data.user?.isAdmin) {
         setIsAdmin(true);
       }
 
     } catch (error) {
       console.error('Sign in error:', error);
-      // Only sign out and show error if it wasn't a popup closed error
       if (error.code !== 'auth/popup-closed-by-user') {
+        // Make sure we're signed out
         await signOut(auth);
         showError(
           'Sign In Failed',
@@ -170,12 +162,18 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Check user role whenever user changes
+  // Modify the useEffect to handle auth state changes
   useEffect(() => {
     const checkUserRole = async () => {
       if (user) {
         try {
           const response = await makeAuthenticatedRequest('/api/Auth/protected');
+          if (!response) {
+            // If the request fails, sign out
+            await signOut(auth);
+            return;
+          }
+          
           if (response?.user?.isAdmin) {
             setIsAdmin(true);
           } else {
@@ -184,6 +182,8 @@ export function AuthProvider({ children }) {
         } catch (error) {
           console.error('Error checking user role:', error);
           setIsAdmin(false);
+          // Sign out on error
+          await signOut(auth);
         }
       } else {
         setIsAdmin(false);
