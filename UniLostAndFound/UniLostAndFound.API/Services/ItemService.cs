@@ -27,79 +27,97 @@ public class ItemService
 
     public async Task<string> CreateItemAsync(CreateItemDto createDto, string imageUrl)
     {
-        try
-        {
-            var item = new Item
-            {
-                Name = createDto.Name,
-                Description = createDto.Description,
-                Category = createDto.Category,
-                Status = createDto.Status,
-                Location = createDto.Location,
-                DateReported = DateTime.UtcNow,
-                ReporterId = createDto.ReporterId,
-                StudentId = createDto.StudentId,
-                Approved = false,
-                ImageUrl = imageUrl,
-                AdditionalDescriptions = new List<AdditionalDescription>()
-            };
+        var strategy = _context.Database.CreateExecutionStrategy();
 
-            var createdItem = await _itemRepository.CreateAsync(item);
-
-            // Handle additional descriptions
-            if (!string.IsNullOrEmpty(createDto.AdditionalDescriptions))
+        return await strategy.ExecuteAsync<object, string>(
+            state: null,
+            operation: async (context, state, ct) =>
             {
+                using var transaction = await _context.Database.BeginTransactionAsync(ct);
                 try
                 {
-                    _logger.LogInformation($"Processing additional descriptions: {createDto.AdditionalDescriptions}");
-                    var descriptionDtos = JsonSerializer.Deserialize<List<AdditionalDescriptionDto>>(createDto.AdditionalDescriptions);
-                    
-                    if (descriptionDtos != null && descriptionDtos.Any())
+                    var item = new Item
                     {
-                        foreach (var dto in descriptionDtos)
+                        Name = createDto.Name,
+                        Description = createDto.Description,
+                        Category = createDto.Category,
+                        Status = createDto.Status,
+                        Location = createDto.Location,
+                        DateReported = DateTime.UtcNow,
+                        ReporterId = createDto.ReporterId,
+                        StudentId = createDto.StudentId,
+                        Approved = false,
+                        ImageUrl = imageUrl,
+                        AdditionalDescriptions = new List<AdditionalDescription>()
+                    };
+
+                    // First save the item
+                    var createdItem = await _itemRepository.CreateAsync(item);
+                    await _context.SaveChangesAsync(ct);
+
+                    // Handle additional descriptions
+                    if (!string.IsNullOrEmpty(createDto.AdditionalDescriptions))
+                    {
+                        try
                         {
-                            var description = new AdditionalDescription
+                            _logger.LogInformation($"Raw additional descriptions: {createDto.AdditionalDescriptions}");
+                            var descriptionDtos = JsonSerializer.Deserialize<List<AdditionalDescriptionDto>>(
+                                createDto.AdditionalDescriptions,
+                                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                            );
+
+                            if (descriptionDtos != null && descriptionDtos.Any())
                             {
-                                ItemId = createdItem.Id,
-                                Title = dto.Title ?? string.Empty,
-                                Description = dto.Description ?? string.Empty,
-                                CreatedAt = DateTime.UtcNow,
-                                UpdatedAt = DateTime.UtcNow,
-                                Item = createdItem
-                            };
-                            createdItem.AdditionalDescriptions.Add(description);
-                            _context.AdditionalDescriptions.Add(description);
+                                foreach (var dto in descriptionDtos)
+                                {
+                                    var description = new AdditionalDescription
+                                    {
+                                        ItemId = createdItem.Id,
+                                        Title = dto.Title ?? string.Empty,
+                                        Description = dto.Description ?? string.Empty,
+                                        CreatedAt = DateTime.UtcNow,
+                                        UpdatedAt = DateTime.UtcNow
+                                    };
+                                    _context.AdditionalDescriptions.Add(description);
+                                }
+                                await _context.SaveChangesAsync(ct);
+                                _logger.LogInformation($"Added {descriptionDtos.Count} additional descriptions");
+                            }
                         }
-                        await _context.SaveChangesAsync();
-                        _logger.LogInformation($"Added {descriptionDtos.Count} additional descriptions");
+                        catch (Exception ex)
+                        {
+                            _logger.LogError($"Error processing additional descriptions: {ex.Message}");
+                            _logger.LogError($"Stack trace: {ex.StackTrace}");
+                            throw;
+                        }
                     }
+
+                    // Create pending process
+                    var process = new PendingProcess
+                    {
+                        ItemId = createdItem.Id,
+                        UserId = createDto.ReporterId,
+                        status = "pending_approval",
+                        Message = "Waiting for admin approval"
+                    };
+
+                    await _processRepository.CreateAsync(process);
+                    await _context.SaveChangesAsync(ct);
+                    
+                    await transaction.CommitAsync(ct);
+                    return createdItem.Id;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Error processing additional descriptions: {ex.Message}");
+                    await transaction.RollbackAsync(ct);
+                    _logger.LogError($"Error creating item: {ex.Message}");
                     _logger.LogError($"Stack trace: {ex.StackTrace}");
+                    throw;
                 }
-            }
-
-            // Create pending process
-            var process = new PendingProcess
-            {
-                ItemId = createdItem.Id,
-                UserId = createDto.ReporterId,
-                status = "pending_approval",
-                Message = "Waiting for admin approval"
-            };
-
-            await _processRepository.CreateAsync(process);
-
-            return createdItem.Id;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error creating item: {ex.Message}");
-            _logger.LogError($"Stack trace: {ex.StackTrace}");
-            throw;
-        }
+            },
+            verifySucceeded: null,
+            cancellationToken: CancellationToken.None
+        );
     }
 
     public async Task<Item?> GetItemAsync(string id)
