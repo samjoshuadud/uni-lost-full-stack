@@ -82,7 +82,7 @@ public class AuthController : ControllerBase
                 _logger.LogWarning($"Email not allowed: {email}");
                 return Unauthorized(new { 
                     message = "Please use your UMAK email or an approved development email",
-                    settings = new { developmentEmails }
+                    settings = new { developmentEmails = developmentEmails.ToList().Select(e => e).ToArray() }
                 });
             }
 
@@ -107,7 +107,7 @@ public class AuthController : ControllerBase
                 },
                 settings = new
                 {
-                    developmentEmails = developmentEmails
+                    developmentEmails = developmentEmails.ToList().Select(e => e).ToArray()
                 }
             };
 
