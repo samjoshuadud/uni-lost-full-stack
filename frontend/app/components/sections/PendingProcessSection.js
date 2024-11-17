@@ -5,11 +5,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
-import { ExternalLink, Trash, Loader2 } from "lucide-react"
+import { ExternalLink, Trash, Loader2, Eye } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { itemApi } from "@/lib/api-client"
 
-export default function PendingProcessSection({ onCancelRequest, onVerify, onViewPost }) {
+export default function PendingProcessSection({ onCancelRequest, onVerify, onViewPost, onViewDetails }) {
   const { user, userData } = useAuth();
   const [pendingProcesses, setPendingProcesses] = useState([]);
   const [error, setError] = useState(null);
@@ -331,6 +331,16 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
                     Verify Now
                   </Button>
                 )}
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    console.log('View Details clicked, process.item:', process.item);
+                    onViewDetails?.(process.item);
+                  }}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
                 <Button 
                   variant="destructive"
                   onClick={() => {
