@@ -178,6 +178,7 @@ export default function UniLostAndFound() {
           onDelete={handleDelete}
           onAssignAdmin={handleAssignAdmin}
           onUpdateItemStatus={handleUpdateItemStatus}
+          handleViewDetails={handleViewDetails}
         />
       case "profile":
         return <ProfileSection user={user} />
@@ -607,36 +608,59 @@ export default function UniLostAndFound() {
 
   useEffect(() => {
     const fetchPendingProcessCount = async () => {
-      if (!user) return;
-    
+      if (!user || authLoading) return;
+      
       try {
-        setIsProcessCountLoading(true);
-        const response = await makeAuthenticatedRequest(`/api/Item/pending/user/${user.uid}`);
-        if (response) {
-          // Get the array directly from $values
-          const processesArray = response.$values || [];
-          const pendingCount = processesArray.length || 0;
-          setPendingProcessCount(pendingCount);
-          console.log('Pending process count:', pendingCount);
+        const response = await makeAuthenticatedRequest(`/api/Item/pending/all`);
+        
+        if (response && response.$values) {
+          // Set items first
+          setItems(response.$values);
+          setIsLoading(false); // Set loading to false after items are set
+
+          // Calculate count
+          const newCount = isAdmin
+            ? response.$values.filter(process => 
+                process.status === "pending_approval" && 
+                process.item?.status?.toLowerCase() === "lost" && 
+                !process.item?.approved
+              ).length
+            : response.$values.filter(process => 
+                process.userId === user.uid
+              ).length;
+
+          setPendingProcessCount(prevCount => {
+            if (prevCount !== newCount) {
+              return newCount;
+            }
+            return prevCount;
+          });
         }
       } catch (error) {
-        console.error('Error fetching pending process count:', error);
+        console.error('Error fetching data:', error);
         setPendingProcessCount(0);
+        setIsLoading(false); // Make sure to set loading to false even on error
       } finally {
         setIsProcessCountLoading(false);
       }
     };
 
-    if (user) {
+    // Set initial loading state
+    if (user && !authLoading) {
+      setIsLoading(true);
+      setIsProcessCountLoading(true);
       fetchPendingProcessCount();
-      // Poll every 3 seconds
-      const interval = setInterval(fetchPendingProcessCount, 3000);
+      const interval = setInterval(fetchPendingProcessCount, 5000);
       return () => clearInterval(interval);
+    } else {
+      setPendingProcessCount(0);
+      setIsLoading(false);
+      setIsProcessCountLoading(false);
     }
-  }, [user, makeAuthenticatedRequest]);
+  }, [user, authLoading, isAdmin, makeAuthenticatedRequest]);
 
   // Loading state
-  if (authLoading || isLoading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -852,17 +876,14 @@ export default function UniLostAndFound() {
         )}
 
         {/* Main Content */}
-        {selectedItem ? (
-          <ItemDetailSection 
-            item={selectedItem} 
-            onBack={() => setSelectedItem(null)} 
-            onClaim={handleClaim} 
-            onFound={handleFound}
-            onDelete={handleDelete}
-          />
-        ) : (
-          renderSection()
-        )}
+        {renderSection()}
+
+        <ItemDetailSection 
+          item={selectedItem}
+          open={!!selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onDelete={handleDelete}
+        />
 
         <AuthRequiredDialog 
           open={showAuthDialog} 
