@@ -130,4 +130,21 @@ public class PendingProcessRepository : BaseRepository<PendingProcess>, IPending
             return null;
         }
     }
+
+    public override async Task<PendingProcess> CreateAsync(PendingProcess process)
+    {
+        try
+        {
+            _logger.LogInformation($"Adding new pending process for item {process.ItemId}");
+            await _dbSet.AddAsync(process);
+            await _context.SaveChangesAsync();
+            _logger.LogInformation($"Successfully added pending process with ID: {process.Id}");
+            return process;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error adding pending process: {ex.Message}");
+            throw;
+        }
+    }
 } 

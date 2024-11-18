@@ -51,6 +51,9 @@ public class CreateItemDto
 
     [FromForm(Name = "image")]
     public IFormFile? Image { get; set; }
+
+    [FromForm(Name = "message")]
+    public string Message { get; set; } = "Waiting for admin approval";
 }
 
 public class UpdateItemDto
