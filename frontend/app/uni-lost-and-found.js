@@ -621,8 +621,6 @@ export default function UniLostAndFound() {
           // Calculate count
           const newCount = isAdmin
             ? response.$values.filter(process => 
-                process.status === "pending_approval" && 
-                process.item?.status?.toLowerCase() === "lost" && 
                 !process.item?.approved
               ).length
             : response.$values.filter(process => 

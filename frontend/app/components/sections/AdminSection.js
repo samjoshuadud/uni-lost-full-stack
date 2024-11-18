@@ -516,13 +516,11 @@ export default function AdminSection({
             </TabsContent>
             <TabsContent value="found">
               <FoundItemsTab
-                items={allItems}
-                setPendingFoundApprovalCount={setPendingFoundApprovalCount}
+                items={pendingProcesses?.$values || pendingProcesses || []}
                 isCountsLoading={isCountsLoading}
+                onDelete={handleDelete}
                 onViewDetails={handleViewDetails}
                 onApprove={onApprove}
-                onDelete={handleDelete}
-                deletingItems={deletingItems}
               />
             </TabsContent>
 

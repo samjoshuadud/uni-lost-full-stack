@@ -266,14 +266,31 @@ export default function LostReportsTab({
                           {/* Image Section */}
                           <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                             {process.item?.imageUrl ? (
-                              <img
-                                src={process.item.imageUrl}
-                                alt={process.item.name}
-                                className="w-full h-full object-cover"
-                              />
+                              <div className="w-full h-full relative">
+                                <img
+                                  src={process.item.imageUrl}
+                                  alt={process.item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                    e.target.nextSibling.style.display = 'flex';
+                                  }}
+                                />
+                                <div 
+                                  className="hidden w-full h-full absolute top-0 left-0 bg-muted flex-col items-center justify-center text-muted-foreground p-2"
+                                >
+                                  <Package className="h-8 w-8 mb-2 opacity-50" />
+                                  <p className="text-xs text-center">
+                                    {process.item?.category || 'Item'} Image
+                                  </p>
+                                </div>
+                              </div>
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                No Image
+                              <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-2">
+                                <Package className="h-8 w-8 mb-2 opacity-50" />
+                                <p className="text-xs text-center">
+                                  {process.item?.category || 'Item'} Image
+                                </p>
                               </div>
                             )}
                           </div>
