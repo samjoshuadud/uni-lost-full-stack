@@ -51,6 +51,8 @@ import PendingProcessesTab from "./admin-tabs/PendingProcessesTab";
 import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab";
 import { itemApi } from "@/lib/api-client";
 import { ProcessStatus, ProcessMessages } from '@/lib/constants';
+import UserManagementTab from "./admin-tabs/UserManagementTab";
+import { debounce } from "lodash";
 
 export default function AdminSection({
   items = [],
@@ -99,19 +101,26 @@ export default function AdminSection({
     if (!isAdmin) return;
     
     try {
-      setIsCountsLoading(true);
       const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
       if (!response.ok) throw new Error("Failed to fetch all pending processes");
       const data = await response.json();
-      const processArray = data.$values || [];
-      setPendingProcesses(processArray);
-      setAllItems(processArray);
+      
+      if (data && data.$values) {
+        const newData = data.$values;
+        const currentDataString = JSON.stringify(pendingProcesses);
+        const newDataString = JSON.stringify(newData);
+
+        if (currentDataString !== newDataString) {
+          setPendingProcesses(newData);
+          setAllItems(newData);
+        }
+      }
     } catch (error) {
       console.error("Error fetching initial data:", error);
-    } finally {
-      setIsCountsLoading(false);
     }
   };
+
+  const debouncedFetch = debounce(fetchInitialData, 1000);
 
   const handleDelete = async (itemId) => {
     try {
@@ -216,8 +225,11 @@ export default function AdminSection({
   useEffect(() => {
     if (isAdmin) {
       fetchInitialData();
-      const interval = setInterval(fetchInitialData, 10000);
-      return () => clearInterval(interval);
+      const interval = setInterval(debouncedFetch, 10000);
+      return () => {
+        clearInterval(interval);
+        debouncedFetch.cancel();
+      };
     }
   }, [isAdmin]);
 
@@ -336,11 +348,21 @@ export default function AdminSection({
       {/* Admin Dashboard Overview Card */}
       <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-none">
         <CardContent className="p-8">
-          <div className="text-center space-y-2">
-            <h3 className="font-bold text-2xl text-primary">Admin Dashboard</h3>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Manage and monitor all lost and found items in the system
-            </p>
+          <div className="flex justify-between items-center">
+            <div className="text-left space-y-2">
+              <h3 className="font-bold text-2xl text-primary">Admin Dashboard</h3>
+              <p className="text-muted-foreground max-w-lg">
+                Manage and monitor all lost and found items in the system
+              </p>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAdminDialog(true)}
+              className="gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Manage Users
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -516,26 +538,11 @@ export default function AdminSection({
 
       {/* Admin Management Dialog */}
       <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Assign New Admin</DialogTitle>
-            <DialogDescription>
-              Enter the UMAK email address of the user you want to assign as
-              admin.
-            </DialogDescription>
+            <DialogTitle>User Management</DialogTitle>
           </DialogHeader>
-          <div className="flex items-center gap-4">
-            <Input
-              placeholder="Enter UMAK email"
-              value={newAdminEmail}
-              onChange={(e) => setNewAdminEmail(e.target.value)}
-              className="flex-grow"
-            />
-            <Button onClick={handleAssignAdmin}>
-              <UserPlus className="h-4 w-4 mr-2" />
-              Assign
-            </Button>
-          </div>
+          <UserManagementTab />
         </DialogContent>
       </Dialog>
 

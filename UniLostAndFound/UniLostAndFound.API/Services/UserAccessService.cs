@@ -43,4 +43,18 @@ public class UserAccessService
         var developmentEmails = await _userAccessRepository.GetDevelopmentEmailsAsync();
         return developmentEmails.ToList();
     }
+
+    public async Task<List<string>> GetAdminEmailsAsync()
+    {
+        try
+        {
+            var adminEmails = await _userAccessRepository.GetAdminEmailsAsync();
+            return adminEmails.ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting admin emails: {ex.Message}");
+            throw;
+        }
+    }
 } 
