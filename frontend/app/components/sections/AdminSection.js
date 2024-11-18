@@ -59,12 +59,13 @@ export default function AdminSection({
   onResolveNotification,
   onDelete,
   onUpdateItemStatus,
+  handleViewDetails,
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
   const [verificationQuestions, setVerificationQuestions] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
   const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [activeTab, setActiveTab] = useState("statistics");
+  const [activeTab, setActiveTab] = useState("reports");
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [showFailDialog, setShowFailDialog] = useState(false);
   const [showNoShowDialog, setShowNoShowDialog] = useState(false);
@@ -257,15 +258,20 @@ export default function AdminSection({
   useEffect(() => {
     const fetchPendingAttentionCount = async () => {
       try {
+        setIsAttentionCountLoading(true);
         const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`,
+          `http://localhost:5067/api/Item/pending/all`
         );
         if (!response.ok) throw new Error("Failed to fetch pending processes");
         const data = await response.json();
-        const count = data.filter(
-          (process) =>
-            process.Status === "pending_approval" &&
-            process.Item?.Status === "lost",
+        
+        // Make sure we're using the $values array from the response
+        const processArray = data.$values || [];
+        const count = processArray.filter(
+          process =>
+            process.status === "pending_approval" &&
+            process.item?.status?.toLowerCase() === "lost" &&
+            !process.item?.approved
         ).length;
         setPendingAttentionCount(count);
       } catch (error) {
@@ -285,12 +291,15 @@ export default function AdminSection({
       try {
         setIsFoundItemsLoading(true);
         const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`,
+          `http://localhost:5067/api/Item/pending/all`
         );
         if (!response.ok) throw new Error("Failed to fetch found items");
         const data = await response.json();
-        const foundItems = data.filter(
-          (process) => process.Item?.Status === "found",
+        
+        // Make sure we're using the $values array from the response
+        const processArray = data.$values || [];
+        const foundItems = processArray.filter(
+          process => process.item?.status?.toLowerCase() === "found"
         );
         setFoundItems(foundItems);
       } catch (error) {
@@ -302,11 +311,6 @@ export default function AdminSection({
 
     fetchFoundItems();
   }, [activeTab]);
-
-  const handleViewDetails = (item) => {
-    setSelectedItemDetails(item);
-    setShowDetailsDialog(true);
-  };
 
   // Add refresh function // remove this if not used
   const refreshData = async () => {
@@ -392,35 +396,8 @@ export default function AdminSection({
     }
   };
 
-  const handleTabChange = async (value) => {
+  const handleTabChange = (value) => {
     setActiveTab(value);
-    if (value === "reports" || value === "found") {
-      setIsCountsLoading(true);
-      try {
-        const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`,
-        );
-        if (!response.ok)
-          throw new Error("Failed to fetch all pending processes");
-        const data = await response.json();
-
-        setPendingProcesses(data);
-
-        const items = data
-          .filter((process) => process.Item)
-          .map((process) => ({
-            ...process.Item,
-            processId: process.Id,
-            processStatus: process.Status,
-          }));
-
-        setAllItems(items);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsCountsLoading(false);
-      }
-    }
   };
 
   const handleApproveItem = async (itemId) => {
@@ -443,8 +420,54 @@ export default function AdminSection({
     }
   };
 
+  // Update the useEffect for initial data fetch
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        if (!isCountsLoading) setIsCountsLoading(true);
+        const response = await fetch(
+          `http://localhost:5067/api/Item/pending/all`
+        );
+        if (!response.ok)
+          throw new Error("Failed to fetch all pending processes");
+        const data = await response.json();
+
+        // Make sure we're using the $values array from the response
+        const processArray = data.$values || [];
+
+        // Compare current and new data before updating state
+        setPendingProcesses(prevProcesses => {
+          if (JSON.stringify(prevProcesses) !== JSON.stringify(processArray)) {
+            return processArray;
+          }
+          return prevProcesses;
+        });
+
+        // Only update allItems if there's a change
+        setAllItems(prevItems => {
+          if (JSON.stringify(prevItems) !== JSON.stringify(processArray)) {
+            return processArray;
+          }
+          return prevItems;
+        });
+
+      } catch (error) {
+        console.error("Error fetching initial data:", error);
+      } finally {
+        setIsCountsLoading(false);
+      }
+    };
+
+    // Initial fetch
+    fetchInitialData();
+    
+    // Set up polling with a longer interval
+    const interval = setInterval(fetchInitialData, 10000); // Changed to 10 seconds
+    return () => clearInterval(interval);
+  }, []); // Empty dependency array means this runs once on mount
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-h-[800px]">
       {/* Admin Dashboard Overview Card */}
       <Card className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-none">
         <CardContent className="p-8">
@@ -486,12 +509,9 @@ export default function AdminSection({
                 setPendingLostApprovalCount={setPendingLostApprovalCount}
                 getInVerificationCount={getInVerificationCount}
                 getPendingRetrievalCount={getPendingRetrievalCount}
-                onViewDetails={handleViewDetails}
+                handleDelete={handleDelete}
                 onApprove={onApprove}
-                onDelete={handleDelete}
-                onItemInPossession={onUpdateItemStatus}
-                approvingItems={approvingItems}
-                deletingItems={deletingItems}
+                handleViewDetails={handleViewDetails}
               />
             </TabsContent>
             <TabsContent value="found">
