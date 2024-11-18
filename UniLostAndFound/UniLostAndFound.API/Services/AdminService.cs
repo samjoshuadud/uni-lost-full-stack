@@ -44,6 +44,36 @@ public class AdminService
         }
     }
 
+    public async Task<bool> UnassignAdminAsync(string email)
+    {
+        try
+        {
+            _logger.LogInformation($"Attempting to remove admin role from: {email}");
+
+            var isAdmin = await _userAccessRepository.IsAdminEmailAsync(email);
+            if (!isAdmin)
+            {
+                _logger.LogInformation($"Email {email} is not an admin");
+                return true;
+            }
+
+            var success = await _userAccessRepository.RemoveAdminEmailAsync(email);
+            if (success)
+            {
+                _logger.LogInformation($"Successfully removed admin role from {email}");
+                return true;
+            }
+
+            _logger.LogError($"Failed to remove admin role from {email}");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error removing admin role: {ex.Message}");
+            throw;
+        }
+    }
+
     public async Task<UserAccessSettingsDto> GetUserAccessSettingsAsync()
     {
         try

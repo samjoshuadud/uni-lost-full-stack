@@ -136,7 +136,7 @@ export default function LostReportsTab({
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3 mt-4">
             <Card className="bg-background hover:bg-muted/50 transition-colors">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -195,7 +195,7 @@ export default function LostReportsTab({
 
         {/* Lost Items List */}
         <div className="space-y-4 mt-8">
-          <h4 className="font-medium text-lg">New Reports</h4>
+          <h4 className="font-medium text-lg">New Lost Item Reports</h4>
           <div className="h-[600px] overflow-y-auto pr-4">
             <div className="grid gap-4">
               {isCountsLoading ? (

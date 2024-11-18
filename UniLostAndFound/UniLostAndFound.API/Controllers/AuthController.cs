@@ -127,23 +127,83 @@ public class AuthController : ControllerBase
     {
         try
         {
-            _logger.LogInformation($"[Debug] Attempting to assign admin: {request.Email}");
+            _logger.LogInformation($"[Debug] Attempting to {request.Action} admin: {request.Email}");
 
-            var success = await _adminService.AssignAdminAsync(request.Email);
+            bool success;
+            if (request.Action == "unassign")
+            {
+                success = await _adminService.UnassignAdminAsync(request.Email);
+            }
+            else
+            {
+                success = await _adminService.AssignAdminAsync(request.Email);
+            }
+
             if (!success)
             {
-                return StatusCode(500, new { message = "Failed to assign admin" });
+                return StatusCode(500, new { message = $"Failed to {request.Action} admin" });
             }
 
             return Ok(new { 
-                message = "Admin assigned successfully",
+                message = $"Admin {request.Action}ed successfully",
                 email = request.Email
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError($"[Debug] Error assigning admin: {ex.Message}");
-            return StatusCode(500, new { message = "Failed to assign admin" });
+            _logger.LogError($"[Debug] Error {request.Action}ing admin: {ex.Message}");
+            return StatusCode(500, new { message = $"Failed to {request.Action} admin" });
+        }
+    }
+
+    [HttpGet("users")]
+    public async Task<ActionResult> GetAllUsers()
+    {
+        try
+        {
+            var users = await _userService.GetAllUsersAsync();
+            var adminEmails = await _userAccessService.GetAdminEmailsAsync();
+
+            var userList = users.Select(user => new {
+                id = user.Id,
+                email = user.Email,
+                displayName = user.DisplayName,
+                studentId = user.StudentId,
+                isAdmin = adminEmails.Contains(user.Email),
+                createdAt = user.CreatedAt
+            });
+
+            return Ok(userList);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting users: {ex.Message}");
+            return StatusCode(500, new { message = "Failed to get users" });
+        }
+    }
+
+    [HttpGet("admins")]
+    public async Task<ActionResult> GetAdmins()
+    {
+        try
+        {
+            var adminEmails = await _userAccessService.GetAdminEmailsAsync();
+            var users = await _userService.GetUsersByEmailsAsync(adminEmails);
+
+            var adminList = users.Select(user => new {
+                id = user.Id,
+                email = user.Email,
+                displayName = user.DisplayName,
+                studentId = user.StudentId,
+                createdAt = user.CreatedAt
+            });
+
+            return Ok(adminList);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting admins: {ex.Message}");
+            return StatusCode(500, new { message = "Failed to get admins" });
         }
     }
 }
@@ -151,4 +211,5 @@ public class AuthController : ControllerBase
 public class AssignAdminRequest
 {
     public string Email { get; set; } = string.Empty;
+    public string Action { get; set; } = "assign"; // "assign" or "unassign"
 } 

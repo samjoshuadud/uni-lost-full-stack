@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
-import { Plus, X, Upload, Bell } from "lucide-react"
+import { Plus, X, Upload, Bell, AlertTriangle } from "lucide-react"
 
 export default function ReportSection({ onSubmit }) {
   const { user, makeAuthenticatedRequest } = useAuth();
@@ -285,19 +285,41 @@ export default function ReportSection({ onSubmit }) {
             <DialogTitle>Report Summary</DialogTitle>
             <div className="text-sm text-muted-foreground">
               <p>Please review your report details before submitting.</p>
-              <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <div className="flex items-start space-x-3">
-                  <div className="p-2 bg-primary/20 rounded-full">
-                    <Bell className="h-5 w-5 text-primary" />
-                  </div>
-                  <div className="flex flex-col">
-                    <div className="font-semibold text-primary mb-1">Admin Review Process</div>
-                    <p className="text-sm text-muted-foreground">
-                      Our admin will check if the item is in possession. If not, then this will be posted.
-                    </p>
+              
+              {itemStatus === ItemStatus.FOUND ? (
+                // Show only the warning message for found items
+                <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-yellow-200 rounded-full">
+                      <AlertTriangle className="h-5 w-5 text-yellow-700" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="font-semibold text-yellow-800 mb-1">Important Notice</div>
+                      <p className="text-sm text-yellow-700">
+                        Please surrender the found item to the Student Center after submitting this report. 
+                        <span className="font-medium">
+                          If the item is not surrendered within 3 days, this report will be disregarded.
+                        </span>
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                // Show admin review process only for lost items
+                <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="p-2 bg-primary/20 rounded-full">
+                      <Bell className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex flex-col">
+                      <div className="font-semibold text-primary mb-1">Admin Review Process</div>
+                      <p className="text-sm text-muted-foreground">
+                        Our admin will check if the item is in possession. If not, then this will be posted.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </DialogHeader>
           <div className="space-y-4">

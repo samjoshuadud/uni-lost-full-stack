@@ -90,4 +90,28 @@ public class UserAccessRepository : IUserAccessRepository
 
         return isDevEmail;
     }
+
+    public async Task<bool> RemoveAdminEmailAsync(string email)
+    {
+        try
+        {
+            var adminAccess = await _context.UserAccess
+                .FirstOrDefaultAsync(ua => ua.Type == "admin" && 
+                                         ua.Value.ToLower() == email.ToLower());
+                                         
+            if (adminAccess == null)
+            {
+                return true; // Already not an admin
+            }
+
+            _context.UserAccess.Remove(adminAccess);
+            await _context.SaveChangesAsync();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error removing admin email: {ex.Message}");
+            return false;
+        }
+    }
 } 
