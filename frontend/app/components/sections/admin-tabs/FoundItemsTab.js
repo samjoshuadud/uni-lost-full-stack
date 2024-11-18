@@ -11,11 +11,11 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, memo } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProcessStatus } from '@/lib/constants';
 
-export default function FoundItemsTab({
+const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
   isCountsLoading,
   onDelete,
@@ -26,6 +26,10 @@ export default function FoundItemsTab({
   const [deletingItems, setDeletingItems] = useState(new Set());
   const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
   const [allItems, setAllItems] = useState(items);
+
+  useEffect(() => {
+    console.log('FoundItemsTab received items:', items);
+  }, [items]);
 
   useEffect(() => {
     setAllItems(items);
@@ -122,7 +126,7 @@ export default function FoundItemsTab({
         </h3>
 
         {/* Status Cards */}
-        {isCountsLoading ? (
+        {isCountsLoading || !items?.length ? (
           <div className="grid gap-4 md:grid-cols-1 mt-4">
             <Card className="bg-background hover:bg-muted/50 transition-colors">
               <CardContent className="p-6">
@@ -163,7 +167,7 @@ export default function FoundItemsTab({
           <h4 className="font-medium text-lg">New Found Items</h4>
           <div className="h-[600px] overflow-y-auto pr-4">
             <div className="grid gap-4">
-              {isCountsLoading ? (
+              {isCountsLoading || !items?.length ? (
                 // Skeleton loading state for items
                 <>
                   {[1, 2, 3].map((i) => (
@@ -363,4 +367,6 @@ export default function FoundItemsTab({
       </div>
     </div>
   );
-}
+});
+
+export default FoundItemsTab;

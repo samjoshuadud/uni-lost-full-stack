@@ -11,11 +11,12 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProcessStatus } from '@/lib/constants';
+import { memo } from 'react';
 
-export default function LostReportsTab({
+const LostReportsTab = memo(function LostReportsTab({
   items = [],
   isCountsLoading,
   getInVerificationCount,
@@ -29,6 +30,10 @@ export default function LostReportsTab({
   const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
   const [allItems, setAllItems] = useState(items);
   const [pendingProcesses, setPendingProcesses] = useState([]);
+
+  useEffect(() => {
+    console.log('LostReportsTab received items:', items);
+  }, [items]);
 
   useEffect(() => {
     setAllItems(items);
@@ -119,7 +124,7 @@ export default function LostReportsTab({
         </h3>
 
         {/* Status Cards */}
-        {isCountsLoading ? (
+        {isCountsLoading || !items?.length ? (
           <div className="grid gap-4 md:grid-cols-3 mt-4">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="bg-background hover:bg-muted/50 transition-colors">
@@ -198,7 +203,7 @@ export default function LostReportsTab({
           <h4 className="font-medium text-lg">New Lost Item Reports</h4>
           <div className="h-[600px] overflow-y-auto pr-4">
             <div className="grid gap-4">
-              {isCountsLoading ? (
+              {isCountsLoading || !items?.length ? (
                 // Skeleton loading state for items
                 <>
                   {[1, 2, 3].map((i) => (
@@ -410,4 +415,6 @@ export default function LostReportsTab({
       </div>
     </div>
   );
-}
+});
+
+export default LostReportsTab;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -97,35 +97,81 @@ export default function AdminSection({
   const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
   const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
 
-  const fetchInitialData = async () => {
+  // Memoize the filtered data
+  const memoizedPendingProcesses = useMemo(() => {
+    if (!pendingProcesses) return [];
+    return pendingProcesses.$values || pendingProcesses;
+  }, [pendingProcesses]);
+
+  // Memoize the fetch function
+  const fetchInitialData = useCallback(async () => {
     if (!isAdmin) return;
     
     try {
+      setIsCountsLoading(true);
       const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
       if (!response.ok) throw new Error("Failed to fetch all pending processes");
       const data = await response.json();
       
       if (data && data.$values) {
         const newData = data.$values;
-        const currentDataString = JSON.stringify(pendingProcesses);
-        const newDataString = JSON.stringify(newData);
-
-        if (currentDataString !== newDataString) {
-          setPendingProcesses(newData);
-          setAllItems(newData);
-        }
+        setPendingProcesses(prevProcesses => {
+          // Deep comparison of arrays
+          if (JSON.stringify(prevProcesses) !== JSON.stringify(newData)) {
+            return newData;
+          }
+          return prevProcesses;
+        });
       }
     } catch (error) {
       console.error("Error fetching initial data:", error);
+      setPendingProcesses([]);
+    } finally {
+      setIsCountsLoading(false);
     }
-  };
+  }, [isAdmin]);
 
-  const debouncedFetch = debounce(fetchInitialData, 1000);
+  // Memoize the counts
+  const getInVerificationCount = useCallback(() => {
+    if (!memoizedPendingProcesses) return 0;
+    return memoizedPendingProcesses.filter(process => 
+      process.status === ProcessStatus.IN_VERIFICATION
+    ).length;
+  }, [memoizedPendingProcesses]);
+
+  const getPendingRetrievalCount = useCallback(() => {
+    if (!memoizedPendingProcesses) return 0;
+    return memoizedPendingProcesses.filter(process => 
+      process.status === ProcessStatus.VERIFIED && 
+      !process.item?.approved
+    ).length;
+  }, [memoizedPendingProcesses]);
+
+  // Remove interval and only fetch once when component mounts
+  useEffect(() => {
+    if (isAdmin) {
+      setIsCountsLoading(true);
+      fetchInitialData().finally(() => {
+        setIsCountsLoading(false);
+      });
+    } else {
+      setPendingProcesses([]);
+      setIsCountsLoading(false);
+    }
+  }, [isAdmin]);
+
+  // Add data logging
+  useEffect(() => {
+    console.log('Loading state:', isCountsLoading);
+    console.log('Pending processes:', pendingProcesses);
+  }, [isCountsLoading, pendingProcesses]);
 
   const handleDelete = async (itemId) => {
     try {
       setDeletingItems((prev) => new Set(prev).add(itemId));
       await onDelete(itemId);
+      // Fetch fresh data after deletion
+      await fetchInitialData();
     } finally {
       setDeletingItems((prev) => {
         const next = new Set(prev);
@@ -209,7 +255,7 @@ export default function AdminSection({
         ),
       );
 
-      // Refresh data
+      // Fetch fresh data after approval
       await fetchInitialData();
 
     } catch (error) {
@@ -222,33 +268,11 @@ export default function AdminSection({
     setActiveTab(value);
   };
 
+  // Add this useEffect to monitor data changes
   useEffect(() => {
-    if (isAdmin) {
-      fetchInitialData();
-      const interval = setInterval(debouncedFetch, 10000);
-      return () => {
-        clearInterval(interval);
-        debouncedFetch.cancel();
-      };
-    }
-  }, [isAdmin]);
-
-  const getInVerificationCount = () => {
-    if (!pendingProcesses) return 0;
-    
-    return pendingProcesses.filter(process => 
-      process.status === ProcessStatus.IN_VERIFICATION
-    ).length;
-  };
-
-  const getPendingRetrievalCount = () => {
-    if (!pendingProcesses) return 0;
-    
-    return pendingProcesses.filter(process => 
-      process.status === ProcessStatus.VERIFIED && 
-      !process.item?.approved
-    ).length;
-  };
+    console.log('Current pendingProcesses:', pendingProcesses);
+    console.log('Current allItems:', allItems);
+  }, [pendingProcesses, allItems]);
 
   const handleVerificationResult = (notificationId, isCorrect, itemId) => {
     setSelectedItem(itemId);
@@ -391,7 +415,7 @@ export default function AdminSection({
 
             <TabsContent value="reports">
               <LostReportsTab
-                items={allItems}
+                items={pendingProcesses?.$values || pendingProcesses || []}
                 isCountsLoading={isCountsLoading}
                 setPendingLostApprovalCount={setPendingLostApprovalCount}
                 getInVerificationCount={getInVerificationCount}
