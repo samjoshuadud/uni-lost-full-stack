@@ -63,7 +63,7 @@ export default function ReportSection({ onSubmit }) {
     if (!user) return;
     
     setIsSubmitting(true);
-    setShowConfirmDialog(false);  // Close the confirmation dialog
+    setShowConfirmDialog(false);
 
     try {
       // Create FormData object
@@ -71,10 +71,11 @@ export default function ReportSection({ onSubmit }) {
       formData.append('name', name);
       formData.append('description', description);
       formData.append('location', location);
-      formData.append('category', category || 'Books');  // Add default value
+      formData.append('category', category || 'Books');
       formData.append('status', itemStatus);
       formData.append('reporterId', user.uid);
       formData.append('studentId', studentId);
+      formData.append('message', 'Waiting for admin approval');
 
       // Format additional descriptions
       if (additionalDescriptions.length > 0) {

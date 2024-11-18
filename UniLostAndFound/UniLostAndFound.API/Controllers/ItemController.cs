@@ -57,7 +57,31 @@ public class ItemController : ControllerBase
             }
 
             var itemId = await _itemService.CreateItemAsync(createDto, imageUrl);
-            return Ok(new { itemId });
+            
+            var existingProcesses = await _processService.GetAllWithItemsAsync();
+            var existingProcess = existingProcesses.FirstOrDefault(p => p.ItemId == itemId);
+
+            if (existingProcess != null)
+            {
+                _logger.LogInformation($"Process already exists for item {itemId}");
+                return Ok(new { itemId, processId = existingProcess.Id });
+            }
+
+            var processId = Guid.NewGuid().ToString();
+            var process = new PendingProcess
+            {
+                Id = processId,
+                ItemId = itemId,
+                UserId = createDto.ReporterId,
+                status = "pending_approval",
+                Message = createDto.Message,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            await _processService.CreateProcessAsync(process);
+
+            return Ok(new { itemId, processId });
         }
         catch (Exception ex)
         {
@@ -169,10 +193,11 @@ public class ItemController : ControllerBase
     {
         try
         {
-            await _processService.UpdateStatusAsync(itemId, dto.Status, 
-                dto.Status == "pending_approval" 
-                    ? "Waiting for admin approval" 
-                    : "Item has been approved by admin");
+            await _processService.UpdateStatusAsync(
+                itemId, 
+                dto.Status,
+                dto.Message
+            );
             return Ok();
         }
         catch (Exception ex)

@@ -4,7 +4,7 @@ using UniLostAndFound.API.Models;
 
 namespace UniLostAndFound.API.Repositories;
 
-public class BaseRepository<T> : IBaseRepository<T> where T : BaseEntity
+public class BaseRepository<T> : IBaseRepository<T> where T : class
 {
     protected readonly AppDbContext _context;
     protected readonly DbSet<T> _dbSet;

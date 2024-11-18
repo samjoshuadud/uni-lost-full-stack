@@ -1,5 +1,6 @@
 using UniLostAndFound.API.Repositories;
 using UniLostAndFound.API.Models;
+using Microsoft.Extensions.Logging;
 
 namespace UniLostAndFound.API.Services;
 
@@ -49,17 +50,27 @@ public class PendingProcessService
     {
         try
         {
-            await _processRepository.UpdateStatusAsync(id, status, message);
-
-            // If status is approved, update the item as well
-            if (status == "approved")
+            var process = await _processRepository.GetByIdAsync(id);
+            if (process == null)
             {
-                var process = await _processRepository.GetByIdAsync(id);
-                if (process?.ItemId != null)
-                {
-                    await _itemRepository.UpdateApprovalStatusAsync(process.ItemId, true);
-                }
+                throw new KeyNotFoundException($"Process with ID {id} not found");
             }
+
+            // Update process status and message
+            process.status = status;
+            process.Message = message;
+            process.UpdatedAt = DateTime.UtcNow;
+            
+            // If status is approved, update the item's approval status
+            if (status == "approved" && !string.IsNullOrEmpty(process.ItemId))
+            {
+                await _itemRepository.UpdateApprovalStatusAsync(process.ItemId, true);
+            }
+
+            // Save all changes in a single operation
+            await _processRepository.UpdateAsync(process);
+            
+            _logger.LogInformation($"Successfully updated process {id} status to {status}");
         }
         catch (Exception ex)
         {
@@ -90,6 +101,31 @@ public class PendingProcessService
         catch (Exception ex)
         {
             _logger.LogError($"Error deleting process and item: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<string> CreateProcessAsync(PendingProcess process)
+    {
+        try
+        {
+            _logger.LogInformation($"Creating pending process for item: {process.ItemId}");
+            
+            // Set default values if not provided
+            process.Id = process.Id ?? Guid.NewGuid().ToString();
+            process.CreatedAt = DateTime.UtcNow;
+            process.UpdatedAt = DateTime.UtcNow;
+
+            // Create the process and get the created entity back
+            var createdProcess = await _processRepository.CreateAsync(process);
+            
+            _logger.LogInformation($"Successfully created pending process with ID: {createdProcess.Id}");
+            
+            return createdProcess.Id;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error creating pending process: {ex.Message}");
             throw;
         }
     }

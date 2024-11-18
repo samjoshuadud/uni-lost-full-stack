@@ -62,7 +62,7 @@ export default function AdminSection({
   handleViewDetails,
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
-  const [verificationQuestions, setVerificationQuestions] = useState("");
+  const [approvingItems, setApprovingItems] = useState(new Set());
   const [selectedItem, setSelectedItem] = useState(null);
   const [newAdminEmail, setNewAdminEmail] = useState("");
   const [activeTab, setActiveTab] = useState("reports");
@@ -89,44 +89,29 @@ export default function AdminSection({
   const [selectedItemDetails, setSelectedItemDetails] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
-  const [approvingItems, setApprovingItems] = useState(new Set());
   const [isLoading, setIsLoading] = useState(false);
   const [deletingItems, setDeletingItems] = useState(new Set());
   const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
   const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
-  useEffect(() => {
-    const fetchPendingProcesses = async () => {
-      try {
-        const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`,
-        );
-        if (!response.ok)
-          throw new Error("Failed to fetch all pending processes");
-        const data = await response.json();
 
-        setPendingProcesses(data);
+  const fetchInitialData = async () => {
+    if (!isAdmin) return;
+    
+    try {
+      setIsCountsLoading(true);
+      const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+      if (!response.ok) throw new Error("Failed to fetch all pending processes");
+      const data = await response.json();
+      const processArray = data.$values || [];
+      setPendingProcesses(processArray);
+      setAllItems(processArray);
+    } catch (error) {
+      console.error("Error fetching initial data:", error);
+    } finally {
+      setIsCountsLoading(false);
+    }
+  };
 
-        const items = data
-          .filter((process) => process.Item)
-          .map((process) => ({
-            ...process.Item,
-            processId: process.Id,
-            processStatus: process.Status,
-          }));
-
-        setAllItems(items);
-        setIsCountsLoading(false);
-        setIsItemsLoading(false);
-      } catch (error) {
-        setIsCountsLoading(false);
-        setIsItemsLoading(false);
-      }
-    };
-
-    fetchPendingProcesses();
-  }, []);
-
-  // Handle delete function
   const handleDelete = async (itemId) => {
     try {
       setDeletingItems((prev) => new Set(prev).add(itemId));
@@ -140,7 +125,97 @@ export default function AdminSection({
     }
   };
 
-  // Early return after all hooks
+  const onApprove = async (itemId) => {
+    try {
+      console.log('Starting approval process for itemId:', itemId);
+      console.log('Current pendingProcesses:', pendingProcesses);
+
+      // First find the process
+      const process = pendingProcesses.find(p => 
+        p.ItemId === itemId || 
+        p.itemId === itemId || 
+        p.Item?.Id === itemId || 
+        p.item?.id === itemId
+      );
+
+      if (!process) {
+        console.error('No process found for itemId:', itemId);
+        console.log('Available processes:', pendingProcesses);
+        throw new Error("Process not found");
+      }
+
+      console.log('Found process:', process);
+
+      // First update item's approval status
+      const itemResponse = await fetch(
+        `http://localhost:5067/api/Item/${itemId}/approve`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ approved: true }),
+        }
+      );
+
+      if (!itemResponse.ok) {
+        console.error('Failed to approve item:', await itemResponse.text());
+        throw new Error("Failed to approve item");
+      }
+
+      // Then update process status using process ID
+      const processResponse = await fetch(
+        `http://localhost:5067/api/Item/process/${process.Id}/status`,  // Use process.Id here
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            status: "approved",
+            message: "The item has been approved!"
+          }),
+        }
+      );
+
+      if (!processResponse.ok) {
+        console.error('Failed to update process:', await processResponse.text());
+        throw new Error("Failed to update process status");
+      }
+
+      // Update local state
+      setAllItems((prevItems) =>
+        prevItems.map((item) =>
+          item.Id === itemId ? { ...item, Approved: true } : item
+        ),
+      );
+
+      setPendingProcesses((prevProcesses) =>
+        prevProcesses.map((p) =>
+          p.Id === process.Id
+            ? {
+                ...p,
+                Status: "approved",
+                Message: "The item has been approved!",
+                Item: { ...p.Item, Approved: true },
+              }
+            : p
+        ),
+      );
+
+      // Refresh data
+      await fetchInitialData();
+
+    } catch (error) {
+      console.error("Error approving item:", error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchInitialData();
+      const interval = setInterval(fetchInitialData, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [isAdmin]);
+
   if (!isAdmin) {
     return (
       <Card>
@@ -153,318 +228,6 @@ export default function AdminSection({
       </Card>
     );
   }
-
-  if (isLoading) {
-    return (
-      <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
-
-  const handleAssignAdmin = async () => {
-    if (!newAdminEmail) {
-      setFeedbackMessage({
-        title: "Error",
-        message: "Please enter an email address",
-      });
-      setShowFeedbackDialog(true);
-      return;
-    }
-
-    try {
-      const response = await makeAuthenticatedRequest(
-        "http://localhost:5067/api/auth/assign-admin",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: newAdminEmail.trim() }),
-        },
-      );
-
-      if (response) {
-        setFeedbackMessage({
-          title: "Success",
-          message: `${newAdminEmail} has been assigned as admin`,
-        });
-      } else {
-        setFeedbackMessage({
-          title: "Error",
-          message: "Failed to assign admin. Please try again.",
-        });
-      }
-    } catch (error) {
-      console.error("Error assigning admin:", error);
-      setFeedbackMessage({
-        title: "Error",
-        message: "Failed to assign admin. Please try again.",
-      });
-    }
-
-    setShowAdminDialog(false);
-    setNewAdminEmail("");
-    setShowFeedbackDialog(true);
-  };
-
-  const getInVerificationCount = () => {
-    return notifications.filter((n) => n.type === "verification" && n.item)
-      .length;
-  };
-
-  const getPendingRetrievalCount = () => {
-    return items.filter((item) => item.status === "pending_retrieval").length;
-  };
-
-  const handleVerificationResult = (notificationId, isCorrect, itemId) => {
-    setSelectedItem(itemId);
-    if (isCorrect) {
-      setShowSuccessDialog(true);
-      onApprove(notificationId, true);
-      onUpdateItemStatus(itemId, "pending_retrieval");
-      onResolveNotification(notificationId);
-    } else {
-      setShowFailDialog(true);
-      onApprove(notificationId, false);
-      onUpdateItemStatus(itemId, "posted");
-      onResolveNotification(notificationId);
-    }
-  };
-
-  const handleRetrievalStatus = (itemId, status) => {
-    if (status === "retrieved") {
-      onUpdateItemStatus(itemId, "handed_over");
-      setShowSuccessDialog(true);
-    } else if (status === "no_show") {
-      setNoShowItemId(itemId);
-      setShowNoShowDialog(true);
-    }
-  };
-
-  useEffect(() => {
-    // Force the tab to "reports" when component mounts
-    setActiveTab("reports");
-  }, []); // Empty dependency array means this runs once on mount
-
-  const renderCount = (count) => {
-    if (isCountsLoading) {
-      return <Loader2 className="h-6 w-6 text-primary animate-spin" />;
-    }
-    return <h3 className="text-2xl font-bold">{count}</h3>;
-  };
-
-  useEffect(() => {
-    const fetchPendingAttentionCount = async () => {
-      try {
-        setIsAttentionCountLoading(true);
-        const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`
-        );
-        if (!response.ok) throw new Error("Failed to fetch pending processes");
-        const data = await response.json();
-        
-        // Make sure we're using the $values array from the response
-        const processArray = data.$values || [];
-        const count = processArray.filter(
-          process =>
-            process.status === "pending_approval" &&
-            process.item?.status?.toLowerCase() === "lost" &&
-            !process.item?.approved
-        ).length;
-        setPendingAttentionCount(count);
-      } catch (error) {
-        console.error("Error fetching attention count:", error);
-      } finally {
-        setIsAttentionCountLoading(false);
-      }
-    };
-
-    fetchPendingAttentionCount();
-  }, []);
-
-  useEffect(() => {
-    const fetchFoundItems = async () => {
-      if (activeTab !== "found") return;
-
-      try {
-        setIsFoundItemsLoading(true);
-        const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`
-        );
-        if (!response.ok) throw new Error("Failed to fetch found items");
-        const data = await response.json();
-        
-        // Make sure we're using the $values array from the response
-        const processArray = data.$values || [];
-        const foundItems = processArray.filter(
-          process => process.item?.status?.toLowerCase() === "found"
-        );
-        setFoundItems(foundItems);
-      } catch (error) {
-        console.error("Error fetching found items:", error);
-      } finally {
-        setIsFoundItemsLoading(false);
-      }
-    };
-
-    fetchFoundItems();
-  }, [activeTab]);
-
-  // Add refresh function // remove this if not used
-  const refreshData = async () => {
-    try {
-      setIsLoading(true);
-      const response = await fetch(
-        "http://localhost:5067/api/Item/pending/all",
-      );
-      if (!response.ok) throw new Error("Failed to fetch items");
-      const data = await response.json();
-
-      const items = data
-        .filter((process) => process.Item)
-        .map((process) => ({
-          ...process.Item,
-          processId: process.Id,
-          processStatus: process.Status,
-        }));
-
-      setAllItems(items);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const onApprove = async (itemId) => {
-    try {
-      // Update item's Approved status
-      const itemResponse = await fetch(
-        `http://localhost:5067/api/Item/${itemId}/approve`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ approved: true }),
-        },
-      );
-
-      if (!itemResponse.ok) throw new Error("Failed to approve item");
-
-      // Update pending process status
-      const processResponse = await fetch(
-        `http://localhost:5067/api/Item/process/${itemId}/status`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: "approved" }),
-        },
-      );
-
-      if (!processResponse.ok)
-        throw new Error("Failed to update process status");
-
-      // Immediately update local state
-      setAllItems((prevItems) =>
-        prevItems.map((item) =>
-          item.Id === itemId ? { ...item, Approved: true } : item,
-        ),
-      );
-
-      // Also update pending processes
-      setPendingProcesses((prevProcesses) =>
-        prevProcesses.map((process) =>
-          process.Item?.Id === itemId
-            ? {
-                ...process,
-                Status: "approved",
-                Item: { ...process.Item, Approved: true },
-              }
-            : process,
-        ),
-      );
-
-      // Still call the refresh function for complete sync / remove later if causing error
-    } catch (error) {
-      console.error("Error approving item:", error);
-      throw error; // Re-throw the error to be caught by the handler in LostReportsTab
-    }
-  };
-
-  const handleTabChange = (value) => {
-    setActiveTab(value);
-  };
-
-  const handleApproveItem = async (itemId) => {
-    try {
-      const token = await user.getIdToken(true);
-      await itemApi.approveItem(token, itemId, true);
-      // Update local state or trigger refresh
-    } catch (error) {
-      console.error('Error approving item:', error);
-    }
-  };
-
-  const handleUpdateStatus = async (itemId, status) => {
-    try {
-      const token = await user.getIdToken(true);
-      await itemApi.updateProcessStatus(token, itemId, status);
-      onUpdateItemStatus(itemId, status);
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
-  };
-
-  // Update the useEffect for initial data fetch
-  useEffect(() => {
-    const fetchInitialData = async () => {
-      try {
-        if (!isCountsLoading) setIsCountsLoading(true);
-        const response = await fetch(
-          `http://localhost:5067/api/Item/pending/all`
-        );
-        if (!response.ok)
-          throw new Error("Failed to fetch all pending processes");
-        const data = await response.json();
-
-        // Make sure we're using the $values array from the response
-        const processArray = data.$values || [];
-
-        // Compare current and new data before updating state
-        setPendingProcesses(prevProcesses => {
-          if (JSON.stringify(prevProcesses) !== JSON.stringify(processArray)) {
-            return processArray;
-          }
-          return prevProcesses;
-        });
-
-        // Only update allItems if there's a change
-        setAllItems(prevItems => {
-          if (JSON.stringify(prevItems) !== JSON.stringify(processArray)) {
-            return processArray;
-          }
-          return prevItems;
-        });
-
-      } catch (error) {
-        console.error("Error fetching initial data:", error);
-      } finally {
-        setIsCountsLoading(false);
-      }
-    };
-
-    // Initial fetch
-    fetchInitialData();
-    
-    // Set up polling with a longer interval
-    const interval = setInterval(fetchInitialData, 10000); // Changed to 10 seconds
-    return () => clearInterval(interval);
-  }, []); // Empty dependency array means this runs once on mount
 
   return (
     <div className="space-y-8 min-h-[800px]">
