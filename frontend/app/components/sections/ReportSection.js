@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ItemStatus } from "@/lib/constants"
+import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { Plus, X, Upload, Bell } from "lucide-react"
 
 export default function ReportSection({ onSubmit }) {
@@ -75,7 +75,7 @@ export default function ReportSection({ onSubmit }) {
       formData.append('status', itemStatus);
       formData.append('reporterId', user.uid);
       formData.append('studentId', studentId);
-      formData.append('message', 'Waiting for admin approval');
+      formData.append('message', ProcessMessages.WAITING_APPROVAL);
 
       // Format additional descriptions
       if (additionalDescriptions.length > 0) {

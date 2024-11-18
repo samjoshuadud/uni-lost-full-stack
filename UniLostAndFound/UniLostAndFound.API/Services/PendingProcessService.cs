@@ -1,6 +1,7 @@
 using UniLostAndFound.API.Repositories;
 using UniLostAndFound.API.Models;
 using Microsoft.Extensions.Logging;
+using UniLostAndFound.API.Constants;
 
 namespace UniLostAndFound.API.Services;
 
@@ -56,18 +57,22 @@ public class PendingProcessService
                 throw new KeyNotFoundException($"Process with ID {id} not found");
             }
 
-            // Update process status and message
+            // Validate status transition
+            if (!IsValidStatusTransition(process.status, status))
+            {
+                throw new InvalidOperationException("Invalid status transition");
+            }
+
             process.status = status;
             process.Message = message;
             process.UpdatedAt = DateTime.UtcNow;
-            
+
             // If status is approved, update the item's approval status
-            if (status == "approved" && !string.IsNullOrEmpty(process.ItemId))
+            if (status == ProcessMessages.Status.APPROVED)
             {
                 await _itemRepository.UpdateApprovalStatusAsync(process.ItemId, true);
             }
 
-            // Save all changes in a single operation
             await _processRepository.UpdateAsync(process);
             
             _logger.LogInformation($"Successfully updated process {id} status to {status}");
@@ -77,6 +82,13 @@ public class PendingProcessService
             _logger.LogError($"Error updating process status: {ex.Message}");
             throw;
         }
+    }
+
+    private bool IsValidStatusTransition(string currentStatus, string newStatus)
+    {
+        // Add validation logic for status transitions
+        // For now, allow all transitions
+        return true;
     }
 
     public async Task DeleteProcessAndItemAsync(string processId)

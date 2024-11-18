@@ -147,4 +147,20 @@ public class PendingProcessRepository : BaseRepository<PendingProcess>, IPending
             throw;
         }
     }
+
+    public async Task<PendingProcess> CreateWithTransactionAsync(PendingProcess process)
+    {
+        using var transaction = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var result = await CreateAsync(process);
+            await transaction.CommitAsync();
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
 } 

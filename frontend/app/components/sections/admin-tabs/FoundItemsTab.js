@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ProcessStatus } from '@/lib/constants';
 
 export default function FoundItemsTab({
   items = [],
@@ -201,7 +202,7 @@ export default function FoundItemsTab({
                   const status = process.status || process.Status;
                   const itemStatus = item?.status || item?.Status;
                   
-                  return status === "pending_approval" && 
+                  return status === ProcessStatus.PENDING_APPROVAL && 
                          itemStatus?.toLowerCase() === "found" && 
                          !(item?.approved || item?.Approved);
                 })
@@ -220,7 +221,7 @@ export default function FoundItemsTab({
                     const status = process.status || process.Status;
                     const itemStatus = item?.status || item?.Status;
                     
-                    return status === "pending_approval" && 
+                    return status === ProcessStatus.PENDING_APPROVAL && 
                            itemStatus?.toLowerCase() === "found" && 
                            !(item?.approved || item?.Approved);
                   })
