@@ -50,6 +50,7 @@ import VerificationsTab from "./admin-tabs/VerificationsTab";
 import PendingProcessesTab from "./admin-tabs/PendingProcessesTab";
 import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab";
 import { itemApi } from "@/lib/api-client";
+import { ProcessStatus, ProcessMessages } from '@/lib/constants';
 
 export default function AdminSection({
   items = [],
@@ -163,13 +164,13 @@ export default function AdminSection({
 
       // Then update process status using process ID
       const processResponse = await fetch(
-        `http://localhost:5067/api/Item/process/${process.Id}/status`,  // Use process.Id here
+        `http://localhost:5067/api/Item/process/${process.Id}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
-            status: "approved",
-            message: "The item has been approved!"
+            status: ProcessStatus.APPROVED,
+            message: ProcessMessages.ITEM_APPROVED
           }),
         }
       );
@@ -208,6 +209,10 @@ export default function AdminSection({
     }
   };
 
+  const handleTabChange = (value) => {
+    setActiveTab(value);
+  };
+
   useEffect(() => {
     if (isAdmin) {
       fetchInitialData();
@@ -215,6 +220,103 @@ export default function AdminSection({
       return () => clearInterval(interval);
     }
   }, [isAdmin]);
+
+  const getInVerificationCount = () => {
+    if (!pendingProcesses) return 0;
+    
+    return pendingProcesses.filter(process => 
+      process.status === ProcessStatus.IN_VERIFICATION
+    ).length;
+  };
+
+  const getPendingRetrievalCount = () => {
+    if (!pendingProcesses) return 0;
+    
+    return pendingProcesses.filter(process => 
+      process.status === ProcessStatus.VERIFIED && 
+      !process.item?.approved
+    ).length;
+  };
+
+  const handleVerificationResult = (notificationId, isCorrect, itemId) => {
+    setSelectedItem(itemId);
+    if (isCorrect) {
+      setShowSuccessDialog(true);
+      onUpdateItemStatus(itemId, ProcessStatus.VERIFIED);
+      onResolveNotification(notificationId);
+    } else {
+      setShowFailDialog(true);
+      onUpdateItemStatus(itemId, ProcessStatus.PENDING_APPROVAL);
+      onResolveNotification(notificationId);
+    }
+  };
+
+  const handleNoShow = (itemId) => {
+    setNoShowItemId(itemId);
+    setShowNoShowDialog(true);
+  };
+
+  const handleAssignAdmin = async () => {
+    if (!newAdminEmail) {
+      setFeedbackMessage({
+        title: "Error",
+        message: "Please enter an email address"
+      });
+      setShowFeedbackDialog(true);
+      return;
+    }
+
+    try {
+      const response = await makeAuthenticatedRequest(
+        "http://localhost:5067/api/auth/assign-admin",
+        {
+          method: "POST",
+          body: JSON.stringify({ email: newAdminEmail.trim() })
+        }
+      );
+
+      if (response) {
+        setFeedbackMessage({
+          title: "Success",
+          message: `${newAdminEmail} has been assigned as admin`
+        });
+      } else {
+        setFeedbackMessage({
+          title: "Error",
+          message: "Failed to assign admin. Please try again."
+        });
+      }
+    } catch (error) {
+      console.error("Error assigning admin:", error);
+      setFeedbackMessage({
+        title: "Error",
+        message: "Failed to assign admin. Please try again."
+      });
+    }
+
+    setShowAdminDialog(false);
+    setNewAdminEmail("");
+    setShowFeedbackDialog(true);
+  };
+
+  const handleCloseSuccessDialog = () => {
+    setShowSuccessDialog(false);
+    setActiveTab("retrieval");
+  };
+
+  const handleCloseFailDialog = () => {
+    setShowFailDialog(false);
+    setActiveTab("lost");
+  };
+
+  const handleNoShowConfirm = () => {
+    if (noShowItemId) {
+      onUpdateItemStatus(noShowItemId, "reset_verification");
+      setActiveTab("lost");
+      setShowNoShowDialog(false);
+      setNoShowItemId(null);
+    }
+  };
 
   if (!isAdmin) {
     return (
@@ -305,10 +407,7 @@ export default function AdminSection({
               <PendingRetrievalTab
                 items={allItems}
                 onHandOver={onHandOver}
-                onNoShow={(itemId) => {
-                  setNoShowItemId(itemId);
-                  setShowNoShowDialog(true);
-                }}
+                onNoShow={handleNoShow}
               />
             </TabsContent>
           </Tabs>
@@ -326,12 +425,7 @@ export default function AdminSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction
-              onClick={() => {
-                setShowSuccessDialog(false);
-                setActiveTab("retrieval");
-              }}
-            >
+            <AlertDialogAction onClick={handleCloseSuccessDialog}>
               View in Retrievals
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -349,12 +443,7 @@ export default function AdminSection({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction
-              onClick={() => {
-                setShowFailDialog(false);
-                setActiveTab("lost");
-              }}
-            >
+            <AlertDialogAction onClick={handleCloseFailDialog}>
               Return to Lost Items
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -376,12 +465,7 @@ export default function AdminSection({
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                onUpdateItemStatus(noShowItemId, "reset_verification");
-                setActiveTab("lost");
-                setShowNoShowDialog(false);
-                setNoShowItemId(null);
-              }}
+              onClick={handleNoShowConfirm}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Confirm No Show

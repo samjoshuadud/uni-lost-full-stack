@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProcessStatus } from '@/lib/constants';
 
 export default function LostReportsTab({
   items = [],
@@ -36,7 +37,7 @@ export default function LostReportsTab({
   useEffect(() => {
     const updateCount = () => {
       const count = items.filter(process => 
-        process.status === "pending_approval" && 
+        process.status === ProcessStatus.PENDING_APPROVAL && 
         process.item?.status?.toLowerCase() === "lost" && 
         !process.item?.approved
       ).length;
@@ -68,7 +69,7 @@ export default function LostReportsTab({
         );
         // Update count after state update
         const newCount = newItems.filter(process => 
-          process.status === "pending_approval" && 
+          process.status === ProcessStatus.PENDING_APPROVAL && 
           process.item?.status?.toLowerCase() === "lost" && 
           !process.item?.approved
         ).length;
@@ -93,7 +94,7 @@ export default function LostReportsTab({
         const newItems = prevItems.filter(item => item.item?.id !== itemId);
         // Update count after state update
         const newCount = newItems.filter(process => 
-          process.status === "pending_approval" && 
+          process.status === ProcessStatus.PENDING_APPROVAL && 
           process.item?.status?.toLowerCase() === "lost" && 
           !process.item?.approved
         ).length;
@@ -238,7 +239,7 @@ export default function LostReportsTab({
                 </>
               ) : allItems
                 .filter(process => 
-                  process.status === "pending_approval" && 
+                  process.status === ProcessStatus.PENDING_APPROVAL && 
                   process.item?.status?.toLowerCase() === "lost" && 
                   !process.item?.approved
                 )
@@ -255,7 +256,7 @@ export default function LostReportsTab({
               ) : (
                 allItems
                   .filter(process => 
-                    process.status === "pending_approval" && 
+                    process.status === ProcessStatus.PENDING_APPROVAL && 
                     process.item?.status?.toLowerCase() === "lost" && 
                     !process.item?.approved
                   )
