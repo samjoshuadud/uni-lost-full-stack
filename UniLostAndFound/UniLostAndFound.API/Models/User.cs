@@ -1,25 +1,22 @@
-using Google.Cloud.Firestore;
+using System.ComponentModel.DataAnnotations;
 
 namespace UniLostAndFound.API.Models;
 
-[FirestoreData]
-public class User
+public class User : BaseEntity
 {
-    [FirestoreProperty]
-    public string Id { get; set; } = string.Empty;
-
-    [FirestoreProperty]
+    [Required]
+    [MaxLength(255)]
+    [EmailAddress]
     public string Email { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [Required]
+    [MaxLength(255)]
     public string DisplayName { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [MaxLength(50)]
     public string? StudentId { get; set; }
 
-    [FirestoreProperty]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    [FirestoreProperty]
-    public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+    // Navigation properties
+    public virtual ICollection<Item> ReportedItems { get; set; } = new List<Item>();
+    public virtual ICollection<PendingProcess> PendingProcesses { get; set; } = new List<PendingProcess>();
 } 

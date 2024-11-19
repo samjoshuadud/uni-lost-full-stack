@@ -1,167 +1,175 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card"
+import { ChevronLeft, ImageIcon, Trash, Loader2, X } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ChevronLeft, Trash, Loader2 } from "lucide-react"
-import { useAuth } from "@/lib/AuthContext"
-import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
+import { format } from "date-fns"
+import { Separator } from "@/components/ui/separator"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useState } from "react"
 
-export default function ItemDetailSection({ item, onBack, onClaim, onFound, onDelete }) {
-  const { user, userData, isAdmin } = useAuth();
-  const [studentId, setStudentId] = useState(userData?.studentId || "")
-  const [verificationAnswers, setVerificationAnswers] = useState(Array(item.verificationQuestions?.length || 0).fill(""))
-  const [showVerification, setShowVerification] = useState(false)
-  const [showAuthDialog, setShowAuthDialog] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
+export default function ItemDetailSection({ item, onClose, onDelete, open }) {
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleAction = (action) => {
-    if (!user) {
-      setShowAuthDialog(true);
-      return;
-    }
-    action();
-  };
+  if (!item) return null;
 
-  const handleVerificationAnswer = (index, answer) => {
-    const newAnswers = [...verificationAnswers]
-    newAnswers[index] = answer
-    setVerificationAnswers(newAnswers)
-  }
-
-  const handleDelete = async () => {
+  const handleDeleteClick = async () => {
+    setIsDeleting(true);
     try {
-      setIsDeleting(true);
       await onDelete?.(item.id);
-      onBack();
+      onClose(); // Close modal after successful deletion
     } catch (error) {
       console.error('Error deleting item:', error);
     } finally {
       setIsDeleting(false);
+      setShowDeleteDialog(false);
     }
   };
 
+  // Helper function to check if additionalDescriptions has valid content
+  const hasValidAdditionalDescriptions = () => {
+    return item.additionalDescriptions && 
+           Array.isArray(item.additionalDescriptions) && 
+           item.additionalDescriptions.length > 0 &&
+           item.additionalDescriptions.some(desc => desc.title || desc.description);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="flex flex-row items-center justify-between space-x-4">
+          <DialogTitle>Item Details</DialogTitle>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={onBack}>
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <CardTitle>{item.name}</CardTitle>
-          </div>
-          {isAdmin && (
             <Button 
               variant="destructive" 
-              size="icon" 
-              onClick={handleDelete}
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
               disabled={isDeleting}
             >
               {isDeleting ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
               ) : (
-                <Trash className="h-4 w-4" />
+                <>
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete Item
+                </>
               )}
             </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <h3 className="font-semibold">Status</h3>
-          <Badge variant={item.status === "lost" ? "destructive" : item.status === "found" ? "secondary" : "default"}>
-            {item.status === "lost" ? "Lost" : item.status === "found" ? "Found" : "Handed Over"}
-          </Badge>
-        </div>
-        <div>
-       <h3 className="font-semibold">Location</h3>
-          <p>{item.location}</p>
-        </div>
-        <div>
-          <h3 className="font-semibold">Category</h3>
-          <p>{item.category}</p>
-        </div>
-        <div>
-          <h3 className="font-semibold">Description</h3>
-          <p>{item.description}</p>
-        </div>
-        <div>
-          <h3 className="font-semibold">Date Reported</h3>
-          <p>{item.date}</p>
-        </div>
-
-        {/* Only show action buttons for non-admin users */}
-        {!isAdmin && item.status !== "handed_over" && (
-          <div className="space-y-2">
-            {user && (
-              <Input
-                placeholder="Enter your student ID"
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-              />
-            )}
-            <div className="flex gap-4">
-              {item.status === "found" && (
-                <Button 
-                  className="w-full"
-                  onClick={() => handleAction(() => setShowVerification(true))}
-                >
-                  This is mine
-                </Button>
-              )}
-              {item.status === "lost" && userData?.role === "student" && (
-                <Button 
-                  className="w-full"
-                  onClick={() => handleAction(() => onFound(item, studentId))}
-                >
-                  I found this
-                </Button>
-              )}
-            </div>
           </div>
-        )}
-      </CardContent>
+        </DialogHeader>
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold">{item.name}</h2>
 
-      <AuthRequiredDialog 
-        open={showAuthDialog} 
-        onOpenChange={setShowAuthDialog}
-      />
-
-      {user && !isAdmin && showVerification && (
-        <Dialog open={showVerification} onOpenChange={setShowVerification}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Verification Questions</DialogTitle>
-              <DialogDescription>
-                Please answer the following questions to verify your claim.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              {item.verificationQuestions.map((question, index) => (
-                <div key={index}>
-                  <label className="block text-sm font-medium text-foreground mb-1">{question}</label>
-                  <Input
-                    value={verificationAnswers[index]}
-                    onChange={(e) => handleVerificationAnswer(index, e.target.value)}
-                    placeholder="Your answer"
-                  />
+          <Card className="overflow-hidden">
+            {/* Image Section */}
+            <div className="w-full h-[300px] relative border-b bg-muted">
+              {item.imageUrl ? (
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.name}
+                  className="object-contain w-full h-full"
+                />
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <ImageIcon className="h-20 w-20 mb-4" />
+                  <p className="text-sm">No image available</p>
                 </div>
-              ))}
+              )}
             </div>
-            <DialogFooter>
-              <Button onClick={() => {
-                onClaim(item, studentId, verificationAnswers)
-                setShowVerification(false)
-              }}>Submit Claim</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-    </Card>
-  )
+
+            <CardContent className="p-6">
+              {/* Header Section */}
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold">{item.name}</h2>
+                  <p className="text-muted-foreground mt-1">
+                    Reported on {item.dateReported ? format(new Date(item.dateReported), 'PPP') : 'Not specified'}
+                  </p>
+                </div>
+                <Badge 
+                  variant={item.status === "lost" ? "destructive" : "success"}
+                  className="text-sm px-3 py-1"
+                >
+                  {item.status?.toUpperCase()}
+                </Badge>
+              </div>
+
+              <Separator className="my-6" />
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-6 mb-6">
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
+                  <p className="text-lg">{item.location || 'Not specified'}</p>
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-muted-foreground mb-1">Category</h3>
+                  <p className="text-lg">{item.category || 'Not specified'}</p>
+                </div>
+              </div>
+
+              <Separator className="my-6" />
+
+              {/* Description */}
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <p className="whitespace-pre-wrap">{item.description || 'No description provided'}</p>
+                </div>
+              </div>
+
+              {/* Additional Descriptions - Only show if there are valid items */}
+              {hasValidAdditionalDescriptions() && (
+                <>
+                  <Separator className="my-6" />
+                  
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-4">Additional Details</h3>
+                    <div className="space-y-4">
+                      {item.additionalDescriptions
+                        .filter(desc => desc.title || desc.description)
+                        .map((desc, index) => (
+                          <div key={index} className="bg-muted/50 rounded-lg p-4">
+                            <h4 className="font-medium text-base mb-2">{desc.title}</h4>
+                            <p className="text-sm text-muted-foreground">{desc.description}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Item</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this item? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteClick}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </DialogContent>
+    </Dialog>
+  );
 } 
