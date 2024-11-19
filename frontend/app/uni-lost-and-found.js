@@ -135,51 +135,66 @@ export default function UniLostAndFound() {
             reporterId: item.Item.ReporterId,
             additionalDescriptions: item.Item.AdditionalDescriptions?.$values || []
           }))} 
-          onSeeMore={setSelectedItem} 
           handleViewDetails={(item) => { 
             setSelectedItem(item);
             setShowDetailsDialog(true);
-          }} 
+          }}
+          isAdmin={isAdmin}
+          userId={user?.uid}
+          onDelete={handleDelete}
         />
       case "lost":
-        const lostItems = items.filter(item => 
-          item?.Item?.Status?.toLowerCase() === "lost"
-        ).map(item => ({
-          id: item.Item.Id,
-          name: item.Item.Name,
-          description: item.Item.Description,
-          location: item.Item.Location,
-          status: item.Item.Status,
-          imageUrl: item.Item.ImageUrl,
-          dateReported: item.Item.DateReported,
-          additionalDescriptions: item.Item.AdditionalDescriptions,
-          approved: item.Item.Approved
+        const lostItems = items.filter(process => 
+          process.item?.status?.toLowerCase() === "lost" && 
+          process.item?.approved === true &&
+          process.status === "approved"
+        ).map(process => ({
+          id: process.item.id,
+          name: process.item.name,
+          description: process.item.description,
+          location: process.item.location,
+          status: process.item.status,
+          imageUrl: process.item.imageUrl,
+          dateReported: process.item.dateReported,
+          additionalDescriptions: process.item.additionalDescriptions?.$values || [],
+          approved: process.item.approved,
+          reporterId: process.item.reporterId
         }));
         return <ItemSection 
           items={lostItems}
-          onSeeMore={setSelectedItem} 
           title="Lost Items" 
-          isAdmin={isAdmin} 
+          isAdmin={isAdmin}
+          handleViewDetails={(item) => { 
+            setSelectedItem(item);
+            setShowDetailsDialog(true);
+          }}
+          userId={user?.uid}
+          onDelete={handleDelete}
         />
       case "found":
-        const foundItems = items.filter(item => 
-          item?.Item?.Status?.toLowerCase() === "found"
-        ).map(item => ({
-          id: item.Item.Id,
-          name: item.Item.Name,
-          description: item.Item.Description,
-          location: item.Item.Location,
-          status: item.Item.Status,
-          imageUrl: item.Item.ImageUrl,
-          dateReported: item.Item.DateReported,
-          additionalDescriptions: item.Item.AdditionalDescriptions,
-          approved: item.Item.Approved
+        const foundItems = items.filter(process => 
+          process.item?.status?.toLowerCase() === "found" && 
+          process.item?.approved === true &&
+          process.status === "approved"
+        ).map(process => ({
+          id: process.item.id,
+          name: process.item.name,
+          description: process.item.description,
+          location: process.item.location,
+          status: process.item.status,
+          imageUrl: process.item.imageUrl,
+          dateReported: process.item.dateReported,
+          additionalDescriptions: process.item.additionalDescriptions?.$values || [],
+          approved: process.item.approved,
+          reporterId: process.item.reporterId
         }));
         return <ItemSection 
           items={foundItems}
-          onSeeMore={setSelectedItem} 
           title="Found Items" 
-          isAdmin={isAdmin} 
+          isAdmin={isAdmin}
+          handleViewDetails={handleViewDetails}
+          userId={user?.uid}
+          onDelete={handleDelete}
         />
       case "history":
         return <ItemSection 
@@ -320,13 +335,40 @@ export default function UniLostAndFound() {
       // Then delete the item
       await itemApi.deleteItem(token, itemId);
 
-      // Update local state
-      setItems(prevItems => prevItems.filter(item => item.Id !== itemId));
+      // Update all relevant states
+      setItems(prevItems => prevItems.filter(item => 
+        item.Item?.Id !== itemId && item.item?.id !== itemId
+      ));
+      
       setPendingProcesses(prevProcesses => 
-        prevProcesses.filter(process => process.Item?.Id !== itemId)
+        prevProcesses.filter(process => 
+          process.Item?.Id !== itemId && process.item?.id !== itemId
+        )
       );
 
+      // Close any open dialogs
+      setShowDetailsDialog(false);
+      setSelectedItem(null);
       setIsSuccessDialogOpen(true);
+
+      // Refresh data from server
+      const newResponse = await makeAuthenticatedRequest('/api/Item/pending/all');
+      if (newResponse && newResponse.$values) {
+        const newData = newResponse.$values;
+        
+        // Update items state with new data
+        setItems(newData);
+        
+        // Also update filtered items for dashboard
+        const newFilteredItems = newData.filter(process => 
+          process.item?.approved === true && 
+          process.status === "approved"
+        );
+        
+        // Force a re-render of components using this data
+        setActiveSection(prev => prev);
+      }
+
     } catch (error) {
       console.error('Error deleting item:', error);
       setIsErrorDialogOpen(true);

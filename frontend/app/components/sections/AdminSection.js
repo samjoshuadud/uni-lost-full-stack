@@ -298,7 +298,8 @@ export default function AdminSection({
   const handleTabChange = async (value, retryCount = 0) => {
     setActiveTab(value);
     
-    if (value === "reports" || value === "found") {
+    // Add all tabs that need data refresh
+    if (["reports", "found", "pending", "verifications", "retrieval"].includes(value)) {
       try {
         setIsCountsLoading(true);
         setIsLoadingVisible(true);
@@ -518,7 +519,7 @@ export default function AdminSection({
 
             {isLoadingVisible && <LoadingOverlay />}
 
-            <TabsContent value="statistics">
+            <TabsContent value="statistics"> {/* Add LoadingOverlay here as well */}
               <StatisticsSection />
             </TabsContent>
 
@@ -548,6 +549,7 @@ export default function AdminSection({
               <VerificationsTab
                 notifications={notifications}
                 onVerificationResult={handleVerificationResult}
+                isCountsLoading={isCountsLoading}
               />
             </TabsContent>
 
@@ -555,6 +557,7 @@ export default function AdminSection({
               <PendingProcessesTab
                 pendingProcesses={pendingProcesses}
                 onViewDetails={handleViewDetails}
+                isCountsLoading={isCountsLoading}
               />
             </TabsContent>
 
@@ -563,6 +566,7 @@ export default function AdminSection({
                 items={allItems}
                 onHandOver={onHandOver}
                 onNoShow={handleNoShow}
+                isCountsLoading={isCountsLoading}
               />
             </TabsContent>
           </Tabs>
