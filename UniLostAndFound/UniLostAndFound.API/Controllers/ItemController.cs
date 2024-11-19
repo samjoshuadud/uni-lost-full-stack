@@ -2,8 +2,6 @@ using Microsoft.AspNetCore.Mvc;
 using UniLostAndFound.API.Models;
 using UniLostAndFound.API.DTOs;
 using UniLostAndFound.API.Services;
-using System.Text.Json;
-using Microsoft.AspNetCore.Http;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -11,12 +9,17 @@ namespace UniLostAndFound.API.Controllers;
 [Route("api/[controller]")]
 public class ItemController : ControllerBase
 {
-    private readonly FirestoreService _firestoreService;
+    private readonly ItemService _itemService;
+    private readonly PendingProcessService _processService;
     private readonly ILogger<ItemController> _logger;
 
-    public ItemController(FirestoreService firestoreService, ILogger<ItemController> logger)
+    public ItemController(
+        ItemService itemService,
+        PendingProcessService processService,
+        ILogger<ItemController> logger)
     {
-        _firestoreService = firestoreService;
+        _itemService = itemService;
+        _processService = processService;
         _logger = logger;
     }
 
@@ -53,75 +56,36 @@ public class ItemController : ControllerBase
                 imageUrl = $"/uploads/{fileName}";
             }
 
-            List<Models.AdditionalDescription> additionalDescriptions;
-            if (!string.IsNullOrEmpty(createDto.AdditionalDescriptions))
-            {
-                _logger.LogInformation($"Received additional descriptions: {createDto.AdditionalDescriptions}");
-                var dtoDescriptions = JsonSerializer.Deserialize<List<DTOs.AdditionalDescription>>(
-                    createDto.AdditionalDescriptions,
-                    new JsonSerializerOptions 
-                    { 
-                        PropertyNameCaseInsensitive = true 
-                    }
-                ) ?? new List<DTOs.AdditionalDescription>();
+            var itemId = await _itemService.CreateItemAsync(createDto, imageUrl);
+            
+            var existingProcesses = await _processService.GetAllWithItemsAsync();
+            var existingProcess = existingProcesses.FirstOrDefault(p => p.ItemId == itemId);
 
-                additionalDescriptions = dtoDescriptions.Select(dto => new Models.AdditionalDescription
-                {
-                    Title = dto.Title,
-                    Description = dto.Description
-                }).ToList();
-            }
-            else
+            if (existingProcess != null)
             {
-                additionalDescriptions = new List<Models.AdditionalDescription>();
+                _logger.LogInformation($"Process already exists for item {itemId}");
+                return Ok(new { itemId, processId = existingProcess.Id });
             }
 
-            var now = DateTime.UtcNow;
-
-            var item = new Item
+            var processId = Guid.NewGuid().ToString();
+            var process = new PendingProcess
             {
-                Name = createDto.Name,
-                Description = createDto.Description,
-                Category = createDto.Category,
-                Status = createDto.Status,
-                Location = createDto.Location,
-                DateReported = now,
-                ReporterId = createDto.ReporterId,
-                StudentId = createDto.StudentId,
-                UniversityId = createDto.UniversityId,
-                Approved = false,
-                ImageUrl = imageUrl,
-                AdditionalDescriptions = additionalDescriptions,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            _logger.LogInformation($"Creating item: {JsonSerializer.Serialize(item)}");
-
-            var id = await _firestoreService.CreateItemAsync(item);
-
-            // Create a pending process
-            var pendingProcess = new PendingProcess
-            {
-                ItemId = id,
+                Id = processId,
+                ItemId = itemId,
                 UserId = createDto.ReporterId,
                 status = "pending_approval",
-                Message = "Waiting for the admin to approve the post, also checking if we have the item in possession.",
-                CreatedAt = now,
-                UpdatedAt = now
+                Message = createDto.Message,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             };
 
-            var processId = await _firestoreService.CreatePendingProcessAsync(pendingProcess);
+            await _processService.CreateProcessAsync(process);
 
-            return Ok(new { itemId = id, processId });
+            return Ok(new { itemId, processId });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error creating item: {ex.Message}");
-            if (ex is JsonException)
-            {
-                _logger.LogError("JSON deserialization error details: " + ex.ToString());
-            }
             return BadRequest(new { error = ex.Message });
         }
     }
@@ -129,54 +93,37 @@ public class ItemController : ControllerBase
     [HttpGet("{id}")]
     public async Task<ActionResult<Item>> GetItem(string id)
     {
-        var item = await _firestoreService.GetItemAsync(id);
+        var item = await _itemService.GetItemAsync(id);
         if (item == null) return NotFound();
         return Ok(item);
-    }
-
-    [HttpGet("university/{universityId}")]
-    public async Task<ActionResult<List<Item>>> GetUniversityItems(string universityId)
-    {
-        var items = await _firestoreService.GetItemsByUniversityAsync(universityId);
-        return Ok(items);
     }
 
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateItem(string id, [FromBody] UpdateItemDto updateDto)
     {
-        var existingItem = await _firestoreService.GetItemAsync(id);
-        if (existingItem == null) return NotFound();
-
-        if (updateDto.Status != null && !IsValidStatus(updateDto.Status))
+        try
         {
-            return BadRequest("Invalid status value");
+            await _itemService.UpdateApprovalStatusAsync(id, updateDto.Approved ?? false);
+            return NoContent();
         }
-
-        if (updateDto.Name != null) existingItem.Name = updateDto.Name;
-        if (updateDto.Description != null) existingItem.Description = updateDto.Description;
-        if (updateDto.Category != null) existingItem.Category = updateDto.Category;
-        if (updateDto.Status != null) existingItem.Status = updateDto.Status;
-        if (updateDto.Location != null) existingItem.Location = updateDto.Location;
-        if (updateDto.Approved.HasValue) existingItem.Approved = updateDto.Approved.Value;
-
-        await _firestoreService.UpdateItemAsync(id, existingItem);
-        return NoContent();
-    }
-
-    private bool IsValidStatus(string status)
-    {
-        return status == ItemStatus.Lost ||
-               status == ItemStatus.Found ||
-               status == ItemStatus.InVerification ||
-               status == ItemStatus.PendingRetrieval ||
-               status == ItemStatus.HandedOver;
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteItem(string id)
     {
-        await _firestoreService.DeleteItemAsync(id);
-        return NoContent();
+        try
+        {
+            await _itemService.DeleteItemAsync(id);
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { error = ex.Message });
+        }
     }
 
     [HttpGet("pending/user/{userId}")]
@@ -186,22 +133,13 @@ public class ItemController : ControllerBase
         {
             _logger.LogInformation($"Fetching pending processes for user: {userId}");
             
-            var pendingProcesses = await _firestoreService.GetPendingProcessesByUserIdAsync(userId);
+            var pendingProcesses = await _processService.GetByUserIdAsync(userId);
             
-            _logger.LogInformation($"Found {pendingProcesses.Count} pending processes");
-            
-            if (pendingProcesses.Count == 0)
-            {
-                _logger.LogInformation("No pending processes found");
-                return Ok(new List<PendingProcess>()); // Return empty list instead of null
-            }
-
             return Ok(pendingProcesses);
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error in GetPendingProcessesByUser: {ex.Message}");
-            _logger.LogError(ex.StackTrace);
             return StatusCode(500, new { error = "Internal server error", details = ex.Message });
         }
     }
@@ -211,7 +149,7 @@ public class ItemController : ControllerBase
     {
         try
         {
-            var pendingProcesses = await _firestoreService.GetAllPendingProcessesAsync();
+            var pendingProcesses = await _processService.GetAllWithItemsAsync();
             return Ok(pendingProcesses);
         }
         catch (Exception ex)
@@ -226,21 +164,7 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the pending process first to get the itemId
-            var pendingProcesses = await _firestoreService.GetPendingProcessesByIdAsync(processId);
-            var process = pendingProcesses.FirstOrDefault();
-            
-            if (process == null)
-            {
-                return NotFound("Pending process not found");
-            }
-
-            if (string.IsNullOrEmpty(process.ItemId))
-            {
-                return BadRequest("Invalid item ID in pending process");
-            }
-
-            await _firestoreService.DeletePendingProcessAndItemAsync(processId, process.ItemId);
+            await _processService.DeleteProcessAndItemAsync(processId);
             return NoContent();
         }
         catch (Exception ex)
@@ -255,7 +179,7 @@ public class ItemController : ControllerBase
     {
         try
         {
-            await _firestoreService.UpdateItemApprovalStatus(id, dto.Approved);
+            await _itemService.UpdateApprovalStatusAsync(id, dto.Approved);
             return Ok();
         }
         catch (Exception ex)
@@ -269,7 +193,11 @@ public class ItemController : ControllerBase
     {
         try
         {
-            await _firestoreService.UpdatePendingProcessStatus(itemId, dto.Status);
+            await _processService.UpdateStatusAsync(
+                itemId, 
+                dto.Status,
+                dto.Message
+            );
             return Ok();
         }
         catch (Exception ex)

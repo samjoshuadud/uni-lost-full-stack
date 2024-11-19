@@ -1,16 +1,14 @@
-using Google.Cloud.Firestore;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UniLostAndFound.API.Models;
 
-[FirestoreData]
 public abstract class BaseEntity
 {
-    [FirestoreProperty]
-    public string Id { get; set; } = string.Empty;
+    [Key]
+    public string Id { get; set; } = Guid.NewGuid().ToString();
 
-    [FirestoreProperty]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    [FirestoreProperty]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 } 

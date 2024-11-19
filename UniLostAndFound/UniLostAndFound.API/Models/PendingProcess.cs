@@ -1,21 +1,23 @@
-using Google.Cloud.Firestore;
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace UniLostAndFound.API.Models;
 
-[FirestoreData]
 public class PendingProcess : BaseEntity
 {
-    [FirestoreProperty]
+    [Required]
     public string ItemId { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [Required]
     public string UserId { get; set; } = string.Empty;
 
-    [FirestoreProperty]
+    [Required]
+    [MaxLength(50)]
     public string status { get; set; } = string.Empty;
 
-    [FirestoreProperty]
     public string Message { get; set; } = string.Empty;
 
-    public Item? Item { get; set; }
+    // Navigation properties
+    public virtual Item? Item { get; set; }
+    public virtual User? User { get; set; }
 } 

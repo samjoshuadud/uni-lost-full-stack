@@ -13,12 +13,11 @@ public class ItemDto
     public DateTime DateReported { get; set; }
     public string ImageUrl { get; set; } = string.Empty;
     public string ReporterId { get; set; } = string.Empty;
-    public string UniversityId { get; set; } = string.Empty;
     public bool Approved { get; set; }
     public List<string> VerificationQuestions { get; set; } = new();
 }
 
-public class AdditionalDescription
+public class AdditionalDescriptionDto
 {
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
@@ -47,14 +46,14 @@ public class CreateItemDto
     [FromForm(Name = "studentId")]
     public string StudentId { get; set; } = string.Empty;
 
-    [FromForm(Name = "universityId")]
-    public string UniversityId { get; set; } = string.Empty;
-
     [FromForm(Name = "additionalDescriptions")]
     public string? AdditionalDescriptions { get; set; }
 
     [FromForm(Name = "image")]
     public IFormFile? Image { get; set; }
+
+    [FromForm(Name = "message")]
+    public string Message { get; set; } = "Waiting for admin approval";
 }
 
 public class UpdateItemDto

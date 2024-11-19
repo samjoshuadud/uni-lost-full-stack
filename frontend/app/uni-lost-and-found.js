@@ -26,9 +26,10 @@ import VerificationSuccessDialog from "./components/dialogs/VerificationSuccessD
 import VerificationFailDialog from "./components/dialogs/VerificationFailDialog"
 
 import { ItemStatus } from "@/lib/constants";
+import { authApi, itemApi } from '@/lib/api-client';
 
 export default function UniLostAndFound() {
-  const { user, loading, isAdmin } = useAuth();
+  const { user, isAdmin, loading: authLoading, makeAuthenticatedRequest } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [activeSection, setActiveSection] = useState("dashboard")
   const [selectedItem, setSelectedItem] = useState(null)
@@ -50,64 +51,89 @@ export default function UniLostAndFound() {
   const [isSuccessDialogOpen, setIsSuccessDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
 
-
-
-
-
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [error, setError] = useState(null)
+  const [isLoading, setIsLoading] = useState(true);
 
   const [pendingProcessCount, setPendingProcessCount] = useState(0);
   const [isProcessCountLoading, setIsProcessCountLoading] = useState(true);
 
-  const filteredItems = items.filter(item => 
-    item.Item?.Approved &&
-    (searchCategory === "all" || item.Item?.Category === searchCategory) &&
-    (item.Item?.Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.Item?.Location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.Item?.Description.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
-
-  // Move this useEffect up here with other useEffects
   useEffect(() => {
-    const checkQuotaTimezone = () => {
-      const now = new Date();
-      
-      // Log different timezone representations
-      console.log('=== Firebase Quota Timing ===');
-      console.log('Local time:', now.toLocaleString());
-      console.log('UTC time:', now.toUTCString());
-      console.log('PT time:', now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-      
-      // Calculate time until next reset (assuming PT timezone)
-      const pt = new Date(now.toLocaleString("en-US", {timeZone: "America/Los_Angeles"}));
-      const tomorrow = new Date(pt);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      tomorrow.setHours(0,0,0,0);
-      
-      const msUntilReset = tomorrow - pt;
-      const hoursUntilReset = Math.floor(msUntilReset / (1000 * 60 * 60));
-      
-      console.log(`Firebase quota resets in approximately ${hoursUntilReset} hours`);
-      console.log('===========================');
+    const fetchItems = async () => {
+      try {
+        setIsLoading(true);
+        if (user && !authLoading) {
+          console.log('Attempting to fetch items for user:', user.email);
+          const response = await makeAuthenticatedRequest('/api/Item/pending/all');
+          if (response) {
+            // Ensure response is an array
+            const itemsArray = Array.isArray(response) ? response : [response];
+            setItems(itemsArray.filter(item => item?.Item)); // Filter out any null or undefined items
+          } else {
+            setItems([]);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching items:', error);
+        setItems([]); // Set empty array on error
+      } finally {
+        setIsLoading(false);
+      }
     };
 
-    // Check immediately and then every hour
-    checkQuotaTimezone();
-    const interval = setInterval(checkQuotaTimezone, 1000 * 60 * 60); // Check every hour
+    fetchItems();
+  }, [user, authLoading, makeAuthenticatedRequest]);
 
-    return () => clearInterval(interval);
-  }, []); // Empty dependency array means this runs once on mount
+  const filteredItems = items.filter(item => {
+    // Check if item exists and has Item property
+    if (!item || !item.Item) return false;
+    
+    // Get the actual item data
+    const itemData = item.Item;
+    
+    const approved = itemData.Approved;
+    const matchesCategory = searchCategory === "all" || itemData.Category === searchCategory;
+    const searchTerms = searchQuery.toLowerCase();
+    const matchesSearch = 
+      itemData.Name?.toLowerCase().includes(searchTerms) ||
+      itemData.Location?.toLowerCase().includes(searchTerms) ||
+      itemData.Description?.toLowerCase().includes(searchTerms);
+
+    return approved && matchesCategory && matchesSearch;
+  });
+
+  const handleReportSubmit = async (data) => {
+    try {
+      console.log('Report submitted:', data);
+      // Refresh items list
+      const response = await makeAuthenticatedRequest('/api/Item/pending/all');
+      if (response) {
+        const itemsArray = Array.isArray(response) ? response : [response];
+        setItems(itemsArray.filter(item => item?.Item));
+      }
+      // Switch to pending process view
+      setActiveSection('pending_process');
+    } catch (error) {
+      console.error('Error handling report submission:', error);
+    }
+  };
 
   const renderSection = () => {
     switch (activeSection) {
       case "dashboard":
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
       case "lost":
-        console.log("All filtered items:", filteredItems);
-        const lostItems = filteredItems.filter(item => item.status?.toLowerCase() === "lost");
-        console.log("Lost items:", lostItems);
+        const lostItems = items.filter(item => 
+          item?.Item?.Status?.toLowerCase() === "lost"
+        ).map(item => ({
+          id: item.Item.Id,
+          name: item.Item.Name,
+          description: item.Item.Description,
+          location: item.Item.Location,
+          status: item.Item.Status,
+          imageUrl: item.Item.ImageUrl,
+          dateReported: item.Item.DateReported,
+          additionalDescriptions: item.Item.AdditionalDescriptions,
+          approved: item.Item.Approved
+        }));
         return <ItemSection 
           items={lostItems}
           onSeeMore={setSelectedItem} 
@@ -115,22 +141,21 @@ export default function UniLostAndFound() {
           isAdmin={isAdmin} 
         />
       case "found":
-        console.log("Before filter:", filteredItems);
-        const foundItems = filteredItems.filter(item => 
-          item.Item?.Status?.toLowerCase() === "found"
-        );
-        console.log("Found items:", foundItems);
+        const foundItems = items.filter(item => 
+          item?.Item?.Status?.toLowerCase() === "found"
+        ).map(item => ({
+          id: item.Item.Id,
+          name: item.Item.Name,
+          description: item.Item.Description,
+          location: item.Item.Location,
+          status: item.Item.Status,
+          imageUrl: item.Item.ImageUrl,
+          dateReported: item.Item.DateReported,
+          additionalDescriptions: item.Item.AdditionalDescriptions,
+          approved: item.Item.Approved
+        }));
         return <ItemSection 
-          items={foundItems.map(item => ({
-            id: item.Item.Id,
-            name: item.Item.Name,
-            description: item.Item.Description,
-            location: item.Item.Location,
-            status: item.Item.Status,
-            imageUrl: item.Item.ImageUrl,
-            additionalDescriptions: item.Item.AdditionalDescriptions,
-            approved: item.Item.Approved
-          }))}
+          items={foundItems}
           onSeeMore={setSelectedItem} 
           title="Found Items" 
           isAdmin={isAdmin} 
@@ -153,6 +178,7 @@ export default function UniLostAndFound() {
           onDelete={handleDelete}
           onAssignAdmin={handleAssignAdmin}
           onUpdateItemStatus={handleUpdateItemStatus}
+          handleViewDetails={handleViewDetails}
         />
       case "profile":
         return <ProfileSection user={user} />
@@ -162,56 +188,12 @@ export default function UniLostAndFound() {
           onCancelRequest={handleCancelRequest}
           onVerify={handleVerification}
           onViewPost={handleViewPost}
+          onViewDetails={handleViewDetails}
         />
       default:
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
     }
   }
-
-  const handleReportSubmit = async (formData) => {
-    if (requireAuth()) return;
-    
-    try {
-      setIsSubmitting(true);
-      
-      console.log('Report submitted successfully:', formData);
-      
-      // Create new item using the data passed from ReportSection
-      const newItem = {
-        id: formData.itemId,
-        name: formData.name,
-        description: formData.description,
-        category: formData.category,
-        status: ItemStatus.LOST,
-        location: formData.location,
-        reporterId: user.uid,
-        studentId: formData.studentId,
-        universityId: formData.universityId,
-        imageUrl: '', 
-        dateReported: new Date().toISOString(),
-        approved: false
-      };
-
-      setItems(prevItems => [...prevItems, newItem]);
-      
-      // Add to pending processes
-      const newProcess = {
-        id: formData.processId,
-        item: newItem,
-        status: "pending_approval",
-        message: "Waiting for the admin to approve the post, also checking if we have the item in possession."
-      };
-      
-      setPendingProcesses(prevProcesses => [...prevProcesses, newProcess]);
-      setPendingReport(null);
-      setShowReportConfirmDialog(false);
-      setActiveSection("pending_process");
-    } catch (error) {
-      console.error('Error handling report submission:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
 
   const handleConfirmReport = () => {
     if (pendingReport.status === "lost") {
@@ -238,38 +220,38 @@ export default function UniLostAndFound() {
     setPendingReport(null);
   }
 
-  // delete this if useless anymore
   const handleApproveItem = async (id, status, itemData = null) => {
     try {
-      const response = await fetch(`http://localhost:5067/api/item/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          status,
-          approved: true,
-          ...itemData
-        })
-      })
+        const token = await user.getIdToken(true);
+        await itemApi.approveItem(token, id, {
+            status,
+            approved: true,
+            ...itemData
+        });
 
-      if (!response.ok) throw new Error('Failed to approve item')
-
-      // Update local state after successful API call
-      setItems(items.map(item => 
-        item.id === id ? { ...item, approved: true, status } : item
-      ))
+        // Update local state after successful API call
+        setItems(items.map(item => 
+            item.id === id ? { ...item, approved: true, status } : item
+        ));
     } catch (error) {
-      setError('Failed to approve item')
-      console.error('Error approving item:', error)
+        setError('Failed to approve item');
+        console.error('Error approving item:', error);
     }
-  }
+  };
 
-  const handleHandOverItem = (id, claimantId) => {
-    setItems(items.map(item => 
-      item.id === id ? { ...item, status: "handed_over", claimedBy: claimantId } : item
-    ))
-  }
+  const handleHandOverItem = async (id, claimantId) => {
+    try {
+        const token = await user.getIdToken(true);
+        await itemApi.updateProcessStatus(token, id, "handed_over");
+        
+        setItems(items.map(item => 
+            item.id === id ? { ...item, status: "handed_over", claimedBy: claimantId } : item
+        ));
+    } catch (error) {
+        console.error('Error handling item handover:', error);
+        setError('Failed to hand over item');
+    }
+  };
 
   const handleClaim = (item, studentId, verificationAnswers) => {
     if (requireAuth()) return;
@@ -302,40 +284,30 @@ export default function UniLostAndFound() {
 
   const handleDelete = async (itemId) => {
     try {
-      const respone = await fetch('http://localhost:5067/api/Item/pending/all');
-      const pendingProcesses = await respone.json();
-      const process = pendingProcesses.find(p => p.Item?.Id === itemId);
-      if (!process) {
-        // Trigger error dialog if no process is found
-        setIsErrorDialogOpen(true);
-        throw new Error('Item deletion process not found');
-      } else {
+      const token = await user.getIdToken(true);
 
-      // Delete the process first if it exists
-      const deleteProcessResponse = await fetch(`http://localhost:5067/api/Item/pending/${process.Id}`, {
-        method: 'DELETE'
-      });
+      // First try to find the pending process
+      const response = await makeAuthenticatedRequest(`/api/Item/pending/user/${user.uid}`);
+      const processes = response?.$values || [];
+      const process = processes.find(p => p.Item?.Id === itemId);
 
-      if (!deleteProcessResponse.ok) throw new Error('Failed to delete process');
+      // If there's a pending process, delete it first
+      if (process) {
+        await itemApi.deletePendingProcess(token, process.Id);
+      }
 
       // Then delete the item
-      const deleteItemResponse = await fetch(`http://localhost:5067/api/Item/${itemId}`, {
-        method: 'DELETE'
-      });
+      await itemApi.deleteItem(token, itemId);
 
-      if (!deleteItemResponse.ok) throw new Error('Failed to delete item');
-      }
-      // Update local state if both deletions are successful
+      // Update local state
       setItems(prevItems => prevItems.filter(item => item.Id !== itemId));
       setPendingProcesses(prevProcesses => 
         prevProcesses.filter(process => process.Item?.Id !== itemId)
       );
 
-      // Trigger success dialog if deletion is successful
       setIsSuccessDialogOpen(true);
     } catch (error) {
       console.error('Error deleting item:', error);
-      // If any error occurs, show the error dialog
       setIsErrorDialogOpen(true);
     }
   };
@@ -363,97 +335,106 @@ export default function UniLostAndFound() {
     setShowVerificationDialog(true);
   };
 
-  const handleSubmitVerification = () => {
+  const handleSubmitVerification = async () => {
     if (!currentNotification) return;
 
-    // Find the current process and item
-    const currentProcess = pendingProcesses.find(p => p.item.id === currentNotification.item.id);
-    const currentItem = items.find(i => i.id === currentNotification.item.id);
-    
-    if (!currentProcess || !currentItem) return;
+    try {
+        const token = await user.getIdToken(true);
+        const currentProcess = pendingProcesses.find(p => p.item.id === currentNotification.item.id);
+        const currentItem = items.find(i => i.id === currentNotification.item.id);
+        
+        if (!currentProcess || !currentItem) return;
 
-    // Send verification answers to admin
-    setAdminNotifications([
-      ...adminNotifications, 
-      { 
-        id: Date.now(), 
-        type: 'verification', 
-        itemId: currentItem.id,
-        item: currentItem,
-        answers: verificationAnswers,
-        verificationQuestions: currentProcess.verificationQuestions
-      }
-    ]);
-    
-    // Update pending process status to show waiting for answer approval
-    setPendingProcesses(pendingProcesses.map(process =>
-      process.item.id === currentItem.id ? {
-        ...process,
-        status: "pending_verification",
-        answers: verificationAnswers
-      } : process
-    ));
-    
-    setShowVerificationDialog(false);
-    setCurrentNotification(null);
-    setVerificationAnswers([]);
-  };
-
-  const handleCancelRequest = (processId) => {
-    const process = pendingProcesses.find(p => p.id === processId);
-    if (process) {
-      setPendingProcesses(pendingProcesses.filter(p => p.id !== processId));
-      setItems(items.filter(item => item.id !== process.item.id));
+        // Send verification answers
+        await itemApi.updateProcessStatus(token, currentItem.id, "pending_verification");
+        
+        // Update local state
+        setPendingProcesses(pendingProcesses.map(process =>
+            process.item.id === currentItem.id ? {
+                ...process,
+                status: "pending_verification",
+                answers: verificationAnswers
+            } : process
+        ));
+        
+        setShowVerificationDialog(false);
+        setCurrentNotification(null);
+        setVerificationAnswers([]);
+    } catch (error) {
+        console.error('Error submitting verification:', error);
+        setError('Failed to submit verification');
     }
   };
 
-  const handleVerificationSuccess = (processId) => {
-    setPendingProcesses(pendingProcesses.map(process =>
-      process.id === processId ? { ...process, status: "verified" } : process
-    ));
-    
-    // Show success modal
-    return (
-      <Dialog open={true}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verification Successful!</DialogTitle>
-            <DialogDescription>
-              Please proceed to the student center to retrieve your item.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setShowSuccessDialog(false)}>Okay</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    );
+  const handleCancelRequest = async (processId) => {
+    try {
+        const token = await user.getIdToken(true);
+        const process = pendingProcesses.find(p => p.id === processId);
+        
+        if (process) {
+            await itemApi.deletePendingProcess(token, processId);
+            setPendingProcesses(pendingProcesses.filter(p => p.id !== processId));
+            setItems(items.filter(item => item.id !== process.item.id));
+        }
+    } catch (error) {
+        console.error('Error canceling request:', error);
+        setError('Failed to cancel request');
+    }
   };
 
-  const handleAdminVerificationResponse = (notificationId, isCorrect) => {
-    const notification = adminNotifications.find(n => n.id === notificationId);
-    if (isCorrect) {
-      // Update item status to verified
-      setItems(items.map(item => 
-        item.id === notification.itemId ? { ...item, status: "verified" } : item
-      ));
-      
-      // Update pending process status
-      setPendingProcesses(pendingProcesses.map(process =>
-        process.item.id === notification.itemId ? { ...process, status: "verified" } : process
-      ));
+  const handleVerificationSuccess = async (processId) => {
+    try {
+        const token = await user.getIdToken(true);
+        await itemApi.updateProcessStatus(token, processId, "verified");
+        
+        setPendingProcesses(pendingProcesses.map(process =>
+            process.id === processId ? { ...process, status: "verified" } : process
+        ));
+        
+        setShowVerificationSuccessDialog(true);
+    } catch (error) {
+        console.error('Error updating verification status:', error);
+        setError('Failed to update verification status');
     }
-    
-    // Remove the admin notification
-    setAdminNotifications(adminNotifications.filter(n => n.id !== notificationId));
-  }
+  };
 
-  const handleAssignAdmin = (email) => {
-    if (!adminUsers.includes(email)) {
-      setAdminUsers([...adminUsers, email]);
-      alert(`${email} has been assigned as an admin`);
-    } else {
-      alert('This user is already an admin');
+  const handleAdminVerificationResponse = async (notificationId, isCorrect) => {
+    try {
+        const notification = adminNotifications.find(n => n.id === notificationId);
+        if (!notification) return;
+
+        const token = await user.getIdToken(true);
+        
+        if (isCorrect) {
+            await itemApi.updateProcessStatus(token, notification.itemId, "verified");
+            
+            // Update item status to verified
+            setItems(items.map(item => 
+                item.id === notification.itemId ? { ...item, status: "verified" } : item
+            ));
+            
+            // Update pending process status
+            setPendingProcesses(pendingProcesses.map(process =>
+                process.item.id === notification.itemId ? { ...process, status: "verified" } : process
+            ));
+        }
+        
+        // Remove the admin notification
+        setAdminNotifications(adminNotifications.filter(n => n.id !== notificationId));
+    } catch (error) {
+        console.error('Error handling verification response:', error);
+        setError('Failed to process verification response');
+    }
+  };
+
+  const handleAssignAdmin = async (email) => {
+    try {
+        const token = await user.getIdToken(true);
+        await authApi.assignAdmin(token, email);
+        setIsSuccessDialogOpen(true);
+    } catch (error) {
+        console.error('Error assigning admin:', error);
+        setIsErrorDialogOpen(true);
     }
   };
 
@@ -462,66 +443,122 @@ export default function UniLostAndFound() {
     setActiveSection("dashboard");
   };
 
-  const handleUpdateItemStatus = (itemId, status, verificationQuestions = null) => {
-    if (status === "reset_verification") {
-      // Reset item to original posted state
-      setItems(items.map(item => 
-        item.id === itemId ? { 
-          ...item, 
-          status: "lost",
-          approved: true,
-          verificationQuestions: undefined // Remove verification questions
-        } : item
-      ));
+  const handleUpdateItemStatus = async (itemId, status, verificationQuestions = null) => {
+    try {
+        const token = await user.getIdToken(true);
 
-      // Remove from pending processes
-      setPendingProcesses(prevProcesses => 
-        prevProcesses.filter(process => process.item.id !== itemId)
-      );
+        if (status === "reset_verification") {
+            // Reset item to original posted state
+            await itemApi.updateProcessStatus(token, itemId, "lost");
+            setItems(items.map(item => 
+                item.id === itemId ? { 
+                    ...item, 
+                    status: "lost",
+                    approved: true,
+                    verificationQuestions: undefined
+                } : item
+            ));
 
-      // Remove any related notifications
-      setAdminNotifications(prevNotifications => 
-        prevNotifications.filter(n => n.item?.id !== itemId)
-      );
+            setPendingProcesses(prevProcesses => 
+                prevProcesses.filter(process => process.item.id !== itemId)
+            );
 
-      return; // Exit early for reset case
-    }
+            setAdminNotifications(prevNotifications => 
+                prevNotifications.filter(n => n.item?.id !== itemId)
+            );
 
-    // Rest of the existing status handling
-    setItems(items.map(item => 
-      item.id === itemId ? { 
-        ...item, 
-        status: status,
-        verificationQuestions: verificationQuestions === null ? undefined : verificationQuestions
-      } : item
-    ));
-
-    setPendingProcesses(pendingProcesses.map(process =>
-      process.item.id === itemId ? { 
-        ...process, 
-        status: status === "handed_over" ? "completed" : 
-               status === "pending_retrieval" ? "verified" : 
-               status === "in_possession" ? "verification_needed" : 
-               "pending_approval",
-        message: status === "handed_over" ? "Item has been successfully retrieved!" :
-                status === "pending_retrieval" ? "Verified! Please proceed to the student center (Room 101) to retrieve your item." :
-                status === "in_possession" ? "Please answer the verification questions." :
-                "Your report is pending approval from admin.",
-        item: {
-          ...process.item,
-          status: status,
-          verificationQuestions: verificationQuestions === null ? undefined : verificationQuestions
+            return;
         }
-      } : process
-    ));
 
-    if (status === "handed_over") {
-      setTimeout(() => {
-        setPendingProcesses(prevProcesses => 
-          prevProcesses.filter(process => process.item.id !== itemId)
-        );
-      }, 5000);
+        // Update item status
+        await itemApi.updateProcessStatus(token, itemId, status);
+
+        // Update local state
+        setItems(items.map(item => 
+            item.id === itemId ? { 
+                ...item, 
+                status: status,
+                verificationQuestions: verificationQuestions === null ? undefined : verificationQuestions
+            } : item
+        ));
+
+        // Update pending processes
+        setPendingProcesses(pendingProcesses.map(process =>
+            process.item.id === itemId ? { 
+                ...process, 
+                status: status === "handed_over" ? "completed" : 
+                       status === "pending_retrieval" ? "verified" : 
+                       status === "in_possession" ? "verification_needed" : 
+                       "pending_approval",
+                message: status === "handed_over" ? "Item has been successfully retrieved!" :
+                        status === "pending_retrieval" ? "Verified! Please proceed to the student center (Room 101) to retrieve your item." :
+                        status === "in_possession" ? "Please answer the verification questions." :
+                        "Your report is pending approval from admin.",
+                item: {
+                    ...process.item,
+                    status: status,
+                    verificationQuestions: verificationQuestions === null ? undefined : verificationQuestions
+                }
+            } : process
+        ));
+
+        if (status === "handed_over") {
+            setTimeout(() => {
+                setPendingProcesses(prevProcesses => 
+                    prevProcesses.filter(process => process.item.id !== itemId)
+                );
+            }, 5000);
+        }
+    } catch (error) {
+        console.error('Error updating item status:', error);
+        setError('Failed to update item status');
     }
+  };
+
+  const handleViewDetails = (item) => {
+    if (!item) {
+      console.log('Item is null or undefined');
+      return;
+    }
+    
+    console.log('Raw item received:', item);
+    
+    // Check if the item is from pending process (has Item property)
+    const sourceItem = item.Item || item;
+    console.log('Source item after checking .Item:', sourceItem);
+    
+    // Log each property we're trying to access with correct casing
+    console.log('Property check:', {
+      id: sourceItem.id || sourceItem.$id,
+      name: sourceItem.name,
+      description: sourceItem.description,
+      category: sourceItem.category,
+      status: sourceItem.status,
+      location: sourceItem.location,
+      imageUrl: sourceItem.imageUrl,
+      dateReported: sourceItem.dateReported,
+      studentId: sourceItem.studentId,
+      additionalDescriptions: sourceItem.additionalDescriptions,
+      approved: sourceItem.approved
+    });
+
+    // Convert the Item property to match the expected format using correct casing
+    const formattedItem = {
+      id: sourceItem.id || sourceItem.$id,
+      name: sourceItem.name,
+      description: sourceItem.description,
+      category: sourceItem.category,
+      status: sourceItem.status,
+      location: sourceItem.location,
+      imageUrl: sourceItem.imageUrl,
+      dateReported: sourceItem.dateReported,
+      studentId: sourceItem.studentId,
+      additionalDescriptions: sourceItem.additionalDescriptions?.$values || sourceItem.additionalDescriptions || [],
+      approved: sourceItem.approved
+    };
+
+    console.log('Final formatted item:', formattedItem);
+    setSelectedItem(formattedItem);
   };
 
   // Helper function to check if action requires auth
@@ -554,110 +591,74 @@ export default function UniLostAndFound() {
       if (!user?.uid) return;
 
       try {
-        const response = await fetch(`http://localhost:5067/api/item/pending/user/${user.uid}`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch pending processes');
-        }
-        const data = await response.json();
+        const token = await user.getIdToken(true);
+        const data = await itemApi.getUserPending(token, user.uid);
         setPendingProcesses(Array.isArray(data) ? data : [data].filter(Boolean));
       } catch (error) {
         console.error('Error fetching pending processes:', error);
       }
     };
 
-    
-
-    // Initial fetch
     if (user) {
       fetchPendingProcesses();
+      const interval = setInterval(fetchPendingProcesses, 5000);
+      return () => clearInterval(interval);
     }
-
-    // Set up polling interval
-    const interval = setInterval(() => {
-      if (user) {
-        fetchPendingProcesses();
-      }
-    }, 5000); // Poll every 5 seconds
-
-    // Cleanup
-    return () => clearInterval(interval);
-  }, [user]); // Depend on user to restart polling when user changes
+  }, [user]);
 
   useEffect(() => {
     const fetchPendingProcessCount = async () => {
-      if (!isAdmin) return;
-  
+      if (!user || authLoading) return;
+      
       try {
-        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
-        if (!response.ok) throw new Error('Failed to fetch pending processes');
-        const data = await response.json();
-  
-        // Filter items where Item.Approved is false
-        const pendingItems = data.filter((item) => item.Item?.Approved === false);
-  
-        // Update state if count has changed
-        if (pendingItems.length !== pendingProcessCount) {
-          setPendingProcessCount(pendingItems.length);
+        const response = await makeAuthenticatedRequest(`/api/Item/pending/all`);
+        
+        if (response && response.$values) {
+          // Set items first
+          setItems(response.$values);
+          setIsLoading(false); // Set loading to false after items are set
+
+          // Calculate count
+          const newCount = isAdmin
+            ? response.$values.filter(process => 
+                !process.item?.approved
+              ).length
+            : response.$values.filter(process => 
+                process.userId === user.uid
+              ).length;
+
+          setPendingProcessCount(prevCount => {
+            if (prevCount !== newCount) {
+              return newCount;
+            }
+            return prevCount;
+          });
         }
-  
       } catch (error) {
-        console.error('Error fetching pending process count:', error);
+        console.error('Error fetching data:', error);
+        setPendingProcessCount(0);
+        setIsLoading(false); // Make sure to set loading to false even on error
       } finally {
-        // Only show loading on initial fetch
-        if (isProcessCountLoading) {
-          setIsProcessCountLoading(false);
-        }
+        setIsProcessCountLoading(false);
       }
     };
 
-    // Initial fetch and polling setup
-    if (isAdmin) {
+    // Set initial loading state
+    if (user && !authLoading) {
+      setIsLoading(true);
+      setIsProcessCountLoading(true);
       fetchPendingProcessCount();
       const interval = setInterval(fetchPendingProcessCount, 5000);
       return () => clearInterval(interval);
+    } else {
+      setPendingProcessCount(0);
+      setIsLoading(false);
+      setIsProcessCountLoading(false);
     }
-  }, [isAdmin]); // Only depend on isAdmin
+  }, [user, authLoading, isAdmin, makeAuthenticatedRequest]);
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('http://localhost:5067/api/Item/pending/all');
-        if (!response.ok) {
-          throw new Error('Failed to fetch items');
-        }
-        const data = await response.json();
-        setItems(data);
-      } catch (error) {
-        console.error('Error fetching items:', error);
-        setError('Failed to fetch items');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchItems();
-  }, []); // Empty dependency array means this runs once when component mounts
-
-  // Add this useEffect to fetch pending processes
-  useEffect(() => {
-    const fetchPendingProcesses = async () => {
-      try {
-        const response = await fetch('http://localhost:5067/api/Item/pending/all');
-        if (!response.ok) throw new Error('Failed to fetch pending processes');
-        const data = await response.json();
-        console.log('Fetched pending processes:', data);
-        setPendingProcesses(data);
-      } catch (error) {
-        console.error('Error fetching pending processes:', error);
-      }
-    };
-
-    fetchPendingProcesses();
-  }, []); // Empty dependency array means this runs once on mount
-
-  // Show loading state while checking auth and admin status
-  if (loading) {
+  // Loading state
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -674,7 +675,7 @@ export default function UniLostAndFound() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Item Deleted Successfully!</DialogTitle>
-            <DialogDescription>The item has been successfully deleted.</DialogDescription>
+            <DialogDescription>The item has been successfully cancelled/deleted.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
@@ -730,12 +731,14 @@ export default function UniLostAndFound() {
                 </Button>
                 {user && (
                   <>
-                    <Button variant="ghost" onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}>
-                      <Bell className="mr-2 h-4 w-4" />
+                    <Button 
+                      variant={activeSection === "pending_process" ? "default" : "ghost"}
+                      onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
+                    >
                       Pending Process
-                      {pendingProcesses.length > 0 && (
+                      {pendingProcessCount > 0 && (
                         <span className="ml-2 bg-primary text-primary-foreground rounded-full px-2 py-0.5 text-xs">
-                          {pendingProcesses.length}
+                          {pendingProcessCount}
                         </span>
                       )}
                     </Button>
@@ -871,17 +874,14 @@ export default function UniLostAndFound() {
         )}
 
         {/* Main Content */}
-        {selectedItem ? (
-          <ItemDetailSection 
-            item={selectedItem} 
-            onBack={() => setSelectedItem(null)} 
-            onClaim={handleClaim} 
-            onFound={handleFound}
-            onDelete={handleDelete}
-          />
-        ) : (
-          renderSection()
-        )}
+        {renderSection()}
+
+        <ItemDetailSection 
+          item={selectedItem}
+          open={!!selectedItem}
+          onClose={() => setSelectedItem(null)}
+          onDelete={handleDelete}
+        />
 
         <AuthRequiredDialog 
           open={showAuthDialog} 
