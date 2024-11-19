@@ -6,18 +6,42 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
 import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants'
-import { Package, ExternalLink } from "lucide-react"
+import { Package, ExternalLink, Trash, Loader2 } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 
 export default function DashboardSection({ 
-  handleViewDetails = (item) => {
-    console.warn('handleViewDetails not provided for item:', item);
-  }
+  handleViewDetails,
+  isAdmin = false,
+  userId = null,
+  onDelete
 }) {
   const { userData } = useAuth();
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deletingItemId, setDeletingItemId] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null);
+
+  // Function to check if user can delete
+  const canDelete = (item) => {
+    return isAdmin || userId === item.reporterId;
+  };
+
+  const handleDeleteClick = async () => {
+    if (!itemToDelete) return;
+    
+    try {
+      setDeletingItemId(itemToDelete.id);
+      await onDelete(itemToDelete.id);
+      setItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
+    } finally {
+      setDeletingItemId(null);
+      setShowDeleteDialog(false);
+      setItemToDelete(null);
+    }
+  };
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -145,24 +169,72 @@ export default function DashboardSection({
                 </p>
               </div>
               
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="text-xs text-muted-foreground">
                   {new Date(item.dateReported).toLocaleDateString()}
                 </span>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleViewDetails(item)}
-                  className="gap-2"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  View Details
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleViewDetails(item)}
+                    className="gap-2"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View Details
+                  </Button>
+                  {canDelete(item) && (
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={() => {
+                        setItemToDelete(item);
+                        setShowDeleteDialog(true);
+                      }}
+                      disabled={deletingItemId === item.id}
+                      className="gap-2"
+                    >
+                      {deletingItemId === item.id ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Deleting...
+                        </>
+                      ) : (
+                        <>
+                          <Trash className="h-4 w-4" />
+                          Delete
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       ))}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this item? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingItemId !== null}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteClick}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingItemId !== null}
+            >
+              {deletingItemId !== null ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 } 
