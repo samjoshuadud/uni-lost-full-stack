@@ -111,6 +111,13 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
   }, [user]);
 
   const getStatusBadge = (status) => {
+    // Helper function to capitalize first letter of each word
+    const capitalize = (str) => {
+      return str.split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    };
+
     switch (status?.toLowerCase()) {
       case "pending_approval":
         return <Badge>Pending Approval</Badge>;
@@ -122,8 +129,10 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
         return <Badge variant="warning">Verification in Review</Badge>;
       case "verified":
         return <Badge variant="success">Verified</Badge>;
+      case "approved":
+        return <Badge variant="success" className="bg-green-600 hover:bg-green-700 text-white">Approved!</Badge>;
       default:
-        return <Badge variant="outline">{status || 'Unknown'}</Badge>;
+        return <Badge variant="outline">{status ? capitalize(status) : 'Unknown'}</Badge>;
     }
   };
 
@@ -312,35 +321,50 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
                 {getStatusMessage(process)}
               </p>
               <div className="flex gap-2">
-                {process.status === "posted" && (
+                {process.item.approved && process.status.toLowerCase() === "approved" ? (
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    onClick={() => onViewPost?.(process.item)}
+                    onClick={() => {
+                      onViewPost?.(process.item);
+                    }}
                   >
                     <ExternalLink className="h-4 w-4 mr-2" />
                     View Post
                   </Button>
+                ) : (
+                  <>
+                    {process.status === "posted" && (
+                      <Button 
+                        variant="outline" 
+                        className="w-full"
+                        onClick={() => onViewPost?.(process.item)}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Post
+                      </Button>
+                    )}
+                    {process.status === "verification_needed" && (
+                      <Button 
+                        variant="default" 
+                        className="w-full"
+                        onClick={() => onVerify?.(process)}
+                      >
+                        Verify Now
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        console.log('View Details clicked, process.item:', process.item);
+                        onViewDetails?.(process.item);
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View Details
+                    </Button>
+                  </>
                 )}
-                {process.status === "verification_needed" && (
-                  <Button 
-                    variant="default" 
-                    className="w-full"
-                    onClick={() => onVerify?.(process)}
-                  >
-                    Verify Now
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    console.log('View Details clicked, process.item:', process.item);
-                    onViewDetails?.(process.item);
-                  }}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Details
-                </Button>
                 <Button 
                   variant="destructive"
                   onClick={() => {

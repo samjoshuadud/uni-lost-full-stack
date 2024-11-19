@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChevronLeft, ImageIcon, Trash, Loader2, X } from "lucide-react"
+import { ChevronLeft, ImageIcon, Trash, Loader2, X, Package } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { Separator } from "@/components/ui/separator"
@@ -10,11 +10,29 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useState } from "react"
 
-export default function ItemDetailSection({ item, onClose, onDelete, open }) {
+export default function ItemDetailSection({ 
+  item, 
+  onClose, 
+  onDelete, 
+  open,
+  isAdmin = false,
+  userId = null
+}) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   if (!item) return null;
+
+  const canDelete = () => {
+    console.log('Checking delete permission:', {
+      isAdmin,
+      userId,
+      reporterId: item.reporterId,
+      item
+    });
+    
+    return isAdmin || userId === item.reporterId;
+  };
 
   const handleDeleteClick = async () => {
     setIsDeleting(true);
@@ -42,43 +60,57 @@ export default function ItemDetailSection({ item, onClose, onDelete, open }) {
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="flex flex-row items-center justify-between space-x-4">
           <DialogTitle>Item Details</DialogTitle>
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={() => setShowDeleteDialog(true)}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                <>
-                  <Trash className="h-4 w-4 mr-2" />
-                  Delete Item
-                </>
-              )}
-            </Button>
-          </div>
+          {canDelete() && (
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash className="h-4 w-4 mr-2" />
+                    Delete Item
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </DialogHeader>
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">{item.name}</h2>
 
           <Card className="overflow-hidden">
             {/* Image Section */}
-            <div className="w-full h-[300px] relative border-b bg-muted">
+            <div className="w-full h-[300px] relative bg-muted">
               {item.imageUrl ? (
-                <img 
-                  src={item.imageUrl} 
-                  alt={item.name}
-                  className="object-contain w-full h-full"
-                />
+                <div className="w-full h-full relative">
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.name}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  <div 
+                    className="hidden w-full h-full absolute top-0 left-0 bg-muted flex-col items-center justify-center text-muted-foreground"
+                  >
+                    <Package className="h-12 w-12 mb-2 opacity-50" />
+                    <p className="text-sm">{item.category || 'Item'} Image</p>
+                  </div>
+                </div>
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
-                  <ImageIcon className="h-20 w-20 mb-4" />
-                  <p className="text-sm">No image available</p>
+                  <Package className="h-12 w-12 mb-2 opacity-50" />
+                  <p className="text-sm">{item.category || 'Item'} Image</p>
                 </div>
               )}
             </div>
