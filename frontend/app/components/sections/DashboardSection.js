@@ -39,7 +39,9 @@ export default function DashboardSection({
           location: process.item.location,
           status: process.item.status,
           imageUrl: process.item.imageUrl,
-          dateReported: process.item.dateReported
+          dateReported: process.item.dateReported,
+          reporterId: process.item.reporterId,
+          additionalDescriptions: process.item.additionalDescriptions?.$values || []
         })) || [];
 
         setItems(approvedItems);
@@ -100,7 +102,11 @@ export default function DashboardSection({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((item) => (
-        <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-all">
+        <Card 
+          key={item.id} 
+          id={`item-${item.id}`} 
+          className="overflow-hidden hover:shadow-lg transition-all"
+        >
           <CardContent className="p-4">
             {/* Image Section */}
             <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-muted">

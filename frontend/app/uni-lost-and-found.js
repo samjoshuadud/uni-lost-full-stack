@@ -122,7 +122,19 @@ export default function UniLostAndFound() {
     switch (activeSection) {
       case "dashboard":
         return <DashboardSection 
-          items={filteredItems} 
+          items={filteredItems.map(item => ({
+            ...item.Item,
+            id: item.Item.Id,
+            name: item.Item.Name,
+            description: item.Item.Description,
+            category: item.Item.Category,
+            location: item.Item.Location,
+            status: item.Item.Status,
+            imageUrl: item.Item.ImageUrl,
+            dateReported: item.Item.DateReported,
+            reporterId: item.Item.ReporterId,
+            additionalDescriptions: item.Item.AdditionalDescriptions?.$values || []
+          }))} 
           onSeeMore={setSelectedItem} 
           handleViewDetails={(item) => { 
             setSelectedItem(item);
@@ -450,6 +462,21 @@ export default function UniLostAndFound() {
   const handleViewPost = (item) => {
     setSelectedItem(item);
     setActiveSection("dashboard");
+    
+    // Add a small delay to ensure the dashboard is rendered
+    setTimeout(() => {
+      // Find the card element and scroll to it
+      const itemCard = document.getElementById(`item-${item.id}`);
+      if (itemCard) {
+        itemCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Add a highlight effect
+        itemCard.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
+        // Remove the highlight effect after 2 seconds
+        setTimeout(() => {
+          itemCard.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+        }, 2000);
+      }
+    }, 100);
   };
 
   const handleUpdateItemStatus = async (itemId, status, verificationQuestions = null) => {
@@ -851,6 +878,9 @@ export default function UniLostAndFound() {
             setShowDetailsDialog(false);
             setSelectedItem(null);
           }}
+          onDelete={handleDelete}
+          isAdmin={isAdmin}
+          userId={user?.uid}
         />
 
         <AuthRequiredDialog 
