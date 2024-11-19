@@ -5,11 +5,17 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
-import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants';
+import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants'
+import { Package, ExternalLink } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default function DashboardSection({ onSeeMore }) {
-  const { userData, isAdmin } = useAuth();
-  const [items, setItems] = useState(null);
+export default function DashboardSection({ 
+  handleViewDetails = (item) => {
+    console.warn('handleViewDetails not provided for item:', item);
+  }
+}) {
+  const { userData } = useAuth();
+  const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -18,81 +24,24 @@ export default function DashboardSection({ onSeeMore }) {
       try {
         setIsLoading(true);
         const response = await fetch('http://localhost:5067/api/Item/pending/all');
-        if (!response.ok) {
-          throw new Error('Failed to fetch items');
-        }
+        if (!response.ok) throw new Error('Failed to fetch items');
+        
         const data = await response.json();
         
-        // Create a map to store all objects by their $id
-        const objectsMap = new Map();
-        const seenObjects = new WeakSet();
+        // Filter for approved items with status "approved"
+        const approvedItems = data.$values?.filter(process => 
+          process.item?.approved === true && 
+          process.status === "approved"
+        ).map(process => ({
+          id: process.item.id,
+          name: process.item.name,
+          category: process.item.category,
+          location: process.item.location,
+          status: process.item.status,
+          imageUrl: process.item.imageUrl,
+          dateReported: process.item.dateReported
+        })) || [];
 
-        const traverse = (obj) => {
-          if (!obj || typeof obj !== 'object' || seenObjects.has(obj)) return;
-          seenObjects.add(obj);
-
-          if (obj.$id) {
-            objectsMap.set(obj.$id, { ...obj });
-          }
-          Object.values(obj).forEach(value => {
-            if (Array.isArray(value)) {
-              value.forEach(item => {
-                if (item && typeof item === 'object' && !seenObjects.has(item)) {
-                  traverse(item);
-                }
-              });
-            } else if (value && typeof value === 'object' && !seenObjects.has(value)) {
-              traverse(value);
-            }
-          });
-        };
-
-        traverse(data);
-
-        // Helper function to resolve references
-        const resolveReferences = (obj, seen = new WeakSet()) => {
-          if (!obj || typeof obj !== 'object' || seen.has(obj)) return obj;
-          seen.add(obj);
-
-          if (obj.$ref) {
-            const resolved = objectsMap.get(obj.$ref);
-            return resolved ? resolveReferences(resolved, seen) : obj;
-          }
-          
-          const resolved = Array.isArray(obj) ? [...obj] : { ...obj };
-          Object.entries(resolved).forEach(([key, value]) => {
-            if (Array.isArray(value)) {
-              resolved[key] = value.map(item => 
-                item && typeof item === 'object' && !seen.has(item) 
-                  ? resolveReferences(item, seen) 
-                  : item
-              );
-            } else if (value && typeof value === 'object' && !seen.has(value)) {
-              resolved[key] = resolveReferences(value, seen);
-            }
-          });
-          return resolved;
-        };
-
-        // Extract and resolve processes
-        const processesArray = data.processes?.$values || [];
-        const resolvedProcesses = processesArray.map(process => resolveReferences(process));
-        
-        // Transform and filter approved items
-        const approvedItems = resolvedProcesses
-          .filter(process => process?.item?.approved === true)
-          .map(process => ({
-            id: process.item.id,
-            name: process.item.name,
-            description: process.item.description,
-            location: process.item.location,
-            status: process.item.status,
-            imageUrl: process.item.imageUrl,
-            dateReported: process.item.dateReported,
-            additionalDescriptions: process.item.additionalDescriptions?.$values || [],
-            approved: process.item.approved
-          }));
-        
         setItems(approvedItems);
       } catch (error) {
         console.error('Error fetching items:', error);
@@ -105,67 +54,105 @@ export default function DashboardSection({ onSeeMore }) {
     fetchItems();
   }, []);
 
-  if (isLoading) return (
-    <div className="col-span-full text-center p-8 text-muted-foreground">
-      Loading...
-    </div>
-  );
-
-  if (error) return (
-    <div className="col-span-full text-center p-8 text-muted-foreground">
-      {error}
-    </div>
-  );
-
-  if (!items?.length) return (
-    <div className="col-span-full text-center p-8 text-muted-foreground">
-      No approved items found
-    </div>
-  );
-
-  const getStatusBadge = (status) => {
+  if (isLoading) {
     return (
-      <Badge variant={ItemStatusVariants[status] || 'default'}>
-        {ItemStatusLabels[status] || status}
-      </Badge>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="overflow-hidden">
+            <CardContent className="p-4">
+              <Skeleton className="w-full h-48 mb-4 rounded-lg" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-1/2" />
+                <div className="flex justify-between items-center mt-4">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-9 w-24" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
-  };
+  }
+
+  if (error) {
+    return (
+      <Card className="col-span-full">
+        <CardContent className="p-8 text-center">
+          <p className="text-muted-foreground">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!items.length) {
+    return (
+      <Card className="col-span-full">
+        <CardContent className="p-8 text-center">
+          <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+          <p className="font-medium text-muted-foreground">No approved items found</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {items.map((item) => (
-        <Card key={item.id} className="hover:shadow-lg transition-shadow">
+        <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-all">
           <CardContent className="p-4">
             {/* Image Section */}
             <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-muted">
               {item.imageUrl ? (
-                <img 
-                  src={item.imageUrl}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                />
+                <div className="w-full h-full relative">
+                  <img
+                    src={item.imageUrl}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'flex';
+                    }}
+                  />
+                  <div 
+                    className="hidden w-full h-full absolute top-0 left-0 bg-muted flex-col items-center justify-center text-muted-foreground"
+                  >
+                    <Package className="h-8 w-8 mb-2 opacity-50" />
+                    <p className="text-xs">{item.category || 'Item'} Image</p>
+                  </div>
+                </div>
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  No Image Available
+                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <Package className="h-8 w-8 mb-2 opacity-50" />
+                  <p className="text-xs">{item.category || 'Item'} Image</p>
                 </div>
               )}
             </div>
             
-            <div className="flex items-start justify-between mb-2">
+            {/* Content Section */}
+            <div className="space-y-3">
               <div>
-                <h3 className="font-bold">{item.name}</h3>
-                <p className="text-sm text-muted-foreground">{item.location}</p>
+                <h3 className="font-semibold text-lg truncate">{item.name}</h3>
+                <p className="text-sm text-muted-foreground truncate">
+                  {item.location}
+                </p>
               </div>
-              {getStatusBadge(item.status)}
-            </div>
-            <p className="text-sm mb-4 line-clamp-2">{item.description}</p>
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">
-                {new Date(item.dateReported).toLocaleDateString()}
-              </span>
-              <Button variant="outline" onClick={() => onSeeMore(item)}>
-                See More
-              </Button>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {new Date(item.dateReported).toLocaleDateString()}
+                </span>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleViewDetails(item)}
+                  className="gap-2"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  View Details
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

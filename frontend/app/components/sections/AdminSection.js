@@ -96,6 +96,10 @@ export default function AdminSection({
   const [deletingItems, setDeletingItems] = useState(new Set());
   const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
   const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
+  const [fetchError, setFetchError] = useState(null);
+  const [isLoadingVisible, setIsLoadingVisible] = useState(false);
+  const [showApprovalSuccessDialog, setShowApprovalSuccessDialog] = useState(false);
+  const [approvedItemName, setApprovedItemName] = useState("");
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -186,13 +190,17 @@ export default function AdminSection({
       console.log('Starting approval process for itemId:', itemId);
       console.log('Current pendingProcesses:', pendingProcesses);
 
-      // First find the process
-      const process = pendingProcesses.find(p => 
-        p.ItemId === itemId || 
-        p.itemId === itemId || 
-        p.Item?.Id === itemId || 
-        p.item?.id === itemId
-      );
+      // First find the process - Fix the process finding logic
+      const process = pendingProcesses.find(p => {
+        // Log each process for debugging
+        console.log('Checking process:', p);
+        
+        // Check all possible ID variations and normalize case
+        const processItemId = (p.ItemId || p.itemId || p.Item?.Id || p.item?.id || '').toLowerCase();
+        const targetItemId = (itemId || '').toLowerCase();
+        
+        return processItemId === targetItemId;
+      });
 
       if (!process) {
         console.error('No process found for itemId:', itemId);
@@ -200,7 +208,15 @@ export default function AdminSection({
         throw new Error("Process not found");
       }
 
+      // Get the correct process ID
+      const processId = process.Id || process.id;
+      
+      if (!processId) {
+        throw new Error("Process ID is undefined");
+      }
+
       console.log('Found process:', process);
+      console.log('Process ID:', processId);
 
       // First update item's approval status
       const itemResponse = await fetch(
@@ -213,13 +229,14 @@ export default function AdminSection({
       );
 
       if (!itemResponse.ok) {
-        console.error('Failed to approve item:', await itemResponse.text());
+        const errorText = await itemResponse.text();
+        console.error('Failed to approve item:', errorText);
         throw new Error("Failed to approve item");
       }
 
       // Then update process status using process ID
       const processResponse = await fetch(
-        `http://localhost:5067/api/Item/process/${process.Id}/status`,
+        `http://localhost:5067/api/Item/process/${processId}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -231,29 +248,43 @@ export default function AdminSection({
       );
 
       if (!processResponse.ok) {
-        console.error('Failed to update process:', await processResponse.text());
+        const errorText = await processResponse.text();
+        console.error('Failed to update process:', errorText);
         throw new Error("Failed to update process status");
       }
 
       // Update local state
       setAllItems((prevItems) =>
         prevItems.map((item) =>
-          item.Id === itemId ? { ...item, Approved: true } : item
+          item.Id === itemId || item.id === itemId 
+            ? { ...item, Approved: true, approved: true } 
+            : item
         ),
       );
 
       setPendingProcesses((prevProcesses) =>
         prevProcesses.map((p) =>
-          p.Id === process.Id
+          p.Id === processId || p.id === processId
             ? {
                 ...p,
                 Status: "approved",
+                status: "approved",
                 Message: "The item has been approved!",
-                Item: { ...p.Item, Approved: true },
+                message: "The item has been approved!",
+                Item: { ...p.Item, Approved: true, approved: true },
+                item: { ...p.item, Approved: true, approved: true },
               }
             : p
         ),
       );
+
+      // After successful approval and state updates
+      const approvedItem = pendingProcesses.find(p => 
+        (p.ItemId || p.itemId || p.Item?.Id || p.item?.id) === itemId
+      );
+      
+      setApprovedItemName(approvedItem?.item?.name || approvedItem?.Item?.Name || "Item");
+      setShowApprovalSuccessDialog(true);
 
       // Fetch fresh data after approval
       await fetchInitialData();
@@ -264,8 +295,45 @@ export default function AdminSection({
     }
   };
 
-  const handleTabChange = (value) => {
+  const handleTabChange = async (value, retryCount = 0) => {
     setActiveTab(value);
+    
+    if (value === "reports" || value === "found") {
+      try {
+        setIsCountsLoading(true);
+        setIsLoadingVisible(true);
+        setFetchError(null);
+        
+        const startTime = Date.now();
+        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        
+        if (!response.ok) throw new Error("Failed to fetch pending processes");
+        
+        const data = await response.json();
+        if (data && data.$values) {
+          setPendingProcesses(data.$values);
+        }
+
+        // Ensure minimum loading duration of 500ms
+        const elapsed = Date.now() - startTime;
+        if (elapsed < 500) {
+          await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
+        }
+
+      } catch (error) {
+        console.error("Error fetching data:", error);
+        setFetchError(error.message);
+        
+        if (retryCount < 3) {
+          setTimeout(() => {
+            handleTabChange(value, retryCount + 1);
+          }, 1000 * (retryCount + 1));
+        }
+      } finally {
+        setIsCountsLoading(false);
+        setIsLoadingVisible(false);
+      }
+    }
   };
 
   // Add this useEffect to monitor data changes
@@ -354,6 +422,45 @@ export default function AdminSection({
     }
   };
 
+  useEffect(() => {
+    let mounted = true;
+
+    // Initial data fetch
+    if (isAdmin) {
+      handleTabChange(activeTab);
+    }
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAdmin]); // Only run on mount and when isAdmin changes
+
+  const LoadingOverlay = () => (
+    <div 
+      className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg transition-opacity duration-200"
+      style={{ 
+        opacity: 1,
+        animation: 'fadeIn 0.2s ease-in-out'
+      }}
+    >
+      <div className="flex flex-col items-center gap-2 bg-background p-4 rounded-lg shadow-lg border">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading data...</p>
+      </div>
+    </div>
+  );
+
+  const styles = `
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  `;
+
   if (!isAdmin) {
     return (
       <Card>
@@ -392,7 +499,7 @@ export default function AdminSection({
       </Card>
 
       {/* Main Content */}
-      <Card className="border-t-4 border-t-primary">
+      <Card className="border-t-4 border-t-primary relative">
         <CardContent className="p-6">
           <Tabs
             value={activeTab}
@@ -409,13 +516,15 @@ export default function AdminSection({
               <TabsTrigger value="retrieval">Pending Retrieval</TabsTrigger>
             </TabsList>
 
+            {isLoadingVisible && <LoadingOverlay />}
+
             <TabsContent value="statistics">
               <StatisticsSection />
             </TabsContent>
 
             <TabsContent value="reports">
               <LostReportsTab
-                items={pendingProcesses?.$values || pendingProcesses || []}
+                items={pendingProcesses}
                 isCountsLoading={isCountsLoading}
                 setPendingLostApprovalCount={setPendingLostApprovalCount}
                 getInVerificationCount={getInVerificationCount}
@@ -427,7 +536,7 @@ export default function AdminSection({
             </TabsContent>
             <TabsContent value="found">
               <FoundItemsTab
-                items={pendingProcesses?.$values || pendingProcesses || []}
+                items={pendingProcesses}
                 isCountsLoading={isCountsLoading}
                 onDelete={handleDelete}
                 onViewDetails={handleViewDetails}
@@ -657,6 +766,42 @@ export default function AdminSection({
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Approval Success Dialog */}
+      <AlertDialog 
+        open={showApprovalSuccessDialog} 
+        onOpenChange={setShowApprovalSuccessDialog}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-primary">
+              <CheckCircle className="h-5 w-5" />
+              Post Approved Successfully
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <div className="text-sm">
+                  <span className="font-medium">{approvedItemName}</span> has been approved 
+                  and is now visible on the dashboard.
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Users can now see this post and initiate the verification process if needed.
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction 
+              onClick={() => setShowApprovalSuccessDialog(false)}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            >
+              Okay, Got It
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <style jsx>{styles}</style>
     </div>
   );
 }

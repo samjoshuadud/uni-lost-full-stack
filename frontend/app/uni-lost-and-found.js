@@ -56,6 +56,8 @@ export default function UniLostAndFound() {
   const [pendingProcessCount, setPendingProcessCount] = useState(0);
   const [isProcessCountLoading, setIsProcessCountLoading] = useState(true);
 
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+
   useEffect(() => {
     const fetchItems = async () => {
       try {
@@ -119,7 +121,14 @@ export default function UniLostAndFound() {
   const renderSection = () => {
     switch (activeSection) {
       case "dashboard":
-        return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
+        return <DashboardSection 
+          items={filteredItems} 
+          onSeeMore={setSelectedItem} 
+          handleViewDetails={(item) => { 
+            setSelectedItem(item);
+            setShowDetailsDialog(true);
+          }} 
+        />
       case "lost":
         const lostItems = items.filter(item => 
           item?.Item?.Status?.toLowerCase() === "lost"
@@ -516,49 +525,8 @@ export default function UniLostAndFound() {
   };
 
   const handleViewDetails = (item) => {
-    if (!item) {
-      console.log('Item is null or undefined');
-      return;
-    }
-    
-    console.log('Raw item received:', item);
-    
-    // Check if the item is from pending process (has Item property)
-    const sourceItem = item.Item || item;
-    console.log('Source item after checking .Item:', sourceItem);
-    
-    // Log each property we're trying to access with correct casing
-    console.log('Property check:', {
-      id: sourceItem.id || sourceItem.$id,
-      name: sourceItem.name,
-      description: sourceItem.description,
-      category: sourceItem.category,
-      status: sourceItem.status,
-      location: sourceItem.location,
-      imageUrl: sourceItem.imageUrl,
-      dateReported: sourceItem.dateReported,
-      studentId: sourceItem.studentId,
-      additionalDescriptions: sourceItem.additionalDescriptions,
-      approved: sourceItem.approved
-    });
-
-    // Convert the Item property to match the expected format using correct casing
-    const formattedItem = {
-      id: sourceItem.id || sourceItem.$id,
-      name: sourceItem.name,
-      description: sourceItem.description,
-      category: sourceItem.category,
-      status: sourceItem.status,
-      location: sourceItem.location,
-      imageUrl: sourceItem.imageUrl,
-      dateReported: sourceItem.dateReported,
-      studentId: sourceItem.studentId,
-      additionalDescriptions: sourceItem.additionalDescriptions?.$values || sourceItem.additionalDescriptions || [],
-      approved: sourceItem.approved
-    };
-
-    console.log('Final formatted item:', formattedItem);
-    setSelectedItem(formattedItem);
+    setSelectedItem(item);
+    setShowDetailsDialog(true);
   };
 
   // Helper function to check if action requires auth
@@ -878,9 +846,11 @@ export default function UniLostAndFound() {
 
         <ItemDetailSection 
           item={selectedItem}
-          open={!!selectedItem}
-          onClose={() => setSelectedItem(null)}
-          onDelete={handleDelete}
+          open={showDetailsDialog}
+          onClose={() => {
+            setShowDetailsDialog(false);
+            setSelectedItem(null);
+          }}
         />
 
         <AuthRequiredDialog 
