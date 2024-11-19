@@ -28,9 +28,6 @@ export default function DashboardSection({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
-  const [showUnapproveDialog, setShowUnapproveDialog] = useState(false);
-  const [unapproveItemId, setUnapproveItemId] = useState(null);
-  const [isUnapproving, setIsUnapproving] = useState(false);
 
   // Update localItems when items prop changes
   useEffect(() => {
@@ -61,9 +58,6 @@ export default function DashboardSection({
   // Add local handler for unapprove
   const handleUnapprove = async (itemId) => {
     try {
-      setIsUnapproving(true);
-      setShowUnapproveDialog(false);
-
       // First get all processes to find the correct processId
       const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
       const processData = await processResponse.json();
@@ -103,9 +97,6 @@ export default function DashboardSection({
 
     } catch (error) {
       console.error('Error unapproving item:', error);
-    } finally {
-      setIsUnapproving(false);
-      setUnapproveItemId(null);
     }
   };
 
@@ -230,11 +221,8 @@ export default function DashboardSection({
                       <DropdownMenuContent align="end">
                         {isAdmin && (
                           <DropdownMenuItem
-                            onClick={() => {
-                              setUnapproveItemId(item.id);
-                              setShowUnapproveDialog(true);
-                            }}
-                            disabled={deletingItemId === item.id || isUnapproving}
+                            onClick={() => handleUnapprove(item.id)}
+                            disabled={deletingItemId === item.id}
                             className="gap-2"
                           >
                             <X className="h-4 w-4" />
@@ -288,28 +276,6 @@ export default function DashboardSection({
               disabled={deletingItemId !== null}
             >
               {deletingItemId !== null ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Unapprove Confirmation Dialog */}
-      <AlertDialog open={showUnapproveDialog} onOpenChange={setShowUnapproveDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unapprove Item</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to unapprove this item? It will be moved back to pending approval.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isUnapproving}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleUnapprove(unapproveItemId)}
-              className="bg-primary hover:bg-primary/90"
-              disabled={isUnapproving}
-            >
-              {isUnapproving ? "Unapproving..." : "Unapprove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
