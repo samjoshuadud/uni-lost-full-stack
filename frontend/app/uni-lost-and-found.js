@@ -25,7 +25,7 @@ import VerificationDialog from "./components/dialogs/VerificationDialog"
 import VerificationSuccessDialog from "./components/dialogs/VerificationSuccessDialog"
 import VerificationFailDialog from "./components/dialogs/VerificationFailDialog"
 
-import { ItemStatus } from "@/lib/constants";
+import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { authApi, itemApi } from '@/lib/api-client';
 
 export default function UniLostAndFound() {
@@ -118,23 +118,92 @@ export default function UniLostAndFound() {
     }
   };
 
+  const handleUnapprove = async (itemId) => {
+    try {
+      // First get all processes to find the correct processId
+      const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
+      const processData = await processResponse.json();
+      
+      // Find the process that matches our item
+      const process = processData.$values?.find(p => {
+        const processItemId = p.itemId || p.ItemId;
+        return processItemId === itemId;
+      });
+
+      if (!process) {
+        console.error('No process found for item:', itemId);
+        return;
+      }
+
+      const processId = process.id || process.Id;
+      console.log('Found process:', { process, processId });
+
+      // Update item approval status
+      await fetch(`http://localhost:5067/api/Item/${itemId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: false })
+      });
+
+      // Update process status using the correct processId
+      await fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: ProcessStatus.PENDING_APPROVAL,
+          message: ProcessMessages.WAITING_APPROVAL
+        })
+      });
+
+      // Update items state to reflect the change immediately
+      setItems(prevItems => {
+        return prevItems.filter(item => {
+          // For nested structure (like in filteredItems)
+          if (item.Item) {
+            return item.Item.Id !== itemId && item.Item.id !== itemId;
+          }
+          // For flat structure
+          return item.id !== itemId && item.Id !== itemId;
+        });
+      });
+
+      // Close detail dialog if it's open
+      if (showDetailsDialog) {
+        setShowDetailsDialog(false);
+        setSelectedItem(null);
+      }
+
+    } catch (error) {
+      console.error('Error unapproving item:', error);
+    }
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case "dashboard":
+        const dashboardItems = items
+          .filter(item => 
+            (item.Item?.Approved === true || item.item?.approved === true) && 
+            (item.status === "approved" || item.Status === "approved")
+          )
+          .map(item => ({
+            id: item.Item?.Id || item.item?.id,
+            name: item.Item?.Name || item.item?.name,
+            description: item.Item?.Description || item.item?.description,
+            category: item.Item?.Category || item.item?.category,
+            location: item.Item?.Location || item.item?.location,
+            status: item.Item?.Status || item.item?.status,
+            imageUrl: item.Item?.ImageUrl || item.item?.imageUrl,
+            dateReported: item.Item?.DateReported || item.item?.dateReported,
+            reporterId: item.Item?.ReporterId || item.item?.reporterId,
+            additionalDescriptions: 
+              (item.Item?.AdditionalDescriptions?.$values || 
+               item.item?.additionalDescriptions?.$values || 
+               [])
+          }));
+        
         return <DashboardSection 
-          items={filteredItems.map(item => ({
-            ...item.Item,
-            id: item.Item.Id,
-            name: item.Item.Name,
-            description: item.Item.Description,
-            category: item.Item.Category,
-            location: item.Item.Location,
-            status: item.Item.Status,
-            imageUrl: item.Item.ImageUrl,
-            dateReported: item.Item.DateReported,
-            reporterId: item.Item.ReporterId,
-            additionalDescriptions: item.Item.AdditionalDescriptions?.$values || []
-          }))} 
+          items={dashboardItems}
           handleViewDetails={(item) => { 
             setSelectedItem(item);
             setShowDetailsDialog(true);
@@ -170,6 +239,7 @@ export default function UniLostAndFound() {
           }}
           userId={user?.uid}
           onDelete={handleDelete}
+          onUnapprove={handleUnapprove}
         />
       case "found":
         const foundItems = items.filter(process => 
@@ -195,6 +265,7 @@ export default function UniLostAndFound() {
           handleViewDetails={handleViewDetails}
           userId={user?.uid}
           onDelete={handleDelete}
+          onUnapprove={handleUnapprove}
         />
       case "history":
         return <ItemSection 
@@ -923,6 +994,7 @@ export default function UniLostAndFound() {
           onDelete={handleDelete}
           isAdmin={isAdmin}
           userId={user?.uid}
+          onUnapprove={handleUnapprove}
         />
 
         <AuthRequiredDialog 

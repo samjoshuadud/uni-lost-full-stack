@@ -6,23 +6,38 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
 import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants'
-import { Package, ExternalLink, Trash, Loader2 } from "lucide-react"
+import { Package, ExternalLink, Trash, Loader2, X } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { ProcessStatus, ProcessMessages } from '@/lib/constants'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react"
 
 export default function DashboardSection({ 
+  items = [], 
   handleViewDetails,
   isAdmin = false,
   userId = null,
-  onDelete
+  onDelete,
+  onUnapprove
 }) {
   const { userData } = useAuth();
-  const [items, setItems] = useState([]);
+  const [localItems, setLocalItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [showUnapproveDialog, setShowUnapproveDialog] = useState(false);
+  const [unapproveItemId, setUnapproveItemId] = useState(null);
+  const [isUnapproving, setIsUnapproving] = useState(false);
+
+  // Update localItems when items prop changes
+  useEffect(() => {
+    setIsLoading(true);
+    setLocalItems(items);
+    setIsLoading(false);
+  }, [items]);
 
   // Function to check if user can delete
   const canDelete = (item) => {
@@ -35,7 +50,7 @@ export default function DashboardSection({
     try {
       setDeletingItemId(itemToDelete.id);
       await onDelete(itemToDelete.id);
-      setItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
+      setLocalItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
     } finally {
       setDeletingItemId(null);
       setShowDeleteDialog(false);
@@ -43,42 +58,56 @@ export default function DashboardSection({
     }
   };
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        setIsLoading(true);
-        const response = await fetch('http://localhost:5067/api/Item/pending/all');
-        if (!response.ok) throw new Error('Failed to fetch items');
-        
-        const data = await response.json();
-        
-        // Filter for approved items with status "approved"
-        const approvedItems = data.$values?.filter(process => 
-          process.item?.approved === true && 
-          process.status === "approved"
-        ).map(process => ({
-          id: process.item.id,
-          name: process.item.name,
-          category: process.item.category,
-          location: process.item.location,
-          status: process.item.status,
-          imageUrl: process.item.imageUrl,
-          dateReported: process.item.dateReported,
-          reporterId: process.item.reporterId,
-          additionalDescriptions: process.item.additionalDescriptions?.$values || []
-        })) || [];
+  // Add local handler for unapprove
+  const handleUnapprove = async (itemId) => {
+    try {
+      setIsUnapproving(true);
+      setShowUnapproveDialog(false);
 
-        setItems(approvedItems);
-      } catch (error) {
-        console.error('Error fetching items:', error);
-        setError('Failed to fetch items');
-      } finally {
-        setIsLoading(false);
+      // First get all processes to find the correct processId
+      const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
+      const processData = await processResponse.json();
+      
+      // Find the process that matches our item
+      const process = processData.$values?.find(p => {
+        const processItemId = p.itemId || p.ItemId;
+        return processItemId === itemId;
+      });
+
+      if (!process) {
+        console.error('No process found for item:', itemId);
+        return;
       }
-    };
 
-    fetchItems();
-  }, []);
+      const processId = process.id || process.Id;
+
+      // Update item approval status
+      await fetch(`http://localhost:5067/api/Item/${itemId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: false })
+      });
+
+      // Update process status using the correct processId
+      await fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: ProcessStatus.PENDING_APPROVAL,
+          message: ProcessMessages.WAITING_APPROVAL
+        })
+      });
+
+      // Update local state immediately
+      setLocalItems(prevItems => prevItems.filter(item => item.id !== itemId));
+
+    } catch (error) {
+      console.error('Error unapproving item:', error);
+    } finally {
+      setIsUnapproving(false);
+      setUnapproveItemId(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -112,7 +141,7 @@ export default function DashboardSection({
     );
   }
 
-  if (!items.length) {
+  if (!localItems.length) {
     return (
       <Card className="col-span-full">
         <CardContent className="p-8 text-center">
@@ -125,7 +154,7 @@ export default function DashboardSection({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((item) => (
+      {localItems.map((item) => (
         <Card 
           key={item.id} 
           id={`item-${item.id}`} 
@@ -163,7 +192,15 @@ export default function DashboardSection({
             {/* Content Section */}
             <div className="space-y-3">
               <div>
-                <h3 className="font-semibold text-lg truncate">{item.name}</h3>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="font-semibold text-lg truncate">{item.name}</h3>
+                  <Badge 
+                    variant={item.status?.toLowerCase() === "lost" ? "destructive" : "success"}
+                    className="capitalize"
+                  >
+                    {item.status}
+                  </Badge>
+                </div>
                 <p className="text-sm text-muted-foreground truncate">
                   {item.location}
                 </p>
@@ -184,28 +221,48 @@ export default function DashboardSection({
                     View Details
                   </Button>
                   {canDelete(item) && (
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => {
-                        setItemToDelete(item);
-                        setShowDeleteDialog(true);
-                      }}
-                      disabled={deletingItemId === item.id}
-                      className="gap-2"
-                    >
-                      {deletingItemId === item.id ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Deleting...
-                        </>
-                      ) : (
-                        <>
-                          <Trash className="h-4 w-4" />
-                          Delete
-                        </>
-                      )}
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {isAdmin && (
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setUnapproveItemId(item.id);
+                              setShowUnapproveDialog(true);
+                            }}
+                            disabled={deletingItemId === item.id || isUnapproving}
+                            className="gap-2"
+                          >
+                            <X className="h-4 w-4" />
+                            Unapprove
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setItemToDelete(item);
+                            setShowDeleteDialog(true);
+                          }}
+                          disabled={deletingItemId === item.id}
+                          className="gap-2 text-destructive focus:text-destructive"
+                        >
+                          {deletingItemId === item.id ? (
+                            <>
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Deleting...
+                            </>
+                          ) : (
+                            <>
+                              <Trash className="h-4 w-4" />
+                              Delete
+                            </>
+                          )}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   )}
                 </div>
               </div>
@@ -231,6 +288,28 @@ export default function DashboardSection({
               disabled={deletingItemId !== null}
             >
               {deletingItemId !== null ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unapprove Confirmation Dialog */}
+      <AlertDialog open={showUnapproveDialog} onOpenChange={setShowUnapproveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unapprove Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unapprove this item? It will be moved back to pending approval.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnapproving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleUnapprove(unapproveItemId)}
+              className="bg-primary hover:bg-primary/90"
+              disabled={isUnapproving}
+            >
+              {isUnapproving ? "Unapproving..." : "Unapprove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

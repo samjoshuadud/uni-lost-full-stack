@@ -3,9 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Package, ExternalLink, Trash, Loader2 } from "lucide-react"
-import { useState } from "react"
+import { Package, ExternalLink, Trash, Loader2, X } from "lucide-react"
+import { useState, useEffect } from "react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { ProcessStatus, ProcessMessages } from '@/lib/constants'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MoreVertical } from "lucide-react"
 
 export default function ItemSection({ 
   items = [], 
@@ -13,11 +16,22 @@ export default function ItemSection({
   isAdmin, 
   handleViewDetails,
   userId = null,  // Add this prop
-  onDelete      // Add this prop
+  onDelete,      // Add this prop
+  onUnapprove  // Add this prop
 }) {
+  // Add state to manage items locally
+  const [localItems, setLocalItems] = useState(items);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [showUnapproveDialog, setShowUnapproveDialog] = useState(false);
+  const [unapproveItemId, setUnapproveItemId] = useState(null);
+  const [isUnapproving, setIsUnapproving] = useState(false);
+
+  // Update localItems when items prop changes
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
 
   // Function to check if user can delete
   const canDelete = (item) => {
@@ -30,6 +44,8 @@ export default function ItemSection({
     try {
       setDeletingItemId(itemToDelete.id);
       await onDelete(itemToDelete.id);
+      // Update local state after successful deletion
+      setLocalItems(prevItems => prevItems.filter(item => item.id !== itemToDelete.id));
     } finally {
       setDeletingItemId(null);
       setShowDeleteDialog(false);
@@ -37,8 +53,59 @@ export default function ItemSection({
     }
   };
 
+  // Add handler for unapprove
+  const handleUnapprove = async (itemId) => {
+    try {
+      setIsUnapproving(true);
+      setShowUnapproveDialog(false);
+
+      // First get all processes to find the correct processId
+      const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
+      const processData = await processResponse.json();
+      
+      // Find the process that matches our item
+      const process = processData.$values?.find(p => {
+        const processItemId = p.itemId || p.ItemId;
+        return processItemId === itemId;
+      });
+
+      if (!process) {
+        console.error('No process found for item:', itemId);
+        return;
+      }
+
+      const processId = process.id || process.Id;
+
+      // Update item approval status
+      await fetch(`http://localhost:5067/api/Item/${itemId}/approve`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: false })
+      });
+
+      // Update process status using the correct processId
+      await fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: ProcessStatus.PENDING_APPROVAL,
+          message: ProcessMessages.WAITING_APPROVAL
+        })
+      });
+
+      // Update local state immediately
+      setLocalItems(prevItems => prevItems.filter(item => item.id !== itemId));
+
+    } catch (error) {
+      console.error('Error unapproving item:', error);
+    } finally {
+      setIsUnapproving(false);
+      setUnapproveItemId(null);
+    }
+  };
+
   // Filter items that are approved and have the correct status
-  const filteredItems = items.filter(item => 
+  const filteredItems = localItems.filter(item => 
     item.approved === true && 
     item.status?.toLowerCase() === title?.toLowerCase().replace(" items", "")
   );
@@ -99,7 +166,15 @@ export default function ItemSection({
               {/* Content Section */}
               <div className="space-y-3">
                 <div>
-                  <h3 className="font-semibold text-lg truncate">{item.name}</h3>
+                  <div className="flex items-center justify-between mb-1">
+                    <h3 className="font-semibold text-lg truncate">{item.name}</h3>
+                    <Badge 
+                      variant={item.status?.toLowerCase() === "lost" ? "destructive" : "success"}
+                      className="capitalize"
+                    >
+                      {item.status}
+                    </Badge>
+                  </div>
                   <p className="text-sm text-muted-foreground truncate">
                     {item.location}
                   </p>
@@ -120,28 +195,48 @@ export default function ItemSection({
                       View Details
                     </Button>
                     {canDelete(item) && (
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => {
-                          setItemToDelete(item);
-                          setShowDeleteDialog(true);
-                        }}
-                        disabled={deletingItemId === item.id}
-                        className="gap-2"
-                      >
-                        {deletingItemId === item.id ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Deleting...
-                          </>
-                        ) : (
-                          <>
-                            <Trash className="h-4 w-4" />
-                            Delete
-                          </>
-                        )}
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {isAdmin && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setUnapproveItemId(item.id);
+                                setShowUnapproveDialog(true);
+                              }}
+                              disabled={deletingItemId === item.id || isUnapproving}
+                              className="gap-2"
+                            >
+                              <X className="h-4 w-4" />
+                              Unapprove
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setItemToDelete(item);
+                              setShowDeleteDialog(true);
+                            }}
+                            disabled={deletingItemId === item.id || isUnapproving}
+                            className="gap-2 text-destructive focus:text-destructive"
+                          >
+                            {deletingItemId === item.id || isUnapproving ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <Trash className="h-4 w-4" />
+                                Delete
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
                 </div>
@@ -168,6 +263,27 @@ export default function ItemSection({
               disabled={deletingItemId !== null}
             >
               {deletingItemId !== null ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showUnapproveDialog} onOpenChange={setShowUnapproveDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unapprove Item</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unapprove this item? It will be moved back to pending approval.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isUnapproving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleUnapprove(unapproveItemId)}
+              className="bg-primary hover:bg-primary/90"
+              disabled={isUnapproving}
+            >
+              {isUnapproving ? "Unapproving..." : "Unapprove"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

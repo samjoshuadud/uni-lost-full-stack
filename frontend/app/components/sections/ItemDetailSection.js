@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useState } from "react"
+import { ProcessStatus, ProcessMessages } from '@/lib/constants'
 
 export default function ItemDetailSection({ 
   item, 
@@ -16,10 +17,13 @@ export default function ItemDetailSection({
   onDelete, 
   open,
   isAdmin = false,
-  userId = null
+  userId = null,
+  onUnapprove
 }) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUnapproving, setIsUnapproving] = useState(false);
+  const [showUnapproveDialog, setShowUnapproveDialog] = useState(false);
 
   if (!item) return null;
 
@@ -55,6 +59,56 @@ export default function ItemDetailSection({
            item.additionalDescriptions.some(desc => desc.title || desc.description);
   };
 
+  const handleUnapprove = async () => {
+    try {
+      setIsUnapproving(true);
+      setShowUnapproveDialog(false);
+      onClose();
+
+      // First get all processes to find the correct processId
+      const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
+      const processData = await processResponse.json();
+      
+      // Find the process that matches our item
+      const process = processData.$values?.find(p => {
+        const processItemId = p.itemId || p.ItemId;
+        return processItemId === item.id;
+      });
+
+      if (!process) {
+        console.error('No process found for item:', item.id);
+        return;
+      }
+
+      const processId = process.id || process.Id;
+
+      // Execute both API calls concurrently
+      await Promise.all([
+        // Update item approval status
+        fetch(`http://localhost:5067/api/Item/${item.id}/approve`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ approved: false })
+        }),
+
+        // Update process status
+        fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            status: ProcessStatus.PENDING_APPROVAL,
+            message: ProcessMessages.WAITING_APPROVAL
+          })
+        })
+      ]);
+
+    } catch (error) {
+      console.error('Error unapproving item:', error);
+    } finally {
+      setIsUnapproving(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -62,6 +116,26 @@ export default function ItemDetailSection({
           <DialogTitle>Item Details</DialogTitle>
           {canDelete() && (
             <div className="flex items-center gap-4">
+              {isAdmin && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => setShowUnapproveDialog(true)}
+                  disabled={isUnapproving || isDeleting}
+                >
+                  {isUnapproving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Unapproving...
+                    </>
+                  ) : (
+                    <>
+                      <X className="h-4 w-4 mr-2" />
+                      Unapprove
+                    </>
+                  )}
+                </Button>
+              )}
               <Button 
                 variant="destructive" 
                 size="sm"
@@ -197,6 +271,27 @@ export default function ItemDetailSection({
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={showUnapproveDialog} onOpenChange={setShowUnapproveDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Unapprove Item</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to unapprove this item? It will be moved back to pending approval.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isUnapproving}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleUnapprove}
+                className="bg-primary hover:bg-primary/90"
+                disabled={isUnapproving}
+              >
+                {isUnapproving ? "Unapproving..." : "Unapprove"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
