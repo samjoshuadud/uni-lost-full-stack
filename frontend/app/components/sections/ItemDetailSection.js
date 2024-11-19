@@ -23,7 +23,6 @@ export default function ItemDetailSection({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUnapproving, setIsUnapproving] = useState(false);
-  const [showUnapproveDialog, setShowUnapproveDialog] = useState(false);
 
   if (!item) return null;
 
@@ -61,8 +60,9 @@ export default function ItemDetailSection({
 
   const handleUnapprove = async () => {
     try {
-      setIsUnapproving(true);
-      setShowUnapproveDialog(false);
+      setIsUnapproving(true); // Start loading state
+      
+      // Close dialog immediately to improve perceived performance
       onClose();
 
       // First get all processes to find the correct processId
@@ -120,7 +120,7 @@ export default function ItemDetailSection({
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setShowUnapproveDialog(true)}
+                  onClick={() => handleUnapprove()}
                   disabled={isUnapproving || isDeleting}
                 >
                   {isUnapproving ? (
@@ -271,27 +271,6 @@ export default function ItemDetailSection({
                 disabled={isDeleting}
               >
                 {isDeleting ? "Deleting..." : "Delete"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-
-        <AlertDialog open={showUnapproveDialog} onOpenChange={setShowUnapproveDialog}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Unapprove Item</AlertDialogTitle>
-              <AlertDialogDescription>
-                Are you sure you want to unapprove this item? It will be moved back to pending approval.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isUnapproving}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleUnapprove}
-                className="bg-primary hover:bg-primary/90"
-                disabled={isUnapproving}
-              >
-                {isUnapproving ? "Unapproving..." : "Unapprove"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
