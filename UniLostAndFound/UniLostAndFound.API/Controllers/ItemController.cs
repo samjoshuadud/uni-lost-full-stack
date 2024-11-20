@@ -259,4 +259,46 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { message = "Error verifying answers", error = ex.Message });
         }
     }
+
+    [HttpGet("process/{processId}/questions")] 
+    public async Task<IActionResult> GetVerificationQuestions(string processId)
+    {
+        try
+        {
+            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
+            if (!questions.Any())
+            {
+                return NotFound(new { message = "No verification questions found for this process" });
+            }
+
+            return Ok(new { 
+                processId = processId,
+                questions = questions.Select(q => q.Question).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting verification questions: {ex.Message}");
+            return StatusCode(500, new { message = "Error retrieving verification questions", error = ex.Message });
+        }
+    }
+
+    [HttpPost("process/{processId}/questions")] // Get Answers Here As well for this endpoint
+    public async Task<IActionResult> AddVerificationQuestions(string processId, [FromBody] List<string> questions)
+    {
+        try
+        {
+            var verificationQuestions = await _verificationQuestionService.CreateQuestionsAsync(processId, questions);
+            
+            return Ok(new { 
+                processId = processId,
+                questions = verificationQuestions.Select(q => q.Question).ToList()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error adding verification questions: {ex.Message}");
+            return StatusCode(500, new { message = "Error adding verification questions", error = ex.Message });
+        }
+    }
 } 
