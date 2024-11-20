@@ -39,7 +39,7 @@ export default function DashboardSection({
       const timer = setTimeout(() => {
         setIsLoading(false);
         setIsInitialLoad(false);
-      }, 500);
+      }, 300);
       return () => clearTimeout(timer);
     } else {
       setLocalItems(items);
@@ -170,8 +170,9 @@ export default function DashboardSection({
       {localItems.map((item) => (
         <Card 
           key={item.id} 
-          id={`item-${item.id}`} 
-          className="overflow-hidden hover:shadow-lg transition-all"
+          id={`item-${item.id}`}
+          className="overflow-hidden transition-all duration-300"
+          style={{ transformOrigin: 'center' }}
         >
           <CardContent className="p-4">
             {/* Image Section */}

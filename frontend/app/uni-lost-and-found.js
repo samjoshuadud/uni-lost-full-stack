@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Bell, Search, User, Loader2 } from "lucide-react"
@@ -68,6 +68,42 @@ export default function UniLostAndFound() {
   const [isProcessCountLoading, setIsProcessCountLoading] = useState(true);
 
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+
+  // Add state for user's pending processes
+  const [userPendingProcesses, setUserPendingProcesses] = useState([]);
+
+  // Add function to fetch user's pending processes
+  const fetchUserPendingProcesses = async () => {
+    if (!user?.uid) return;
+
+    try {
+      const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+      if (!response.ok) throw new Error("Failed to fetch pending processes");
+      
+      const data = await response.json();
+      if (data && data.$values) {
+        // Filter processes for the current user
+        const userProcesses = data.$values.filter(process => 
+          process.userId === user.uid || process.item?.reporterId === user.uid
+        );
+        setUserPendingProcesses(userProcesses);
+      }
+    } catch (error) {
+      console.error('Error fetching user pending processes:', error);
+    }
+  };
+
+  // Add useEffect to fetch user's pending processes
+  useEffect(() => {
+    if (user?.uid && activeSection === "pending_process") {
+      fetchUserPendingProcesses();
+      
+      // Set up polling for updates
+      const intervalId = setInterval(fetchUserPendingProcesses, 5000);
+      
+      return () => clearInterval(intervalId);
+    }
+  }, [user?.uid, activeSection]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -305,11 +341,10 @@ export default function UniLostAndFound() {
         return <ProfileSection user={user} />
       case "pending_process":
         return <PendingProcessSection 
-          pendingProcesses={pendingProcesses} 
-          onCancelRequest={handleCancelRequest}
-          onVerify={handleVerification}
-          onViewPost={handleViewPost}
+          pendingProcesses={userPendingProcesses}
           onViewDetails={handleViewDetails}
+          handleDelete={handleDelete}
+          onViewPost={handleViewPost}
         />
       default:
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
@@ -586,25 +621,32 @@ export default function UniLostAndFound() {
     }
   };
 
-  const handleViewPost = (item) => {
+  const handleViewPost = useCallback((item) => {
+    // Set the selected item and switch to dashboard section
     setSelectedItem(item);
     setActiveSection("dashboard");
     
-    // Add a small delay to ensure the dashboard is rendered
-    setTimeout(() => {
-      // Find the card element and scroll to it
-      const itemCard = document.getElementById(`item-${item.id}`);
-      if (itemCard) {
-        itemCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        // Add a highlight effect
-        itemCard.classList.add('ring-2', 'ring-primary', 'ring-offset-2');
-        // Remove the highlight effect after 2 seconds
+    // Use requestAnimationFrame to wait for the next frame
+    requestAnimationFrame(() => {
+      // Find the item element
+      const itemElement = document.getElementById(`item-${item.id}`);
+      if (itemElement) {
+        // First scroll to the item
+        itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Add highlight effect
+        itemElement.style.transition = 'all 0.3s ease-in-out';
+        itemElement.style.boxShadow = '0 0 0 4px rgb(var(--primary))';
+        itemElement.style.transform = 'scale(1.02)';
+        
+        // Remove highlight after animation
         setTimeout(() => {
-          itemCard.classList.remove('ring-2', 'ring-primary', 'ring-offset-2');
+          itemElement.style.boxShadow = '';
+          itemElement.style.transform = '';
         }, 2000);
       }
-    }, 100);
-  };
+    });
+  }, []);
 
   const handleUpdateItemStatus = async (itemId, status, verificationQuestions = null) => {
     try {
