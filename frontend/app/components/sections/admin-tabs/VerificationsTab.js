@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, XCircle, Package, RotateCcw, Eye, Loader2, ClipboardList, ChevronDown, ChevronUp } from "lucide-react"
 import { useMemo, useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 
 export default function VerificationsTab({ 
   items = [],
@@ -16,6 +17,8 @@ export default function VerificationsTab({
   const [localItems, setLocalItems] = useState([]);
   const [verificationQuestions, setVerificationQuestions] = useState({});
   const [expandedProcessId, setExpandedProcessId] = useState(null);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [selectedProcessId, setSelectedProcessId] = useState(null);
 
   useEffect(() => {
     const fetchQuestions = async (processId) => {
@@ -68,18 +71,20 @@ export default function VerificationsTab({
     };
   }, [items, localItems]);
 
-  const handleCancelVerification = async (processId) => {
+  const handleCancelVerification = async () => {
+    if (!selectedProcessId) return;
+
     try {
-      setCancelingProcessId(processId);
+      setCancelingProcessId(selectedProcessId);
 
       setLocalItems(prevItems => 
         prevItems.length > 0 
-          ? prevItems.filter(item => item.id !== processId)
-          : items.filter(item => item.id !== processId)
+          ? prevItems.filter(item => item.id !== selectedProcessId)
+          : items.filter(item => item.id !== selectedProcessId)
       );
       
       const response = await fetch(
-        `http://localhost:5067/api/Item/process/${processId}/cancel`,
+        `http://localhost:5067/api/Item/process/${selectedProcessId}/cancel`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -95,6 +100,8 @@ export default function VerificationsTab({
       setLocalItems([]);
     } finally {
       setCancelingProcessId(null);
+      setShowCancelDialog(false);
+      setSelectedProcessId(null);
     }
   };
 
@@ -252,7 +259,10 @@ export default function VerificationsTab({
                   <Button 
                     variant="outline"
                     className="w-full"
-                    onClick={() => handleCancelVerification(process.id)}
+                    onClick={() => {
+                      setSelectedProcessId(process.id);
+                      setShowCancelDialog(true);
+                    }}
                     disabled={cancelingProcessId === process.id}
                   >
                     {cancelingProcessId === process.id ? (
@@ -283,6 +293,25 @@ export default function VerificationsTab({
           </Card>
         )}
       </div>
+
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Cancel Verification</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to cancel this verification request? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              No, Keep It
+            </Button>
+            <Button variant="destructive" onClick={handleCancelVerification}>
+              Yes, Cancel It
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
