@@ -59,30 +59,43 @@ export default function UniLostAndFound() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   useEffect(() => {
-    const fetchItems = async () => {
+    const fetchInitialData = async () => {
       try {
-        setIsLoading(true);
-        if (user && !authLoading) {
-          console.log('Attempting to fetch items for user:', user.email);
-          const response = await makeAuthenticatedRequest('/api/Item/pending/all');
-          if (response) {
-            // Ensure response is an array
-            const itemsArray = Array.isArray(response) ? response : [response];
-            setItems(itemsArray.filter(item => item?.Item)); // Filter out any null or undefined items
-          } else {
-            setItems([]);
-          }
+        const response = await fetch('http://localhost:5067/api/Item/pending/all');
+        if (!response.ok) throw new Error("Failed to fetch data");
+        
+        const data = await response.json();
+        if (data && data.$values) {
+          setItems(data.$values);
         }
       } catch (error) {
-        console.error('Error fetching items:', error);
-        setItems([]); // Set empty array on error
-      } finally {
-        setIsLoading(false);
+        console.error('Error fetching initial data:', error);
       }
     };
 
-    fetchItems();
-  }, [user, authLoading, makeAuthenticatedRequest]);
+    // Fetch data on initial load, regardless of auth state
+    fetchInitialData();
+  }, []); // Empty dependency array for initial load only
+
+  useEffect(() => {
+    const fetchAuthenticatedData = async () => {
+      if (!user || authLoading) return;
+
+      try {
+        if (activeSection === "lost" || activeSection === "found") {
+          const response = await makeAuthenticatedRequest('/api/Item/pending/all');
+          if (response) {
+            const itemsArray = Array.isArray(response) ? response : [response];
+            setItems(itemsArray.filter(item => item?.Item));
+          }
+        }
+      } catch (error) {
+        console.error(`Error fetching ${activeSection} items:`, error);
+      }
+    };
+
+    fetchAuthenticatedData();
+  }, [activeSection, user, authLoading, makeAuthenticatedRequest]);
 
   const filteredItems = items.filter(item => {
     // Check if item exists and has Item property

@@ -270,30 +270,282 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="text-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-        <p className="mt-4 text-muted-foreground">Loading pending processes...</p>
-      </div>
-    );
-  }
+  // Add this helper function to render different UI based on status
+  const renderProcessCard = (process) => {
+    const status = process.status?.toLowerCase();
 
-  if (error) {
-    return (
-      <Card>
-        <CardContent className="p-4 text-center text-destructive">
-          Error: {error}
-        </CardContent>
-      </Card>
-    );
-  }
+    switch (status) {
+      case "pending_approval":
+        return (
+          // Pending Approval UI - Shows waiting state with admin review info
+          <Card key={process.id} className="border-l-4 border-l-yellow-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">{process.item.name || 'Unnamed Item'}</h3>
+                  <Badge variant="outline" className={
+                    process.item.status === "lost" ? "bg-red-100 text-red-800" :
+                    process.item.status === "found" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {process.item.status === "lost" ? "Lost" :
+                     process.item.status === "found" ? "Found" :
+                     "Unknown"}
+                  </Badge>
+                </div>
+                {getStatusBadge(process.status)}
+              </div>
+              <div className="bg-yellow-50 p-3 rounded-md mb-3">
+                <p className="text-sm text-yellow-800">
+                  Your report is currently under review by our administrators. 
+                  This usually takes 1-2 business days.
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Category: {process.item.category || 'N/A'}</p>
+                <p>Location: {process.item.location || 'N/A'}</p>
+                <p>Submitted: {new Date(process.createdAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => onViewDetails?.(process.item)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => {
+                    setProcessToCancelId(process.id);
+                    setShowCancelDialog(true);
+                  }}
+                  disabled={deletingProcessId === process.id}
+                >
+                  {deletingProcessId === process.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
 
-  return (
-    <div className="space-y-4">
-      <h2 className="text-xl font-semibold mb-4">Pending Processes</h2>
-      <div className="space-y-4">
-        {pendingProcesses.map((process) => (
+      case "approved":
+        return (
+          // Approved UI - Shows success state with view post option
+          <Card key={process.id} className="border-l-4 border-l-green-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">{process.item.name || 'Unnamed Item'}</h3>
+                  <Badge variant="outline" className={
+                    process.item.status === "lost" ? "bg-red-100 text-red-800" :
+                    process.item.status === "found" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {process.item.status === "lost" ? "Lost" :
+                     process.item.status === "found" ? "Found" :
+                     "Unknown"}
+                  </Badge>
+                </div>
+                {getStatusBadge(process.status)}
+              </div>
+              <div className="bg-green-50 p-3 rounded-md mb-3">
+                <p className="text-sm text-green-800">
+                  Your item has been approved and is now visible on the dashboard!
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Category: {process.item.category || 'N/A'}</p>
+                <p>Location: {process.item.location || 'N/A'}</p>
+                <p>Approved: {new Date(process.updatedAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="default" 
+                  className="w-full"
+                  onClick={() => onViewPost?.(process.item)}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Post
+                </Button>
+                <Button 
+                  variant="destructive"
+                  onClick={() => {
+                    setProcessToCancelId(process.id);
+                    setShowCancelDialog(true);
+                  }}
+                  disabled={deletingProcessId === process.id}
+                >
+                  {deletingProcessId === process.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case "verification_needed":
+        return (
+          // Verification Needed UI - Shows action required state
+          <Card key={process.id} className="border-l-4 border-l-blue-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">{process.item.name || 'Unnamed Item'}</h3>
+                  <Badge variant="outline" className={
+                    process.item.status === "lost" ? "bg-red-100 text-red-800" :
+                    process.item.status === "found" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {process.item.status === "lost" ? "Lost" :
+                     process.item.status === "found" ? "Found" :
+                     "Unknown"}
+                  </Badge>
+                </div>
+                {getStatusBadge(process.status)}
+              </div>
+              <div className="bg-blue-50 p-3 rounded-md mb-3">
+                <p className="text-sm text-blue-800">
+                  Action Required: Please verify your ownership of this item by answering some questions.
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Category: {process.item.category || 'N/A'}</p>
+                <p>Location: {process.item.location || 'N/A'}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button 
+                  variant="default" 
+                  className="w-full"
+                  onClick={() => onVerify?.(process)}
+                >
+                  Verify Now
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => onViewDetails?.(process.item)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case "pending_verification":
+        return (
+          // Pending Verification UI - Shows verification in review state
+          <Card key={process.id} className="border-l-4 border-l-purple-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">{process.item.name || 'Unnamed Item'}</h3>
+                  <Badge variant="outline" className={
+                    process.item.status === "lost" ? "bg-red-100 text-red-800" :
+                    process.item.status === "found" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {process.item.status === "lost" ? "Lost" :
+                     process.item.status === "found" ? "Found" :
+                     "Unknown"}
+                  </Badge>
+                </div>
+                {getStatusBadge(process.status)}
+              </div>
+              <div className="bg-purple-50 p-3 rounded-md mb-3">
+                <p className="text-sm text-purple-800">
+                  Your verification answers are being reviewed by our administrators.
+                  We'll notify you once the review is complete.
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Category: {process.item.category || 'N/A'}</p>
+                <p>Location: {process.item.location || 'N/A'}</p>
+                <p>Submitted: {new Date(process.updatedAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => onViewDetails?.(process.item)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      case "verified":
+        return (
+          // Verified UI - Shows success state with retrieval instructions
+          <Card key={process.id} className="border-l-4 border-l-green-500">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-bold">{process.item.name || 'Unnamed Item'}</h3>
+                  <Badge variant="outline" className={
+                    process.item.status === "lost" ? "bg-red-100 text-red-800" :
+                    process.item.status === "found" ? "bg-green-100 text-green-800" :
+                    "bg-gray-100 text-gray-800"
+                  }>
+                    {process.item.status === "lost" ? "Lost" :
+                     process.item.status === "found" ? "Found" :
+                     "Unknown"}
+                  </Badge>
+                </div>
+                {getStatusBadge(process.status)}
+              </div>
+              <div className="bg-green-50 p-3 rounded-md mb-3">
+                <p className="text-sm text-green-800 font-medium mb-1">
+                  Verification Successful! 🎉
+                </p>
+                <p className="text-sm text-green-800">
+                  Please proceed to the student center (Room 101) during office hours to retrieve your item.
+                  Don't forget to bring your student ID!
+                </p>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                <p>Category: {process.item.category || 'N/A'}</p>
+                <p>Location: {process.item.location || 'N/A'}</p>
+                <p>Verified: {new Date(process.updatedAt).toLocaleDateString()}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => onViewDetails?.(process.item)}
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+
+      default:
+        return (
+          // Default UI for unknown status
           <Card key={process.id}>
             <CardContent className="p-4">
               <div className="flex items-center justify-between mb-2">
@@ -388,7 +640,34 @@ export default function PendingProcessSection({ onCancelRequest, onVerify, onVie
               </div>
             </CardContent>
           </Card>
-        ))}
+        );
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="text-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+        <p className="mt-4 text-muted-foreground">Loading pending processes...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="p-4 text-center text-destructive">
+          Error: {error}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold mb-4">Pending Processes</h2>
+      <div className="space-y-4">
+        {pendingProcesses.map((process) => renderProcessCard(process))}
       </div>
 
       <AlertDialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
