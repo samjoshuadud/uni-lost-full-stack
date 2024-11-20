@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Bell, Search, User, Loader2 } from "lucide-react"
@@ -134,23 +134,40 @@ export default function UniLostAndFound() {
     };
   }, [activeSection]); // Only depend on activeSection
 
-  const filteredItems = items.filter(item => {
-    // Check if item exists and has Item property
-    if (!item || !item.Item) return false;
-    
-    // Get the actual item data
-    const itemData = item.Item;
-    
-    const approved = itemData.Approved;
-    const matchesCategory = searchCategory === "all" || itemData.Category === searchCategory;
-    const searchTerms = searchQuery.toLowerCase();
-    const matchesSearch = 
-      itemData.Name?.toLowerCase().includes(searchTerms) ||
-      itemData.Location?.toLowerCase().includes(searchTerms) ||
-      itemData.Description?.toLowerCase().includes(searchTerms);
+  const filteredItems = useMemo(() => {
+    if (!items) return [];
 
-    return approved && matchesCategory && matchesSearch;
-  });
+    // Get the array of items, handling both direct array and $values structure
+    const itemsArray = Array.isArray(items) ? items : items.$values || [];
+
+    return itemsArray.filter(process => {
+      // Get the actual item data
+      const item = process.item || process.Item;
+      if (!item) return false;
+
+      // Only show approved items in dashboard
+      if (!item.approved) return false;
+
+      // Category filter
+      const matchesCategory = searchCategory === "all" || 
+        item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+      // Search terms - only filter if there's a search query
+      if (searchQuery.trim()) {
+        const searchTerms = searchQuery.toLowerCase().trim();
+        const matchesSearch = 
+          item.name?.toLowerCase().includes(searchTerms) ||
+          item.location?.toLowerCase().includes(searchTerms) ||
+          item.description?.toLowerCase().includes(searchTerms) ||
+          item.category?.toLowerCase().includes(searchTerms);
+
+        return matchesCategory && matchesSearch;
+      }
+
+      // If no search query, just filter by category
+      return matchesCategory;
+    });
+  }, [items, searchCategory, searchQuery]);
 
   const handleReportSubmit = async (data) => {
     try {

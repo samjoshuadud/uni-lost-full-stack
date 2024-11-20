@@ -301,4 +301,31 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { message = "Error adding verification questions", error = ex.Message });
         }
     }
+
+    [HttpPut("process/{processId}/cancel")]
+    public async Task<IActionResult> CancelVerification(string processId)
+    {
+        try
+        {
+            // Delete verification questions
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+
+            // Update process status
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            process.status = "pending_approval";
+            process.Message = "Waiting for admin approval";
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new { message = "Verification canceled and questions deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error canceling verification: {ex.Message}");
+            return StatusCode(500, new { message = "Error canceling verification", error = ex.Message });
+        }
+    }
 } 

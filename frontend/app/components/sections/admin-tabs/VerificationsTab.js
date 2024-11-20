@@ -17,7 +17,6 @@ export default function VerificationsTab({
   const [verificationQuestions, setVerificationQuestions] = useState({});
   const [expandedProcessId, setExpandedProcessId] = useState(null);
 
-  // Add useEffect to fetch questions for each process
   useEffect(() => {
     const fetchQuestions = async (processId) => {
       try {
@@ -50,19 +49,18 @@ export default function VerificationsTab({
     loadAllQuestions();
   }, [items, localItems]);
 
-  // Use useMemo to filter items and calculate count
   const { verificationItems, verificationCount } = useMemo(() => {
     const itemsToFilter = localItems.length > 0 ? localItems : items;
     if (!itemsToFilter) return { verificationItems: [], verificationCount: 0 };
 
-    // Handle both array and $values structure
     const processArray = Array.isArray(itemsToFilter) ? itemsToFilter : itemsToFilter.$values || [];
 
-    // Filter items in verification status
-    const filteredItems = processArray.filter(process => 
-      process.status === "in_verification" && 
-      process.item?.status?.toLowerCase() === "lost"
-    );
+    const filteredItems = processArray
+      .filter(process => 
+        process.status === "in_verification" && 
+        process.item?.status?.toLowerCase() === "lost"
+      )
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
 
     return {
       verificationItems: filteredItems,
@@ -74,7 +72,6 @@ export default function VerificationsTab({
     try {
       setCancelingProcessId(processId);
 
-      // Optimistically remove the item from local state
       setLocalItems(prevItems => 
         prevItems.length > 0 
           ? prevItems.filter(item => item.id !== processId)
@@ -82,14 +79,10 @@ export default function VerificationsTab({
       );
       
       const response = await fetch(
-        `http://localhost:5067/api/Item/process/${processId}/status`,
+        `http://localhost:5067/api/Item/process/${processId}/cancel`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: "pending_approval",
-            message: "Waiting for admin approval"
-          }),
         }
       );
 
@@ -99,23 +92,9 @@ export default function VerificationsTab({
 
     } catch (error) {
       console.error("Error canceling verification:", error);
-      // Revert the local state if the API call fails
       setLocalItems([]);
     } finally {
       setCancelingProcessId(null);
-    }
-  };
-
-  // Helper function to parse questions from message
-  const getQuestionsFromMessage = (message) => {
-    try {
-      if (message && typeof message === 'string' && message.startsWith('[')) {
-        return JSON.parse(message);
-      }
-      return [];
-    } catch (error) {
-      console.error('Error parsing questions:', error);
-      return [];
     }
   };
 
@@ -153,7 +132,6 @@ export default function VerificationsTab({
         Verification Requests Overview
       </h3>
 
-      {/* Status Card */}
       <div className="grid gap-4 md:grid-cols-1 mt-4">
         <Card className="bg-background hover:bg-muted/50 transition-colors">
           <CardContent className="p-6">
@@ -174,7 +152,6 @@ export default function VerificationsTab({
         </Card>
       </div>
 
-      {/* Items List */}
       <div className="space-y-4">
         {verificationItems.map((process) => (
           <Card 
@@ -183,7 +160,6 @@ export default function VerificationsTab({
           >
             <CardContent className="p-6">
               <div className="flex gap-6">
-                {/* Image Section */}
                 <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
                   {process.item?.imageUrl ? (
                     <div className="w-full h-full relative">
@@ -215,7 +191,6 @@ export default function VerificationsTab({
                   )}
                 </div>
 
-                {/* Content Section */}
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -231,7 +206,6 @@ export default function VerificationsTab({
                     </Badge>
                   </div>
 
-                  {/* Questions Toggle Button */}
                   <Button
                     variant="ghost"
                     className="w-full justify-between mb-2"
@@ -247,7 +221,6 @@ export default function VerificationsTab({
                     )}
                   </Button>
 
-                  {/* Questions Section - Only show when expanded */}
                   {expandedProcessId === process.id && (
                     <div className="space-y-4 mt-4 bg-muted/30 p-4 rounded-lg">
                       {verificationQuestions[process.id]?.map((question, index) => (
@@ -267,7 +240,6 @@ export default function VerificationsTab({
                   )}
                 </div>
 
-                {/* Actions Section */}
                 <div className="flex flex-col gap-2 justify-start min-w-[140px]">
                   <Button 
                     variant="outline"
