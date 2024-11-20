@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<AdditionalDescription> AdditionalDescriptions { get; set; }
     public DbSet<UserAccess> UserAccess { get; set; }
+    public DbSet<VerificationQuestion> VerificationQuestions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -78,6 +79,20 @@ public class AppDbContext : DbContext
             entity.HasOne(e => e.User)
                 .WithMany(u => u.PendingProcesses)
                 .HasForeignKey(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<VerificationQuestion>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Question).IsRequired();
+            entity.Property(e => e.ProcessId).IsRequired();
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+            entity.HasOne(e => e.Process)
+                .WithMany()
+                .HasForeignKey(e => e.ProcessId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

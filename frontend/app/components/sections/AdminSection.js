@@ -100,6 +100,7 @@ export default function AdminSection({
   const [isLoadingVisible, setIsLoadingVisible] = useState(false);
   const [showApprovalSuccessDialog, setShowApprovalSuccessDialog] = useState(false);
   const [approvedItemName, setApprovedItemName] = useState("");
+  const [inVerificationCount, setInVerificationCount] = useState(0);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -119,17 +120,13 @@ export default function AdminSection({
       
       if (data && data.$values) {
         const newData = data.$values;
-        setPendingProcesses(prevProcesses => {
-          // Deep comparison of arrays
-          if (JSON.stringify(prevProcesses) !== JSON.stringify(newData)) {
-            return newData;
-          }
-          return prevProcesses;
-        });
+        setPendingProcesses(newData);
+        setAllItems(newData);
       }
     } catch (error) {
       console.error("Error fetching initial data:", error);
       setPendingProcesses([]);
+      setAllItems([]);
     } finally {
       setIsCountsLoading(false);
     }
@@ -154,13 +151,51 @@ export default function AdminSection({
   // Remove interval and only fetch once when component mounts
   useEffect(() => {
     if (isAdmin) {
-      setIsCountsLoading(true);
-      fetchInitialData().finally(() => {
-        setIsCountsLoading(false);
-      });
-    } else {
-      setPendingProcesses([]);
-      setIsCountsLoading(false);
+      let isMounted = true;
+      let timeoutId;
+
+      const fetchData = async () => {
+        if (!isMounted) return;
+        
+        try {
+          const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+          if (!response.ok) throw new Error("Failed to fetch all pending processes");
+          const data = await response.json();
+          
+          if (data && data.$values && isMounted) {
+            const newData = data.$values;
+            
+            // Update states only if they've changed
+            setPendingProcesses(prevProcesses => {
+              if (JSON.stringify(prevProcesses) !== JSON.stringify(newData)) {
+                return newData;
+              }
+              return prevProcesses;
+            });
+
+            setAllItems(prevItems => {
+              if (JSON.stringify(prevItems) !== JSON.stringify(newData)) {
+                return newData;
+              }
+              return prevItems;
+            });
+          }
+        } catch (error) {
+          console.error("Error fetching data:", error);
+        }
+        
+        // Schedule next update only if component is still mounted
+        if (isMounted) {
+          timeoutId = setTimeout(fetchData, 5000);
+        }
+      };
+
+      fetchData();
+
+      return () => {
+        isMounted = false;
+        if (timeoutId) clearTimeout(timeoutId);
+      };
     }
   }, [isAdmin]);
 
@@ -295,44 +330,29 @@ export default function AdminSection({
     }
   };
 
-  const handleTabChange = async (value, retryCount = 0) => {
+  const handleTabChange = async (value) => {
     setActiveTab(value);
     
-    // Add all tabs that need data refresh
+    // Only fetch data for tabs that need it
     if (["reports", "found", "pending", "verifications", "retrieval"].includes(value)) {
       try {
-        setIsCountsLoading(true);
         setIsLoadingVisible(true);
-        setFetchError(null);
+        setIsCountsLoading(true);
         
-        const startTime = Date.now();
         const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
-        
         if (!response.ok) throw new Error("Failed to fetch pending processes");
         
         const data = await response.json();
         if (data && data.$values) {
           setPendingProcesses(data.$values);
+          setAllItems(data.$values);
         }
-
-        // Ensure minimum loading duration of 500ms
-        const elapsed = Date.now() - startTime;
-        if (elapsed < 500) {
-          await new Promise(resolve => setTimeout(resolve, 500 - elapsed));
-        }
-
       } catch (error) {
         console.error("Error fetching data:", error);
         setFetchError(error.message);
-        
-        if (retryCount < 3) {
-          setTimeout(() => {
-            handleTabChange(value, retryCount + 1);
-          }, 1000 * (retryCount + 1));
-        }
       } finally {
-        setIsCountsLoading(false);
         setIsLoadingVisible(false);
+        setIsCountsLoading(false);
       }
     }
   };
@@ -462,6 +482,30 @@ export default function AdminSection({
     }
   `;
 
+  // Add this function to calculate counts
+  const calculateCounts = useCallback(() => {
+    if (!items) return;
+    
+    const pendingCount = items.filter(process => 
+      process.status === ProcessStatus.PENDING_APPROVAL && 
+      process.item?.status?.toLowerCase() === "lost" && 
+      !process.item?.approved
+    ).length;
+
+    const verificationCount = items.filter(process => 
+      process.status === ProcessStatus.IN_VERIFICATION && 
+      process.item?.status?.toLowerCase() === "lost"
+    ).length;
+
+    setPendingLostApprovalCount(pendingCount);
+    setInVerificationCount(verificationCount);
+  }, [items]);
+
+  // Add useEffect to update counts
+  useEffect(() => {
+    calculateCounts();
+  }, [items, calculateCounts]);
+
   if (!isAdmin) {
     return (
       <Card>
@@ -527,12 +571,11 @@ export default function AdminSection({
               <LostReportsTab
                 items={pendingProcesses}
                 isCountsLoading={isCountsLoading}
-                setPendingLostApprovalCount={setPendingLostApprovalCount}
-                getInVerificationCount={getInVerificationCount}
                 getPendingRetrievalCount={getPendingRetrievalCount}
                 handleDelete={handleDelete}
                 onApprove={onApprove}
                 handleViewDetails={handleViewDetails}
+                onUpdateCounts={calculateCounts}
               />
             </TabsContent>
             <TabsContent value="found">

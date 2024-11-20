@@ -78,16 +78,24 @@ export default function UniLostAndFound() {
         const data = await response.json();
         if (data && data.$values) {
           setItems(data.$values);
+          if (typeof onUpdateCounts === 'function') {
+            onUpdateCounts();
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
       }
     };
 
-    // Fetch data when section changes or on mount
+    let timeoutId;
     if (activeSection === "lost" || activeSection === "found" || activeSection === "dashboard") {
       fetchData();
+      timeoutId = setInterval(fetchData, 5000);
     }
+
+    return () => {
+      if (timeoutId) clearInterval(timeoutId);
+    };
   }, [activeSection]); // Only depend on activeSection
 
   const filteredItems = items.filter(item => {
@@ -771,17 +779,17 @@ export default function UniLostAndFound() {
     }
   }, [user, authLoading, isAdmin, makeAuthenticatedRequest]);
 
-  // Loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
+  // // Loading state
+  // if (isLoading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <div className="flex flex-col items-center gap-4">
+  //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  //         <p className="text-muted-foreground">Loading...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-background">

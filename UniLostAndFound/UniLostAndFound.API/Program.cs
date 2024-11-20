@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using UniLostAndFound.API.Data;
 using UniLostAndFound.API.Repositories;
-using UniLostAndFound.API.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,9 +33,7 @@ try
     // Add MySQL DbContext
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseMySql(connectionString, 
-            new MySqlServerVersion(new Version(10, 4, 32)),
-            mySqlOptions => mySqlOptions.EnableRetryOnFailure()));
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
     // Register Repositories
     builder.Services.AddScoped<IItemRepository, ItemRepository>();
@@ -50,6 +47,7 @@ try
     builder.Services.AddScoped<UserService>();
     builder.Services.AddScoped<UserAccessService>();
     builder.Services.AddScoped<AdminService>();
+    builder.Services.AddScoped<VerificationQuestionService>();
 
     // Add CORS
     builder.Services.AddCors(options =>
