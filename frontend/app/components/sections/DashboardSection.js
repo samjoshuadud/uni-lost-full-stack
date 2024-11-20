@@ -28,13 +28,56 @@ export default function DashboardSection({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // Update localItems when items prop changes
+  // Update useEffect to handle loading state better
   useEffect(() => {
-    setIsLoading(true);
-    setLocalItems(items);
-    setIsLoading(false);
-  }, [items]);
+    if (isInitialLoad) {
+      setIsLoading(true);
+      // Set local items immediately to prevent flash
+      setLocalItems(items);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setLocalItems(items);
+    }
+  }, [items, isInitialLoad]);
+
+  // Add loading skeleton UI
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="overflow-hidden">
+            <CardContent className="p-4">
+              <div className="w-full h-48 mb-4">
+                <Skeleton className="w-full h-full rounded-lg" />
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-5 w-16" />
+                  </div>
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <Skeleton className="h-4 w-24" />
+                  <div className="flex gap-2">
+                    <Skeleton className="h-9 w-[100px]" />
+                    <Skeleton className="h-9 w-9" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   // Function to check if user can delete
   const canDelete = (item) => {
@@ -100,28 +143,6 @@ export default function DashboardSection({
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="overflow-hidden">
-            <CardContent className="p-4">
-              <Skeleton className="w-full h-48 mb-4 rounded-lg" />
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-4 w-1/2" />
-                <div className="flex justify-between items-center mt-4">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-9 w-24" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
-
   if (error) {
     return (
       <Card className="col-span-full">
@@ -132,7 +153,8 @@ export default function DashboardSection({
     );
   }
 
-  if (!localItems.length) {
+  // Only show "No approved items" if we're not loading and there are no items
+  if (!isLoading && !localItems.length) {
     return (
       <Card className="col-span-full">
         <CardContent className="p-8 text-center">
