@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ProcessStatus, ProcessMessages } from '@/lib/constants'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreVertical } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
 export default function ItemSection({ 
   items = [], 
@@ -20,15 +21,98 @@ export default function ItemSection({
   onUnapprove  // Add this prop
 }) {
   // Add state to manage items locally
-  const [localItems, setLocalItems] = useState(items);
+  const [localItems, setLocalItems] = useState([]);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingItemId, setDeletingItemId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
+  const [isInitialLoad, setIsInitialLoad] = useState(true);  // Add this state
+  const [error, setError] = useState(null);
 
-  // Update localItems when items prop changes
+  // Remove the fetch useEffect and just use the items prop
   useEffect(() => {
-    setLocalItems(items);
-  }, [items]);
+    if (isInitialLoad) {
+      setIsLoading(true);
+      setLocalItems(items);
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+        setIsInitialLoad(false);
+      }, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setLocalItems(items);
+    }
+  }, [items, isInitialLoad]);
+
+  // Filter items that are approved and have the correct status
+  const filteredItems = localItems.filter(item => 
+    item.approved === true && 
+    item.status?.toLowerCase() === title?.toLowerCase().replace(" items", "")
+  );
+
+  // Add loading skeleton UI
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="overflow-hidden">
+              <CardContent className="p-4">
+                <div className="w-full h-48 mb-4">
+                  <Skeleton className="w-full h-full rounded-lg" />
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <Skeleton className="h-6 w-1/2" />
+                      <Skeleton className="h-5 w-16" />
+                    </div>
+                    <Skeleton className="h-4 w-2/3" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Skeleton className="h-4 w-24" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-9 w-[100px]" />
+                      <Skeleton className="h-9 w-9" />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <Card className="col-span-full">
+          <CardContent className="p-8 text-center">
+            <p className="text-muted-foreground">{error}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Only show "No items" if we're not loading and there are no items
+  if (!isLoading && !filteredItems.length) {
+    return (
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold">{title}</h2>
+        <Card className="col-span-full">
+          <CardContent className="p-8 text-center">
+            <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+            <p className="font-medium text-muted-foreground">No {title.toLowerCase()} found</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // Function to check if user can delete
   const canDelete = (item) => {
@@ -94,26 +178,6 @@ export default function ItemSection({
       console.error('Error unapproving item:', error);
     }
   };
-
-  // Filter items that are approved and have the correct status
-  const filteredItems = localItems.filter(item => 
-    item.approved === true && 
-    item.status?.toLowerCase() === title?.toLowerCase().replace(" items", "")
-  );
-
-  if (!filteredItems.length) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold">{title}</h2>
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-            <p className="font-medium text-muted-foreground">No {title.toLowerCase()} found</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-4">

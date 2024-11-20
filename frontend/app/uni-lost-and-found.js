@@ -28,6 +28,17 @@ import VerificationFailDialog from "./components/dialogs/VerificationFailDialog"
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { authApi, itemApi } from '@/lib/api-client';
 
+const styles = `
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+`;
+
 export default function UniLostAndFound() {
   const { user, isAdmin, loading: authLoading, makeAuthenticatedRequest } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -59,7 +70,7 @@ export default function UniLostAndFound() {
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchData = async () => {
       try {
         const response = await fetch('http://localhost:5067/api/Item/pending/all');
         if (!response.ok) throw new Error("Failed to fetch data");
@@ -69,33 +80,15 @@ export default function UniLostAndFound() {
           setItems(data.$values);
         }
       } catch (error) {
-        console.error('Error fetching initial data:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
-    // Fetch data on initial load, regardless of auth state
-    fetchInitialData();
-  }, []); // Empty dependency array for initial load only
-
-  useEffect(() => {
-    const fetchAuthenticatedData = async () => {
-      if (!user || authLoading) return;
-
-      try {
-        if (activeSection === "lost" || activeSection === "found") {
-          const response = await makeAuthenticatedRequest('/api/Item/pending/all');
-          if (response) {
-            const itemsArray = Array.isArray(response) ? response : [response];
-            setItems(itemsArray.filter(item => item?.Item));
-          }
-        }
-      } catch (error) {
-        console.error(`Error fetching ${activeSection} items:`, error);
-      }
-    };
-
-    fetchAuthenticatedData();
-  }, [activeSection, user, authLoading, makeAuthenticatedRequest]);
+    // Fetch data when section changes or on mount
+    if (activeSection === "lost" || activeSection === "found" || activeSection === "dashboard") {
+      fetchData();
+    }
+  }, [activeSection]); // Only depend on activeSection
 
   const filteredItems = items.filter(item => {
     // Check if item exists and has Item property
@@ -995,7 +988,11 @@ export default function UniLostAndFound() {
         )}
 
         {/* Main Content */}
-        {renderSection()}
+        <div className="relative">
+          {renderSection()}
+        </div>
+
+        <style jsx>{styles}</style>
 
         <ItemDetailSection 
           item={selectedItem}
