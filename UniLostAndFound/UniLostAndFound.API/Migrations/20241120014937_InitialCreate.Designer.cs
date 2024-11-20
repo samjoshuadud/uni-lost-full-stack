@@ -11,7 +11,7 @@ using UniLostAndFound.API.Data;
 namespace UniLostAndFound.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241116162034_InitialCreate")]
+    [Migration("20241120014937_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -102,11 +102,6 @@ namespace UniLostAndFound.API.Migrations
                         .HasColumnType("varchar(50)");
 
                     b.Property<string>("StudentId")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("varchar(50)");
-
-                    b.Property<string>("UniversityId")
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("varchar(50)");
@@ -214,6 +209,36 @@ namespace UniLostAndFound.API.Migrations
                     b.ToTable("UserAccess");
                 });
 
+            modelBuilder.Entity("UniLostAndFound.API.Models.VerificationQuestion", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("ProcessId")
+                        .IsRequired()
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Question")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime(6)")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessId");
+
+                    b.ToTable("VerificationQuestions");
+                });
+
             modelBuilder.Entity("UniLostAndFound.API.Models.AdditionalDescription", b =>
                 {
                     b.HasOne("UniLostAndFound.API.Models.Item", "Item")
@@ -253,6 +278,17 @@ namespace UniLostAndFound.API.Migrations
                     b.Navigation("Item");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("UniLostAndFound.API.Models.VerificationQuestion", b =>
+                {
+                    b.HasOne("UniLostAndFound.API.Models.PendingProcess", "Process")
+                        .WithMany()
+                        .HasForeignKey("ProcessId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Process");
                 });
 
             modelBuilder.Entity("UniLostAndFound.API.Models.Item", b =>

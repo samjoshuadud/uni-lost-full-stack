@@ -2,6 +2,8 @@ using UniLostAndFound.API.Repositories;
 using UniLostAndFound.API.Models;
 using Microsoft.Extensions.Logging;
 using UniLostAndFound.API.Constants;
+using Microsoft.EntityFrameworkCore;
+using UniLostAndFound.API.Data;
 
 namespace UniLostAndFound.API.Services;
 
@@ -10,15 +12,18 @@ public class PendingProcessService
     private readonly IPendingProcessRepository _processRepository;
     private readonly IItemRepository _itemRepository;
     private readonly ILogger<PendingProcessService> _logger;
+    private readonly AppDbContext _context;
 
     public PendingProcessService(
         IPendingProcessRepository processRepository,
         IItemRepository itemRepository,
-        ILogger<PendingProcessService> logger)
+        ILogger<PendingProcessService> logger,
+        AppDbContext context)
     {
         _processRepository = processRepository;
         _itemRepository = itemRepository;
         _logger = logger;
+        _context = context;
     }
 
     public async Task<IEnumerable<PendingProcess>> GetByUserIdAsync(string userId)
@@ -140,5 +145,19 @@ public class PendingProcessService
             _logger.LogError($"Error creating pending process: {ex.Message}");
             throw;
         }
+    }
+
+    public async Task<PendingProcess> GetProcessByIdAsync(string processId)
+    {
+        return await _context.PendingProcesses
+            .Include(p => p.Item)
+            .FirstOrDefaultAsync(p => p.Id == processId);
+    }
+
+    public async Task<PendingProcess> UpdateProcessAsync(PendingProcess process)
+    {
+        _context.PendingProcesses.Update(process);
+        await _context.SaveChangesAsync();
+        return process;
     }
 } 

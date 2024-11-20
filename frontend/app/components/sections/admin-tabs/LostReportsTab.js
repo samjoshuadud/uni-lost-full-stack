@@ -13,73 +13,88 @@ import {
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ProcessStatus } from '@/lib/constants';
+import { ProcessStatus, ProcessMessages } from '@/lib/constants';
 import { memo } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 
 const LostReportsTab = memo(function LostReportsTab({
   items = [],
   isCountsLoading,
-  getInVerificationCount,
   getPendingRetrievalCount,
   handleDelete,
   onApprove,
   handleViewDetails,
+  onUpdateCounts
 }) {
   const [approvingItems, setApprovingItems] = useState(new Set());
   const [deletingItems, setDeletingItems] = useState(new Set());
-  const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
   const [allItems, setAllItems] = useState(items);
-  const [pendingProcesses, setPendingProcesses] = useState([]);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [selectedItemForVerification, setSelectedItemForVerification] = useState(null);
+  const [verificationQuestions, setVerificationQuestions] = useState([{ question: '' }]);
+  const [isSubmittingQuestions, setIsSubmittingQuestions] = useState(false);
+  const [pendingLostApprovalCount, setPendingLostApprovalCount] = useState(0);
+  const [inVerificationCount, setInVerificationCount] = useState(0);
 
   useEffect(() => {
-    console.log('LostReportsTab received items:', items);
-  }, [items]);
+    if (!items) return;
 
-  useEffect(() => {
-    setAllItems(items);
-  }, [items]);
+    // Only update if items have changed
+    const pendingCount = items.filter(process => 
+      process.status === ProcessStatus.PENDING_APPROVAL && 
+      process.item?.status?.toLowerCase() === "lost" && 
+      !process.item?.approved
+    ).length;
 
-  useEffect(() => {
-    const updateCount = () => {
-      const count = items.filter(process => 
-        process.status === ProcessStatus.PENDING_APPROVAL && 
-        process.item?.status?.toLowerCase() === "lost" && 
-        !process.item?.approved
-      ).length;
-      
-      setPendingLostApprovalCount(prevCount => {
-        if (prevCount !== count) {
-          return count;
-        }
-        return prevCount;
-      });
-    };
+    const verificationCount = items.filter(process => 
+      process.status === ProcessStatus.IN_VERIFICATION && 
+      process.item?.status?.toLowerCase() === "lost"
+    ).length;
 
-    updateCount();
-    const interval = setInterval(updateCount, 5000);
+    // Only update if counts have changed
+    setPendingLostApprovalCount(prevCount => {
+      if (prevCount !== pendingCount) return pendingCount;
+      return prevCount;
+    });
 
-    return () => clearInterval(interval);
+    setInVerificationCount(prevCount => {
+      if (prevCount !== verificationCount) return verificationCount;
+      return prevCount;
+    });
+
+    // Only update allItems if they've changed
+    setAllItems(prevItems => {
+      if (JSON.stringify(prevItems) !== JSON.stringify(items)) return items;
+      return prevItems;
+    });
   }, [items]);
 
   const handleApprove = async (itemId) => {
     try {
       setApprovingItems((prev) => new Set(prev).add(itemId));
       await onApprove(itemId);
-      // Update count after successful approval
+
+      // Update local state immediately
       setAllItems(prevItems => {
-        const newItems = prevItems.map(item => 
+        const updatedItems = prevItems.map(item => 
           item.item?.id === itemId 
-            ? { ...item, item: { ...item.item, approved: true } }
+            ? { ...item, item: { ...item.item, approved: true }, status: "approved" }
             : item
         );
-        // Update count after state update
-        const newCount = newItems.filter(process => 
-          process.status === ProcessStatus.PENDING_APPROVAL && 
-          process.item?.status?.toLowerCase() === "lost" && 
-          !process.item?.approved
-        ).length;
-        setPendingLostApprovalCount(newCount);
-        return newItems;
+
+        // Update count immediately
+        setPendingLostApprovalCount(prev => prev - 1);
+
+        return updatedItems;
       });
     } finally {
       setApprovingItems((prev) => {
@@ -94,17 +109,15 @@ const LostReportsTab = memo(function LostReportsTab({
     try {
       setDeletingItems(prev => new Set(prev).add(itemId));
       await handleDelete(itemId);
-      // Update local state after successful deletion
+
+      // Update local state immediately
       setAllItems(prevItems => {
-        const newItems = prevItems.filter(item => item.item?.id !== itemId);
-        // Update count after state update
-        const newCount = newItems.filter(process => 
-          process.status === ProcessStatus.PENDING_APPROVAL && 
-          process.item?.status?.toLowerCase() === "lost" && 
-          !process.item?.approved
-        ).length;
-        setPendingLostApprovalCount(newCount);
-        return newItems;
+        const updatedItems = prevItems.filter(item => item.item?.id !== itemId);
+        
+        // Update count immediately
+        setPendingLostApprovalCount(prev => prev - 1);
+
+        return updatedItems;
       });
     } finally {
       setDeletingItems(prev => {
@@ -112,6 +125,92 @@ const LostReportsTab = memo(function LostReportsTab({
         next.delete(itemId);
         return next;
       });
+    }
+  };
+
+  const handleItemInPossession = (process) => {
+    setSelectedItemForVerification({
+      processId: process.id,
+      item: process.item
+    });
+    setShowVerificationDialog(true);
+  };
+
+  const handleAddQuestion = () => {
+    setVerificationQuestions([...verificationQuestions, { question: '' }]);
+  };
+
+  const handleQuestionChange = (index, value) => {
+    const newQuestions = [...verificationQuestions];
+    newQuestions[index].question = value;
+    setVerificationQuestions(newQuestions);
+  };
+
+  const handleSubmitVerificationQuestions = async () => {
+    const questions = verificationQuestions
+      .map(q => q.question.trim())
+      .filter(q => q.length > 0);
+
+    if (questions.length === 0) return;
+
+    try {
+      setIsSubmittingQuestions(true);
+      
+      const response = await fetch(
+        `http://localhost:5067/api/Item/process/${selectedItemForVerification.processId}/status`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: ProcessStatus.IN_VERIFICATION,
+            message: JSON.stringify(questions)
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update process status");
+
+      // Update local state immediately
+      setAllItems(prevItems => {
+        const updatedItems = prevItems.map(item => {
+          if (item.id === selectedItemForVerification.processId) {
+            return {
+              ...item,
+              status: ProcessStatus.IN_VERIFICATION,
+              message: "Item is being verified"
+            };
+          }
+          return item;
+        });
+
+        // Calculate new counts based on updated items
+        const newPendingCount = updatedItems.filter(process => 
+          process.status === ProcessStatus.PENDING_APPROVAL && 
+          process.item?.status?.toLowerCase() === "lost" && 
+          !process.item?.approved
+        ).length;
+
+        const newVerificationCount = updatedItems.filter(process => 
+          process.status === ProcessStatus.IN_VERIFICATION && 
+          process.item?.status?.toLowerCase() === "lost"
+        ).length;
+
+        // Update counts based on the actual filtered counts
+        setPendingLostApprovalCount(newPendingCount);
+        setInVerificationCount(newVerificationCount);
+
+        return updatedItems;
+      });
+
+      // Reset dialog state
+      setShowVerificationDialog(false);
+      setSelectedItemForVerification(null);
+      setVerificationQuestions([{ question: '' }]);
+
+    } catch (error) {
+      console.error("Error updating process status:", error);
+    } finally {
+      setIsSubmittingQuestions(false);
     }
   };
 
@@ -171,7 +270,7 @@ const LostReportsTab = memo(function LostReportsTab({
                       In Verification
                     </p>
                     <p className="text-2xl font-bold">
-                      {getInVerificationCount()}
+                      {inVerificationCount}
                     </p>
                   </div>
                 </div>
@@ -379,7 +478,7 @@ const LostReportsTab = memo(function LostReportsTab({
                               variant="secondary"
                               size="sm"
                               className="w-full"
-                              onClick={() => onItemInPossession(process.item?.id)}
+                              onClick={() => handleItemInPossession(process)}
                             >
                               <Package className="h-4 w-4 mr-2" />
                               Item in Possession
@@ -413,6 +512,85 @@ const LostReportsTab = memo(function LostReportsTab({
           </div>
         </div>
       </div>
+
+      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Set Verification Questions</DialogTitle>
+            <DialogDescription>
+              Enter questions that will help verify the ownership of{" "}
+              <span className="font-medium">
+                {selectedItemForVerification?.item?.name}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {verificationQuestions.map((q, index) => (
+              <div key={index} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium">
+                    Question {index + 1}
+                  </label>
+                  {index > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const newQuestions = verificationQuestions.filter((_, i) => i !== index);
+                        setVerificationQuestions(newQuestions);
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  placeholder="Enter a verification question..."
+                  value={q.question}
+                  onChange={(e) => handleQuestionChange(index, e.target.value)}
+                  className="min-h-[80px]"
+                />
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAddQuestion}
+              className="w-full"
+            >
+              Add Another Question
+            </Button>
+            <p className="text-sm text-muted-foreground">
+              Add specific questions that only the true owner would know.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowVerificationDialog(false);
+                setSelectedItemForVerification(null);
+                setVerificationQuestions([{ question: '' }]);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitVerificationQuestions}
+              disabled={isSubmittingQuestions || !verificationQuestions.some(q => q.question.trim())}
+            >
+              {isSubmittingQuestions ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Questions"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

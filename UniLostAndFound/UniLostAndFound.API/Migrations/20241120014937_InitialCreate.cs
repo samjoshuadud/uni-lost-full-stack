@@ -77,8 +77,6 @@ namespace UniLostAndFound.API.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     StudentId = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    UniversityId = table.Column<string>(type: "varchar(50)", maxLength: 50, nullable: false)
-                        .Annotation("MySql:CharSet", "utf8mb4"),
                     Approved = table.Column<bool>(type: "tinyint(1)", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
@@ -157,6 +155,31 @@ namespace UniLostAndFound.API.Migrations
                 })
                 .Annotation("MySql:CharSet", "utf8mb4");
 
+            migrationBuilder.CreateTable(
+                name: "VerificationQuestions",
+                columns: table => new
+                {
+                    Id = table.Column<string>(type: "varchar(255)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    ProcessId = table.Column<string>(type: "varchar(255)", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    Question = table.Column<string>(type: "longtext", nullable: false)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_VerificationQuestions", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_VerificationQuestions_PendingProcesses_ProcessId",
+                        column: x => x.ProcessId,
+                        principalTable: "PendingProcesses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySql:CharSet", "utf8mb4");
+
             migrationBuilder.CreateIndex(
                 name: "IX_AdditionalDescriptions_ItemId",
                 table: "AdditionalDescriptions",
@@ -176,6 +199,11 @@ namespace UniLostAndFound.API.Migrations
                 name: "IX_PendingProcesses_UserId",
                 table: "PendingProcesses",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_VerificationQuestions_ProcessId",
+                table: "VerificationQuestions",
+                column: "ProcessId");
         }
 
         /// <inheritdoc />
@@ -185,10 +213,13 @@ namespace UniLostAndFound.API.Migrations
                 name: "AdditionalDescriptions");
 
             migrationBuilder.DropTable(
-                name: "PendingProcesses");
+                name: "UserAccess");
 
             migrationBuilder.DropTable(
-                name: "UserAccess");
+                name: "VerificationQuestions");
+
+            migrationBuilder.DropTable(
+                name: "PendingProcesses");
 
             migrationBuilder.DropTable(
                 name: "Items");

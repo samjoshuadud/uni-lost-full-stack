@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using UniLostAndFound.API.Models;
 using UniLostAndFound.API.DTOs;
 using UniLostAndFound.API.Services;
+using System.Text.Json;
+using UniLostAndFound.API.Constants;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -12,15 +14,18 @@ public class ItemController : ControllerBase
     private readonly ItemService _itemService;
     private readonly PendingProcessService _processService;
     private readonly ILogger<ItemController> _logger;
+    private readonly VerificationQuestionService _verificationQuestionService;
 
     public ItemController(
         ItemService itemService,
         PendingProcessService processService,
-        ILogger<ItemController> logger)
+        ILogger<ItemController> logger,
+        VerificationQuestionService verificationQuestionService)
     {
         _itemService = itemService;
         _processService = processService;
         _logger = logger;
+        _verificationQuestionService = verificationQuestionService;
     }
 
     [HttpPost]
@@ -193,16 +198,65 @@ public class ItemController : ControllerBase
     {
         try
         {
-            await _processService.UpdateStatusAsync(
-                itemId, 
-                dto.Status,
-                dto.Message
-            );
-            return Ok();
+            var process = await _processService.GetProcessByIdAsync(itemId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            process.status = dto.Status;
+            
+            // If status is changing to in_verification
+            if (dto.Status == "in_verification")
+            {
+                // Store the questions in VerificationQuestions table
+                var questions = JsonSerializer.Deserialize<List<string>>(dto.Message);
+                await _verificationQuestionService.CreateQuestionsAsync(process.Id, questions);
+                
+                // Set the standard message from constants
+                process.Message = "Item is being verified";
+            }
+            else 
+            {
+                // For other statuses, use the provided message
+                process.Message = dto.Message;
+            }
+
+            await _processService.UpdateProcessAsync(process);
+            return Ok(new { message = "Process status updated successfully" });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ex.Message);
+            _logger.LogError($"Error updating process status: {ex.Message}");
+            return StatusCode(500, new { message = "Error updating process status", error = ex.Message });
+        }
+    }
+
+    [HttpPost("process/{processId}/verify")]
+    public async Task<IActionResult> VerifyAnswers(string processId, [FromBody] VerifyAnswersDto dto)
+    {
+        try
+        {
+            // Get the process and its questions
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
+            if (!questions.Any())
+                return BadRequest("No verification questions found for this process");
+
+            // For now, we'll just update the status to verified
+            // In a real application, you would compare the answers with stored correct answers
+            process.status = "verified";
+            process.Message = "Verification completed successfully";
+            
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new { message = "Verification completed successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error verifying answers: {ex.Message}");
+            return StatusCode(500, new { message = "Error verifying answers", error = ex.Message });
         }
     }
 } 
