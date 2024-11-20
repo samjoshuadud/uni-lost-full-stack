@@ -36,4 +36,17 @@ public class VerificationQuestionService
             .Where(q => q.ProcessId == processId)
             .ToListAsync();
     }
+
+    public async Task DeleteQuestionsByProcessIdAsync(string processId)
+    {
+        var questions = await _context.VerificationQuestions
+            .Where(q => q.ProcessId == processId)
+            .ToListAsync();
+
+        if (questions.Any())
+        {
+            _context.VerificationQuestions.RemoveRange(questions);
+            await _context.SaveChangesAsync();
+        }
+    }
 } 
