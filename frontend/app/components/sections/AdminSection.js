@@ -590,9 +590,10 @@ export default function AdminSection({
 
             <TabsContent value="verifications">
               <VerificationsTab
-                notifications={notifications}
-                onVerificationResult={handleVerificationResult}
+                items={pendingProcesses}
                 isCountsLoading={isCountsLoading}
+                onVerificationResult={handleVerificationResult}
+                handleViewDetails={handleViewDetails}
               />
             </TabsContent>
 
