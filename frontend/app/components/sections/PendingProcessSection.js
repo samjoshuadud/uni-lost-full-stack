@@ -72,21 +72,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   // Filter out null or undefined processes
   const validProcesses = pendingProcesses.filter(process => process && process.item);
 
-  // If there are no processes at all, show empty state
-  if (!validProcesses || validProcesses.length === 0) {
-    return (
-      <div className="min-h-[400px] flex flex-col items-center justify-center text-center p-8">
-        <div className="bg-muted/50 rounded-full p-4 mb-4">
-          <Inbox className="h-12 w-12 text-muted-foreground" />
-        </div>
-        <h2 className="text-xl font-semibold mb-2">No Pending Processes</h2>
-        <p className="text-muted-foreground max-w-sm">
-          You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
-        </p>
-      </div>
-    );
-  }
-
   const formatItemForDetails = (process) => {
     const additionalDescs = process.item?.additionalDescriptions?.$values || 
                            process.item?.AdditionalDescriptions?.$values || [];
@@ -206,24 +191,9 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     }
 
     return (
-      <Card key={process.id} className={cardStyle}>
+      <Card key={process.id} className={`${cardStyle} h-full`}>
         <CardContent className="p-6">
-          <div className="flex gap-6">
-            {/* Image Section */}
-            <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-              {process.item?.imageUrl ? (
-                <img
-                  src={process.item.imageUrl}
-                  alt={process.item.name}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                  <Package className="h-8 w-8" />
-                </div>
-              )}
-            </div>
-
+          <div className="flex flex-col h-full gap-6">
             {/* Content Section */}
             <div className="flex-1">
               <div className="flex items-center justify-between mb-4">
@@ -241,7 +211,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             </div>
 
             {/* Actions Section */}
-            <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+            <div className="flex flex-col gap-2 mt-auto pt-4">
               {process.status === "approved" ? (
                 <Button
                   variant="outline"
@@ -299,68 +269,96 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold mb-4">Pending Processes</h2>
-      <div className="space-y-4">
-        {validProcesses.map(renderProcessCard)}
-      </div>
+    <div className="min-h-screen bg-[#f8f9fa] p-6">
+      <div className="max-w-full mx-auto space-y-6">
+        {/* Header */}
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+          <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
+          <p className="text-gray-600 mt-1">Track the status of your reported items</p>
+        </div>
 
-      <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Verification Questions</DialogTitle>
-            <DialogDescription>
-              Please answer the following questions to verify your ownership of{" "}
-              <span className="font-medium">
-                {selectedProcess?.item?.name}
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            {verificationQuestions.map((question, index) => (
-              <div key={index} className="space-y-2">
-                <label className="text-sm font-medium">
-                  Question {index + 1}: {question}
-                </label>
-                <Input
-                  placeholder="Enter your answer..."
-                  value={answers[index] || ''}
-                  onChange={(e) => {
-                    const newAnswers = [...answers];
-                    newAnswers[index] = e.target.value;
-                    setAnswers(newAnswers);
-                  }}
-                />
-              </div>
-            ))}
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowAnswerDialog(false);
-                setSelectedProcess(null);
-                setAnswers([]);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmitAnswers}
-              disabled={isSubmitting || answers.some(a => !a.trim())}
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Answers"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Process Cards */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {!validProcesses || validProcesses.length === 0 ? (
+            <div className="col-span-full">
+              <Card className="border-0 shadow-sm bg-white">
+                <CardContent className="p-8 text-center">
+                  <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                    <Inbox className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Processes</h3>
+                  <p className="text-gray-500 max-w-sm mx-auto">
+                    You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            validProcesses.map(renderProcessCard)
+          )}
+        </div>
+
+        {/* Answer Questions Dialog */}
+        <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="text-[#0052cc]">Verification Questions</DialogTitle>
+              <DialogDescription>
+                Please answer the following questions to verify your ownership of{" "}
+                <span className="font-medium text-gray-700">
+                  {selectedProcess?.item?.name}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {verificationQuestions.map((question, index) => (
+                <div key={index} className="space-y-2">
+                  <label className="text-sm font-medium text-gray-600">
+                    Question {index + 1}: {question}
+                  </label>
+                  <Input
+                    placeholder="Enter your answer..."
+                    value={answers[index] || ''}
+                    onChange={(e) => {
+                      const newAnswers = [...answers];
+                      newAnswers[index] = e.target.value;
+                      setAnswers(newAnswers);
+                    }}
+                    className="bg-white border-gray-200"
+                  />
+                </div>
+              ))}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowAnswerDialog(false);
+                  setSelectedProcess(null);
+                  setAnswers([]);
+                }}
+                className="border-gray-200"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitAnswers}
+                disabled={isSubmitting || answers.some(a => !a.trim())}
+                className="bg-[#0052cc] hover:bg-[#0052cc]/90 text-white"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Answers"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 } 

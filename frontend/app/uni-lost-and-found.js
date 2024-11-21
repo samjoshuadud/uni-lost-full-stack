@@ -895,7 +895,12 @@ export default function UniLostAndFound() {
               <>
                 <Button 
                   variant="ghost"
-                  className="text-white hover:text-yellow-400 transition-colors"
+                  className={`text-white transition-colors relative
+                    ${activeSection === "dashboard" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                      "hover:text-yellow-400"
+                    }
+                  `}
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
                 >
                   View Items
@@ -905,14 +910,24 @@ export default function UniLostAndFound() {
               <>
                 <Button 
                   variant="ghost"
-                  className="text-white hover:text-yellow-400 transition-colors"
+                  className={`text-white transition-colors relative
+                    ${activeSection === "dashboard" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                      "hover:text-yellow-400"
+                    }
+                  `}
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
                 >
                   Home
                 </Button>
                 <Button 
                   variant="ghost"
-                  className="text-white hover:text-yellow-400 transition-colors"
+                  className={`text-white transition-colors relative
+                    ${activeSection === "report" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                      "hover:text-yellow-400"
+                    }
+                  `}
                   onClick={() => { 
                     if (requireAuth()) return;
                     setActiveSection("report"); 
@@ -925,7 +940,12 @@ export default function UniLostAndFound() {
                   <>
                     <Button 
                       variant="ghost"
-                      className="text-white hover:text-yellow-400 transition-colors relative"
+                      className={`text-white transition-colors relative
+                        ${activeSection === "pending_process" ? 
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                          "hover:text-yellow-400"
+                        }
+                      `}
                       onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
                     >
                       Pending Process
@@ -937,7 +957,12 @@ export default function UniLostAndFound() {
                     </Button>
                     <Button 
                       variant="ghost"
-                      className="text-white hover:text-yellow-400 transition-colors"
+                      className={`text-white transition-colors relative
+                        ${activeSection === "profile" ? 
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                          "hover:text-yellow-400"
+                        }
+                      `}
                       onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
                     >
                       <User className="mr-2 h-4 w-4" />
@@ -972,7 +997,12 @@ export default function UniLostAndFound() {
                     </p>
                   </div>
                   <Button 
-                    className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                    className={`transition-colors relative
+                      ${activeSection === "admin" ? 
+                        "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                        "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                      }
+                    `}
                     onClick={() => { setActiveSection("admin"); setSelectedItem(null); }}
                   >
                     View Admin Dashboard
@@ -990,13 +1020,23 @@ export default function UniLostAndFound() {
                   </div>
                   <div className="flex gap-3">
                     <Button 
-                      className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                      className={`transition-colors relative
+                        ${activeSection === "lost" ? 
+                          "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                          "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        }
+                      `}
                       onClick={() => { setActiveSection("lost"); setSelectedItem(null); }}
                     >
                       Lost Items
                     </Button>
                     <Button 
-                      className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                      className={`transition-colors relative
+                        ${activeSection === "found" ? 
+                          "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                          "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        }
+                      `}
                       onClick={() => { setActiveSection("found"); setSelectedItem(null); }}
                     >
                       Found Items
@@ -1015,44 +1055,48 @@ export default function UniLostAndFound() {
               <div className="flex space-x-1">
                 <Button
                   variant={activeSection === "dashboard" ? "default" : "ghost"}
-                  className={`flex-1 ${
-                    activeSection === "dashboard" 
-                      ? "bg-[#0052cc] text-white hover:bg-[#0052cc]/90" 
-                      : "text-gray-600 hover:text-[#0052cc]"
-                  }`}
+                  className={`flex-1 relative transition-colors
+                    ${activeSection === "dashboard" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 text-[#0052cc]" : 
+                      "text-gray-600 hover:text-[#0052cc]"
+                    }
+                  `}
                   onClick={() => setActiveSection("dashboard")}
                 >
                   Dashboard
                 </Button>
                 <Button
                   variant={activeSection === "lost" ? "default" : "ghost"}
-                  className={`flex-1 ${
-                    activeSection === "lost" 
-                      ? "bg-[#0052cc] text-white hover:bg-[#0052cc]/90" 
-                      : "text-gray-600 hover:text-[#0052cc]"
-                  }`}
+                  className={`flex-1 relative transition-colors
+                    ${activeSection === "lost" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 text-[#0052cc]" : 
+                      "text-gray-600 hover:text-[#0052cc]"
+                    }
+                  `}
                   onClick={() => setActiveSection("lost")}
                 >
                   Lost Items
                 </Button>
                 <Button
                   variant={activeSection === "found" ? "default" : "ghost"}
-                  className={`flex-1 ${
-                    activeSection === "found" 
-                      ? "bg-[#0052cc] text-white hover:bg-[#0052cc]/90" 
-                      : "text-gray-600 hover:text-[#0052cc]"
-                  }`}
+                  className={`flex-1 relative transition-colors
+                    ${activeSection === "found" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 text-[#0052cc]" : 
+                      "text-gray-600 hover:text-[#0052cc]"
+                    }
+                  `}
                   onClick={() => setActiveSection("found")}
                 >
                   Found Items
                 </Button>
                 <Button
                   variant={activeSection === "history" ? "default" : "ghost"}
-                  className={`flex-1 ${
-                    activeSection === "history" 
-                      ? "bg-[#0052cc] text-white hover:bg-[#0052cc]/90" 
-                      : "text-gray-600 hover:text-[#0052cc]"
-                  }`}
+                  className={`flex-1 relative transition-colors
+                    ${activeSection === "history" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 text-[#0052cc]" : 
+                      "text-gray-600 hover:text-[#0052cc]"
+                    }
+                  `}
                   onClick={() => setActiveSection("history")}
                 >
                   History
