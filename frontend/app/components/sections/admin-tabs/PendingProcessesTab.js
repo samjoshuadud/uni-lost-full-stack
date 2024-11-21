@@ -21,6 +21,25 @@ export default function PendingProcessesTab({
     return acc;
   }, {});
 
+  const formatItemForDetails = (process) => {
+    return {
+      id: process.item?.id || process.item?.Id,
+      name: process.item?.name || process.item?.Name,
+      description: process.item?.description || process.item?.Description,
+      location: process.item?.location || process.item?.Location,
+      category: process.item?.category || process.item?.Category,
+      status: process.item?.status || process.item?.Status,
+      imageUrl: process.item?.imageUrl || process.item?.ImageUrl,
+      dateReported: process.item?.dateReported || process.item?.DateReported,
+      reporterId: process.item?.reporterId || process.item?.ReporterId,
+      studentId: process.item?.studentId || process.item?.StudentId,
+      additionalDescriptions: 
+        process.item?.additionalDescriptions?.$values || 
+        process.item?.AdditionalDescriptions?.$values || [],
+      approved: process.item?.approved || process.item?.Approved
+    };
+  };
+
   if (isCountsLoading) {
     return (
       <div className="space-y-4">
@@ -95,23 +114,7 @@ export default function PendingProcessesTab({
                       <Button
                         variant="outline"
                         className="w-full"
-                        onClick={() => {
-                          const formattedItem = {
-                            id: process.item?.id || process.item?.Id,
-                            name: process.item?.name || process.item?.Name,
-                            description: process.item?.description || process.item?.Description,
-                            location: process.item?.location || process.item?.Location,
-                            category: process.item?.category || process.item?.Category,
-                            status: process.item?.status || process.item?.Status,
-                            imageUrl: process.item?.imageUrl || process.item?.ImageUrl,
-                            dateReported: process.item?.dateReported || process.item?.DateReported,
-                            reporterId: process.item?.reporterId || process.item?.ReporterId,
-                            additionalDescriptions: process.item?.additionalDescriptions?.$values || 
-                                                  process.item?.AdditionalDescriptions?.$values || [],
-                            approved: process.item?.approved || process.item?.Approved
-                          };
-                          onViewDetails(formattedItem);
-                        }}
+                        onClick={() => onViewDetails(formatItemForDetails(process))}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
@@ -191,23 +194,7 @@ export default function PendingProcessesTab({
                       <Button
                         variant="outline"
                         className="w-full"
-                        onClick={() => {
-                          const formattedItem = {
-                            id: process.item?.id || process.item?.Id,
-                            name: process.item?.name || process.item?.Name,
-                            description: process.item?.description || process.item?.Description,
-                            location: process.item?.location || process.item?.Location,
-                            category: process.item?.category || process.item?.Category,
-                            status: process.item?.status || process.item?.Status,
-                            imageUrl: process.item?.imageUrl || process.item?.ImageUrl,
-                            dateReported: process.item?.dateReported || process.item?.DateReported,
-                            reporterId: process.item?.reporterId || process.item?.ReporterId,
-                            additionalDescriptions: process.item?.additionalDescriptions?.$values || 
-                                                  process.item?.AdditionalDescriptions?.$values || [],
-                            approved: process.item?.approved || process.item?.Approved
-                          };
-                          onViewDetails(formattedItem);
-                        }}
+                        onClick={() => onViewDetails(formatItemForDetails(process))}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details
@@ -287,23 +274,7 @@ export default function PendingProcessesTab({
                       <Button
                         variant="outline"
                         className="w-full"
-                        onClick={() => {
-                          const formattedItem = {
-                            id: process.item?.id || process.item?.Id,
-                            name: process.item?.name || process.item?.Name,
-                            description: process.item?.description || process.item?.Description,
-                            location: process.item?.location || process.item?.Location,
-                            category: process.item?.category || process.item?.Category,
-                            status: process.item?.status || process.item?.Status,
-                            imageUrl: process.item?.imageUrl || process.item?.ImageUrl,
-                            dateReported: process.item?.dateReported || process.item?.DateReported,
-                            reporterId: process.item?.reporterId || process.item?.ReporterId,
-                            additionalDescriptions: process.item?.additionalDescriptions?.$values || 
-                                                  process.item?.AdditionalDescriptions?.$values || [],
-                            approved: process.item?.approved || process.item?.Approved
-                          };
-                          onViewDetails(formattedItem);
-                        }}
+                        onClick={() => onViewDetails(formatItemForDetails(process))}
                       >
                         <Eye className="h-4 w-4 mr-2" />
                         View Details

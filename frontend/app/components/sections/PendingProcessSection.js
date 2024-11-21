@@ -87,6 +87,26 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     );
   }
 
+  const formatItemForDetails = (process) => {
+    const additionalDescs = process.item?.additionalDescriptions?.$values || 
+                           process.item?.AdditionalDescriptions?.$values || [];
+                         
+    return {
+      id: process.item?.id || process.item?.Id,
+      name: process.item?.name || process.item?.Name,
+      description: process.item?.description || process.item?.Description,
+      location: process.item?.location || process.item?.Location,
+      category: process.item?.category || process.item?.Category,
+      status: process.item?.status || process.item?.Status,
+      imageUrl: process.item?.imageUrl || process.item?.ImageUrl,
+      dateReported: process.item?.dateReported || process.item?.DateReported,
+      reporterId: process.item?.reporterId || process.item?.ReporterId,
+      studentId: process.item?.studentId || process.item?.StudentId,
+      additionalDescriptions: Array.isArray(additionalDescs) ? additionalDescs : [],
+      approved: process.item?.approved || process.item?.Approved
+    };
+  };
+
   const renderProcessCard = (process) => {
     if (!process || !process.item) return null;
 
@@ -236,7 +256,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => onViewDetails(process.item)}
+                    onClick={() => onViewDetails(formatItemForDetails(process))}
                   >
                     <Eye className="h-4 w-4 mr-2" />
                     View Details
