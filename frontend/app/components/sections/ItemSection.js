@@ -21,6 +21,7 @@ export default function ItemSection({
   onUnapprove,  // Add this prop
   searchQuery = "",
   searchCategory = "all"
+  
 }) {
   // Add state to manage items locally
   const [localItems, setLocalItems] = useState([]);
