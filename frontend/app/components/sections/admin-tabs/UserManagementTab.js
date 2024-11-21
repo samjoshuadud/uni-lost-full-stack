@@ -22,7 +22,7 @@ export default function UserManagementTab() {
   const [admins, setAdmins] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [processingUser, setProcessingUser] = useState(null); // Track which user is being processed
+  const [processingUser, setProcessingUser] = useState(null);
 
   const fetchUsers = async () => {
     try {
@@ -83,150 +83,151 @@ export default function UserManagementTab() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Loading User Management...
-          </h3>
+      <div className="min-h-[600px] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-8 w-8 animate-spin text-[#0052cc]" />
+          <p className="text-gray-500">Loading user data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Users className="h-5 w-5 text-primary" />
-          User Management
-        </h3>
-      </div>
-
+    <div className="space-y-8">
       {/* Admin Users Section */}
-      <Card>
-        <CardContent className="p-6">
-          <h4 className="text-sm font-semibold flex items-center gap-2 mb-4">
-            <Shield className="h-4 w-4 text-primary" />
-            Admin Users
-          </h4>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Date Added</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {admins.map((admin) => (
-                  <TableRow key={admin.id}>
-                    <TableCell>{admin.displayName}</TableCell>
-                    <TableCell>{admin.email}</TableCell>
-                    <TableCell>{admin.studentId || "N/A"}</TableCell>
-                    <TableCell>
-                      {new Date(admin.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button 
-                        variant="destructive" 
-                        size="sm"
-                        onClick={() => handleToggleAdmin(admin.email, true)}
-                        disabled={processingUser === admin.email}
-                      >
-                        {processingUser === admin.email ? (
-                          <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          "Remove Admin"
-                        )}
-                      </Button>
-                    </TableCell>
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold flex items-center gap-2 text-[#0052cc]">
+          <Shield className="h-5 w-5" />
+          Admin Users
+        </h3>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="rounded-lg border border-gray-200">
+              <Table>
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead className="font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">Email</TableHead>
+                    <TableHead className="font-semibold">Student ID</TableHead>
+                    <TableHead className="font-semibold">Date Added</TableHead>
+                    <TableHead className="font-semibold">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* All Users Section */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-primary" />
-              All Users
-            </h4>
-            <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search users..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-          </div>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Student ID</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Joined Date</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.displayName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.studentId || "N/A"}</TableCell>
-                    <TableCell>
-                      {user.isAdmin ? (
-                        <Badge variant="default">Admin</Badge>
-                      ) : (
-                        <Badge variant="secondary">User</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(user.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {!user.isAdmin && (
+                </TableHeader>
+                <TableBody>
+                  {admins.map((admin) => (
+                    <TableRow key={admin.id}>
+                      <TableCell className="font-medium">{admin.displayName}</TableCell>
+                      <TableCell>{admin.email}</TableCell>
+                      <TableCell>{admin.studentId || "N/A"}</TableCell>
+                      <TableCell>
+                        {new Date(admin.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
                         <Button 
-                          variant="outline" 
+                          variant="destructive" 
                           size="sm"
-                          onClick={() => handleToggleAdmin(user.email, false)}
-                          disabled={processingUser === user.email}
+                          onClick={() => handleToggleAdmin(admin.email, true)}
+                          disabled={processingUser === admin.email}
+                          className="bg-red-500 hover:bg-red-600"
                         >
-                          {processingUser === user.email ? (
+                          {processingUser === admin.email ? (
                             <>
                               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                               Processing...
                             </>
                           ) : (
-                            "Make Admin"
+                            "Remove Admin"
                           )}
                         </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* All Users Section */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold flex items-center gap-2 text-[#0052cc]">
+            <Users className="h-5 w-5" />
+            All Users
+          </h3>
+          <div className="relative w-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search users..."
+              className="pl-9 bg-white border-gray-200"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6">
+            <div className="rounded-lg border border-gray-200">
+              <Table>
+                <TableHeader className="bg-gray-50">
+                  <TableRow>
+                    <TableHead className="font-semibold">Name</TableHead>
+                    <TableHead className="font-semibold">Email</TableHead>
+                    <TableHead className="font-semibold">Student ID</TableHead>
+                    <TableHead className="font-semibold">Role</TableHead>
+                    <TableHead className="font-semibold">Joined Date</TableHead>
+                    <TableHead className="font-semibold">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">{user.displayName}</TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>{user.studentId || "N/A"}</TableCell>
+                      <TableCell>
+                        {user.isAdmin ? (
+                          <Badge className="bg-yellow-400 text-[#0052cc]">
+                            Admin
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-700">
+                            User
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {!user.isAdmin && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleToggleAdmin(user.email, false)}
+                            disabled={processingUser === user.email}
+                            className="border-gray-200 text-gray-700 hover:bg-gray-50"
+                          >
+                            {processingUser === user.email ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Processing...
+                              </>
+                            ) : (
+                              "Make Admin"
+                            )}
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 
