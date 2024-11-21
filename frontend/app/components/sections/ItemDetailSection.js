@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ChevronLeft, ImageIcon, Trash, Loader2, X, Package, XCircle } from "lucide-react"
+import { ChevronLeft, ImageIcon, Trash, Loader2, X, Package, XCircle, MapPin, Calendar, Tag } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { Separator } from "@/components/ui/separator"
@@ -10,6 +10,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useState } from "react"
 import { ProcessStatus, ProcessMessages } from '@/lib/constants'
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 export default function ItemDetailSection({ 
   item, 
@@ -27,13 +28,6 @@ export default function ItemDetailSection({
   if (!item) return null;
 
   const canDelete = () => {
-    console.log('Checking delete permission:', {
-      isAdmin,
-      userId,
-      reporterId: item.reporterId,
-      item
-    });
-    
     return isAdmin || userId === item.reporterId;
   };
 
@@ -41,7 +35,7 @@ export default function ItemDetailSection({
     setIsDeleting(true);
     try {
       await onDelete?.(item.id);
-      onClose(); // Close modal after successful deletion
+      onClose();
     } catch (error) {
       console.error('Error deleting item:', error);
     } finally {
@@ -50,7 +44,6 @@ export default function ItemDetailSection({
     }
   };
 
-  // Helper function to check if additionalDescriptions has valid content
   const hasValidAdditionalDescriptions = () => {
     return item.additionalDescriptions && 
            Array.isArray(item.additionalDescriptions) && 
@@ -60,16 +53,11 @@ export default function ItemDetailSection({
 
   const handleUnapprove = async () => {
     try {
-      setIsUnapproving(true); // Start loading state
-      
-      // Close dialog immediately to improve perceived performance
+      setIsUnapproving(true);
       onClose();
-
-      // First get all processes to find the correct processId
+      
       const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
       const processData = await processResponse.json();
-      
-      // Find the process that matches our item
       const process = processData.$values?.find(p => {
         const processItemId = p.itemId || p.ItemId;
         return processItemId === item.id;
@@ -82,16 +70,12 @@ export default function ItemDetailSection({
 
       const processId = process.id || process.Id;
 
-      // Execute both API calls concurrently
       await Promise.all([
-        // Update item approval status
         fetch(`http://localhost:5067/api/Item/${item.id}/approve`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ approved: false })
         }),
-
-        // Update process status
         fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -101,7 +85,6 @@ export default function ItemDetailSection({
           })
         })
       ]);
-
     } catch (error) {
       console.error('Error unapproving item:', error);
     } finally {
@@ -111,155 +94,182 @@ export default function ItemDetailSection({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Item Details</DialogTitle>
-        </DialogHeader>
-        {item && (
-          <div className="space-y-4">
-            <h2 className="text-2xl font-bold">{item.name}</h2>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 border-2 border-yellow-400 rounded-lg overflow-hidden">
+        <div className="bg-[#0052cc] p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white">{item.name}</DialogTitle>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-white/90 flex items-center">
+                <Calendar className="h-4 w-4 mr-2" />
+                {format(new Date(item.dateReported), 'PPP')}
+              </span>
+              <Badge 
+                variant="outline"
+                className={`${
+                  item.status?.toLowerCase() === "lost" 
+                    ? "bg-yellow-400 text-blue-900" 
+                    : "bg-white text-blue-900"
+                } capitalize px-3 py-1`}
+              >
+                {item.status}
+              </Badge>
+            </div>
+          </DialogHeader>
+        </div>
 
-            <Card className="overflow-hidden">
-              {/* Image Section */}
-              <div className="w-full h-[300px] relative bg-muted">
+        <style jsx global>{`
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+          }
+
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+          }
+
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #0052cc;
+            border-radius: 4px;
+            opacity: 0.8;
+          }
+
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #003d99;
+          }
+
+          /* For Firefox */
+          .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: #0052cc #f1f1f1;
+          }
+        `}</style>
+
+        <ScrollArea 
+          className="max-h-[calc(90vh-180px)] p-6 custom-scrollbar"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#0052cc transparent'
+          }}
+        >
+          <div className="space-y-6">
+            {/* Image Section */}
+            <Card className="border border-gray-200">
+              <div className="aspect-video w-full relative bg-gray-100">
                 {item.imageUrl ? (
                   <div className="w-full h-full relative">
                     <img 
                       src={item.imageUrl} 
                       alt={item.name}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-cover"
+                      style={{
+                        objectFit: 'contain',
+                        backgroundColor: 'rgb(243 244 246)',
+                        mixBlendMode: 'multiply'
+                      }}
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
                       }}
                     />
-                    <div 
-                      className="hidden w-full h-full absolute top-0 left-0 bg-muted flex-col items-center justify-center text-muted-foreground"
-                    >
+                    <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
                       <Package className="h-12 w-12 mb-2 opacity-50" />
                       <p className="text-sm">{item.category || 'Item'} Image</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
                     <Package className="h-12 w-12 mb-2 opacity-50" />
                     <p className="text-sm">{item.category || 'Item'} Image</p>
                   </div>
                 )}
               </div>
-
-              <CardContent className="p-6">
-                {/* Header Section */}
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h2 className="text-2xl font-bold">{item.name}</h2>
-                    <p className="text-muted-foreground mt-1">
-                      Reported on {item.dateReported ? format(new Date(item.dateReported), 'PPP') : 'Not specified'}
-                    </p>
-                  </div>
-                  <Badge 
-                    variant={item.status === "lost" ? "destructive" : "success"}
-                    className="text-sm px-3 py-1"
-                  >
-                    {item.status?.toUpperCase()}
-                  </Badge>
-                </div>
-
-                <Separator className="my-6" />
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Location</h3>
-                    <p className="text-lg">{item.location || 'Not specified'}</p>
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-medium text-muted-foreground mb-1">Category</h3>
-                    <p className="text-lg">{item.category || 'Not specified'}</p>
-                  </div>
-                </div>
-
-                <Separator className="my-6" />
-
-                {/* Description */}
-                <div className="mb-6">
-                  <h3 className="text-sm font-medium text-muted-foreground mb-2">Description</h3>
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <p className="whitespace-pre-wrap">{item.description || 'No description provided'}</p>
-                  </div>
-                </div>
-
-                {/* Additional Descriptions - Only show if there are valid items */}
-                {hasValidAdditionalDescriptions() && (
-                  <>
-                    <Separator className="my-6" />
-                    
-                    <div>
-                      <h3 className="text-sm font-medium text-muted-foreground mb-4">Additional Details</h3>
-                      <div className="space-y-4">
-                        {item.additionalDescriptions
-                          .filter(desc => desc.title || desc.description)
-                          .map((desc, index) => (
-                            <div key={index} className="bg-muted/50 rounded-lg p-4">
-                              <h4 className="font-medium text-base mb-2">{desc.title}</h4>
-                              <p className="text-sm text-muted-foreground">{desc.description}</p>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
             </Card>
 
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2 mt-4">
-              {isAdmin && (
-                <>
-                  {/* Only show unapprove button if item is approved */}
-                  {item.approved && (
-                    <Button
-                      variant="outline"
-                      onClick={handleUnapprove}
-                      disabled={isUnapproving}
-                    >
-                      {isUnapproving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Unapproving...
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Unapprove
-                        </>
-                      )}
-                    </Button>
-                  )}
+            {/* Details Grid */}
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 flex items-center">
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Location
+                </p>
+                <p className="text-gray-700">{item.location || 'Not specified'}</p>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500 flex items-center">
+                  <Tag className="h-4 w-4 mr-2" />
+                  Category
+                </p>
+                <p className="text-gray-700">{item.category || 'Not specified'}</p>
+              </div>
+            </div>
+
+            <Separator className="my-6" />
+
+            {/* Description */}
+            <div>
+              <h3 className="text-sm font-medium text-gray-500 mb-3">Description</h3>
+              <Card className="border border-gray-200">
+                <CardContent className="p-4">
+                  <p className="text-gray-700 whitespace-pre-wrap">{item.description || 'No description provided'}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Additional Descriptions */}
+            {hasValidAdditionalDescriptions() && (
+              <>
+                <Separator className="my-6" />
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-3">Additional Details</h3>
+                  <div className="space-y-4">
+                    {item.additionalDescriptions
+                      .filter(desc => desc.title || desc.description)
+                      .map((desc, index) => (
+                        <Card key={index} className="border border-gray-200">
+                          <CardContent className="p-4">
+                            <h4 className="font-medium text-[#0052cc] mb-2">{desc.title}</h4>
+                            <p className="text-sm text-gray-600">{desc.description}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </ScrollArea>
+
+        {/* Action Buttons */}
+        <div className="p-4 sticky bottom-0">
+          <div className="flex justify-end gap-2">
+            {isAdmin && (
+              <>
+                {item.approved && (
                   <Button
-                    variant="destructive"
-                    onClick={handleDeleteClick}
-                    disabled={isDeleting}
+                    variant="outline"
+                    onClick={handleUnapprove}
+                    disabled={isUnapproving}
+                    className="border-gray-200 text-gray-600 hover:text-gray-700"
                   >
-                    {isDeleting ? (
+                    {isUnapproving ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Deleting...
+                        Unapproving...
                       </>
                     ) : (
                       <>
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete
+                        <XCircle className="h-4 w-4 mr-2" />
+                        Unapprove
                       </>
                     )}
                   </Button>
-                </>
-              )}
-              {(!isAdmin && userId === item.reporterId) && (
+                )}
                 <Button
                   variant="destructive"
-                  onClick={handleDeleteClick}
+                  onClick={() => setShowDeleteDialog(true)}
                   disabled={isDeleting}
+                  className="bg-red-500 hover:bg-red-600 text-white"
                 >
                   {isDeleting ? (
                     <>
@@ -273,10 +283,52 @@ export default function ItemDetailSection({
                     </>
                   )}
                 </Button>
-              )}
-            </div>
+              </>
+            )}
+            {(!isAdmin && userId === item.reporterId) && (
+              <Button
+                variant="destructive"
+                onClick={() => setShowDeleteDialog(true)}
+                disabled={isDeleting}
+                className="bg-red-500 hover:bg-red-600 text-white"
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash className="h-4 w-4 mr-2" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            )}
           </div>
-        )}
+        </div>
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Item</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this item? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteClick}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isDeleting}
+              >
+                {isDeleting ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
