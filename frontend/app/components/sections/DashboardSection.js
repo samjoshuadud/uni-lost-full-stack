@@ -19,7 +19,9 @@ export default function DashboardSection({
   isAdmin = false,
   userId = null,
   onDelete,
-  onUnapprove
+  onUnapprove,
+  searchQuery = "",
+  searchCategory = "all"
 }) {
   const { userData } = useAuth();
   const [localItems, setLocalItems] = useState([]);
@@ -34,17 +36,60 @@ export default function DashboardSection({
   useEffect(() => {
     if (isInitialLoad) {
       setIsLoading(true);
-      // Set local items immediately to prevent flash
-      setLocalItems(items);
+      // Filter items based on search criteria
+      const filteredItems = items.filter(item => {
+        // Category filter
+        const matchesCategory = searchCategory === "all" || 
+          item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+        // Search terms - only filter if there's a search query
+        if (searchQuery.trim()) {
+          const searchTerms = searchQuery.toLowerCase().trim();
+          const matchesSearch = 
+            item.name?.toLowerCase().includes(searchTerms) ||
+            item.location?.toLowerCase().includes(searchTerms) ||
+            item.description?.toLowerCase().includes(searchTerms) ||
+            item.category?.toLowerCase().includes(searchTerms);
+
+          return matchesCategory && matchesSearch;
+        }
+
+        // If no search query, just filter by category
+        return matchesCategory;
+      });
+
+      setLocalItems(filteredItems);
       const timer = setTimeout(() => {
         setIsLoading(false);
         setIsInitialLoad(false);
       }, 300);
       return () => clearTimeout(timer);
     } else {
-      setLocalItems(items);
+      // Filter items based on search criteria
+      const filteredItems = items.filter(item => {
+        // Category filter
+        const matchesCategory = searchCategory === "all" || 
+          item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+        // Search terms - only filter if there's a search query
+        if (searchQuery.trim()) {
+          const searchTerms = searchQuery.toLowerCase().trim();
+          const matchesSearch = 
+            item.name?.toLowerCase().includes(searchTerms) ||
+            item.location?.toLowerCase().includes(searchTerms) ||
+            item.description?.toLowerCase().includes(searchTerms) ||
+            item.category?.toLowerCase().includes(searchTerms);
+
+          return matchesCategory && matchesSearch;
+        }
+
+        // If no search query, just filter by category
+        return matchesCategory;
+      });
+
+      setLocalItems(filteredItems);
     }
-  }, [items, isInitialLoad]);
+  }, [items, searchQuery, searchCategory, isInitialLoad]);
 
   // Add loading skeleton UI
   if (isLoading) {
