@@ -18,7 +18,9 @@ export default function ItemSection({
   handleViewDetails,
   userId = null,  // Add this prop
   onDelete,      // Add this prop
-  onUnapprove  // Add this prop
+  onUnapprove,  // Add this prop
+  searchQuery = "",
+  searchCategory = "all"
 }) {
   // Add state to manage items locally
   const [localItems, setLocalItems] = useState([]);
@@ -29,20 +31,70 @@ export default function ItemSection({
   const [isInitialLoad, setIsInitialLoad] = useState(true);  // Add this state
   const [error, setError] = useState(null);
 
-  // Remove the fetch useEffect and just use the items prop
+  // Add useEffect for search filtering
   useEffect(() => {
     if (isInitialLoad) {
       setIsLoading(true);
-      setLocalItems(items);
+      // Filter items based on search criteria and section type (lost/found)
+      const filteredItems = items.filter(item => {
+        // First filter by lost/found status
+        const matchesStatus = title.toLowerCase().includes(item.status?.toLowerCase());
+        
+        // Then filter by category
+        const matchesCategory = searchCategory === "all" || 
+          item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+        // Finally, filter by search query if it exists
+        if (searchQuery.trim()) {
+          const searchTerms = searchQuery.toLowerCase().trim();
+          const matchesSearch = 
+            item.name?.toLowerCase().includes(searchTerms) ||
+            item.location?.toLowerCase().includes(searchTerms) ||
+            item.description?.toLowerCase().includes(searchTerms) ||
+            item.category?.toLowerCase().includes(searchTerms);
+
+          return matchesStatus && matchesCategory && matchesSearch;
+        }
+
+        // If no search query, just filter by status and category
+        return matchesStatus && matchesCategory;
+      });
+
+      setLocalItems(filteredItems);
       const timer = setTimeout(() => {
         setIsLoading(false);
         setIsInitialLoad(false);
-      }, 100);
+      }, 300);
       return () => clearTimeout(timer);
     } else {
-      setLocalItems(items);
+      // Filter items based on search criteria and section type (lost/found)
+      const filteredItems = items.filter(item => {
+        // First filter by lost/found status
+        const matchesStatus = title.toLowerCase().includes(item.status?.toLowerCase());
+        
+        // Then filter by category
+        const matchesCategory = searchCategory === "all" || 
+          item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+        // Finally, filter by search query if it exists
+        if (searchQuery.trim()) {
+          const searchTerms = searchQuery.toLowerCase().trim();
+          const matchesSearch = 
+            item.name?.toLowerCase().includes(searchTerms) ||
+            item.location?.toLowerCase().includes(searchTerms) ||
+            item.description?.toLowerCase().includes(searchTerms) ||
+            item.category?.toLowerCase().includes(searchTerms);
+
+          return matchesStatus && matchesCategory && matchesSearch;
+        }
+
+        // If no search query, just filter by status and category
+        return matchesStatus && matchesCategory;
+      });
+
+      setLocalItems(filteredItems);
     }
-  }, [items, isInitialLoad]);
+  }, [items, searchQuery, searchCategory, title, isInitialLoad]);
 
   // Filter items that are approved and have the correct status
   const filteredItems = localItems.filter(item => 
