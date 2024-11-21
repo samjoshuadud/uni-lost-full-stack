@@ -896,13 +896,6 @@ export default function UniLostAndFound() {
                 <Button 
                   variant="ghost"
                   className="text-white hover:text-yellow-400 transition-colors"
-                  onClick={() => { setActiveSection("admin"); setSelectedItem(null); }}
-                >
-                  Admin Dashboard
-                </Button>
-                <Button 
-                  variant="ghost"
-                  className="text-white hover:text-yellow-400 transition-colors"
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
                 >
                   View Items
