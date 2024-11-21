@@ -278,6 +278,8 @@ export default function UniLostAndFound() {
           isAdmin={isAdmin}
           userId={user?.uid}
           onDelete={handleDelete}
+          searchQuery={searchQuery}
+          searchCategory={searchCategory}
         />
       case "lost":
         const lostItems = items.filter(process => 
@@ -307,6 +309,8 @@ export default function UniLostAndFound() {
           userId={user?.uid}
           onDelete={handleDelete}
           onUnapprove={handleUnapprove}
+          searchQuery={searchQuery}
+          
         />
       case "found":
         const foundItems = items.filter(process => 
@@ -333,12 +337,15 @@ export default function UniLostAndFound() {
           userId={user?.uid}
           onDelete={handleDelete}
           onUnapprove={handleUnapprove}
+          searchQuery={searchQuery}
+          searchCategory={searchCategory}
         />
       case "history":
         return <ItemSection 
           items={filteredItems.filter(item => item.Status === "handed_over")} 
           onSeeMore={setSelectedItem} 
           title="Handed Over Items" 
+          // add search functionality here 
         />
       case "report":
         return <ReportSection onSubmit={handleReportSubmit} />
@@ -1027,14 +1034,18 @@ export default function UniLostAndFound() {
 
         {/* Search Bar - Show only when viewing items */}
         {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
-          <div className="flex gap-4 mb-8">
-            <Input 
-              placeholder="Search items..." 
+          <div className="flex items-center gap-4 mb-6 ">
+            <Input
+              type="text"
+              placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-grow"
+              className="max-w-sm"
             />
-            <Select value={searchCategory} onValueChange={setSearchCategory}>
+            <Select
+              value={searchCategory}
+              onValueChange={setSearchCategory}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
@@ -1047,10 +1058,6 @@ export default function UniLostAndFound() {
                 <SelectItem value="Bags">Bags</SelectItem>
               </SelectContent>
             </Select>
-            <Button>
-              <Search className="mr-2 h-4 w-4" />
-              Search
-            </Button>
           </div>
         )}
 
