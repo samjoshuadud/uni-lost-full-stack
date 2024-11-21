@@ -309,6 +309,8 @@ export default function UniLostAndFound() {
           userId={user?.uid}
           onDelete={handleDelete}
           onUnapprove={handleUnapprove}
+          searchQuery={searchQuery}
+          
         />
       case "found":
         const foundItems = items.filter(process => 
@@ -335,12 +337,15 @@ export default function UniLostAndFound() {
           userId={user?.uid}
           onDelete={handleDelete}
           onUnapprove={handleUnapprove}
+          searchQuery={searchQuery}
+          searchCategory={searchCategory}
         />
       case "history":
         return <ItemSection 
           items={filteredItems.filter(item => item.Status === "handed_over")} 
           onSeeMore={setSelectedItem} 
           title="Handed Over Items" 
+          // add search functionality here 
         />
       case "report":
         return <ReportSection onSubmit={handleReportSubmit} />
