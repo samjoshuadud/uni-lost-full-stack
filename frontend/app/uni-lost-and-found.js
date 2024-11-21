@@ -266,7 +266,8 @@ export default function UniLostAndFound() {
             additionalDescriptions: 
               (item.Item?.AdditionalDescriptions?.$values || 
                item.item?.additionalDescriptions?.$values || 
-               [])
+               []),
+            approved: item.Item?.Approved || item.item?.approved || false
           }));
         
         return <DashboardSection 
@@ -278,6 +279,7 @@ export default function UniLostAndFound() {
           isAdmin={isAdmin}
           userId={user?.uid}
           onDelete={handleDelete}
+          onUnapprove={handleUnapprove}
           searchQuery={searchQuery}
           searchCategory={searchCategory}
         />
