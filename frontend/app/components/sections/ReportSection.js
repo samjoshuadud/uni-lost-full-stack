@@ -139,144 +139,196 @@ export default function ReportSection({ onSubmit }) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>Report Item</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePreSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Report Type</label>
-              <Select value={itemStatus} onValueChange={setItemStatus} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select report type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
-                  <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Student ID</label>
-              <Input
-                value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
-                placeholder="Enter your student ID"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Item Name</label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Enter item name"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Description</label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe the item"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Last Seen Location</label>
-              <Input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Enter location"
-                required
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Category</label>
-              <Select value={category} onValueChange={setCategory} required>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Books">Books</SelectItem>
-                  <SelectItem value="Electronics">Electronics</SelectItem>
-                  <SelectItem value="Personal Items">Personal Items</SelectItem>
-                  <SelectItem value="Documents">Documents</SelectItem>
-                  <SelectItem value="Bags">Bags</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+    <div className="bg-[#f8f9fa] p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-[#0052cc]">Report Item Section</h1>
+        </div>
 
-            {/* Additional Descriptions */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <label className="text-sm font-medium">Additional Descriptions</label>
-                <Button type="button" variant="outline" onClick={addDescription}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Description
+        {/* Main Form */}
+        <Card className="border-0 shadow-sm">
+          <CardContent className="p-6 space-y-6">
+            <form onSubmit={handlePreSubmit} className="space-y-6">
+              {/* Two Column Layout */}
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Left Column */}
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Report Type
+                    </label>
+                    <Select value={itemStatus} onValueChange={setItemStatus} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select Report Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
+                        <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Student ID
+                    </label>
+                    <Input
+                      value={studentId}
+                      onChange={(e) => setStudentId(e.target.value)}
+                      placeholder="Enter your Student ID"
+                      className="bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Item Name
+                    </label>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Enter Item Name"
+                      className="bg-white"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Category
+                    </label>
+                    <Select value={category} onValueChange={setCategory} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select Category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Books">Books</SelectItem>
+                        <SelectItem value="Electronics">Electronics</SelectItem>
+                        <SelectItem value="Personal Items">Personal Items</SelectItem>
+                        <SelectItem value="Documents">Documents</SelectItem>
+                        <SelectItem value="Bags">Bags</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Last Seen Location
+                    </label>
+                    <Input
+                      value={location}
+                      onChange={(e) => setLocation(e.target.value)}
+                      placeholder="Enter Location"
+                      className="bg-white"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Right Column */}
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Description
+                    </label>
+                    <Textarea
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe the Item"
+                      className="min-h-[120px] bg-white"
+                      required
+                    />
+                  </div>
+
+                  {/* Image Upload */}
+                  <div>
+                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                      Upload Image
+                    </label>
+                    <div className="mt-1">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-white"
+                      >
+                        {imagePreview ? (
+                          <img src={imagePreview} alt="Preview" className="h-full object-contain" />
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload className="h-8 w-8 text-gray-400" />
+                            <span className="mt-2 text-sm text-gray-500">Click to upload image</span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Additional Descriptions */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-sm font-medium text-gray-600">
+                        Additional Descriptions
+                      </label>
+                      <Button type="button" variant="outline" onClick={addDescription} className="h-8">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add
+                      </Button>
+                    </div>
+                    <div className="space-y-3">
+                      {additionalDescriptions.map((desc, index) => (
+                        <div key={index} className="relative bg-white p-3 rounded-lg border">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="absolute top-2 right-2 h-6 w-6"
+                            onClick={() => removeDescription(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                          <div className="space-y-2">
+                            <Input
+                              value={desc.title}
+                              onChange={(e) => updateDescription(index, 'title', e.target.value)}
+                              placeholder="Title"
+                              className="bg-white"
+                            />
+                            <Textarea
+                              value={desc.description}
+                              onChange={(e) => updateDescription(index, 'description', e.target.value)}
+                              placeholder="Description"
+                              className="bg-white"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <div className="flex justify-end">
+                <Button 
+                  type="submit" 
+                  className="bg-[#0052cc] hover:bg-[#0052cc]/90 text-white px-8"
+                  disabled={isSubmitting || !itemStatus}
+                >
+                  Preview Report
                 </Button>
               </div>
-              {additionalDescriptions.map((desc, index) => (
-                <div key={index} className="space-y-2 p-4 border rounded-lg relative">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-2 right-2"
-                    onClick={() => removeDescription(index)}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                  <Input
-                    value={desc.title}
-                    onChange={(e) => updateDescription(index, 'title', e.target.value)}
-                    placeholder="Title"
-                  />
-                  <Textarea
-                    value={desc.description}
-                    onChange={(e) => updateDescription(index, 'description', e.target.value)}
-                    placeholder="Description"
-                  />
-                </div>
-              ))}
-            </div>
-
-            {/* Image Upload */}
-            <div>
-              <label className="text-sm font-medium">Upload Image</label>
-              <div className="mt-2 space-y-2">
-                <Input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="hidden"
-                  id="image-upload"
-                />
-                <label
-                  htmlFor="image-upload"
-                  className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50"
-                >
-                  {imagePreview ? (
-                    <img src={imagePreview} alt="Preview" className="h-full object-contain" />
-                  ) : (
-                    <div className="flex flex-col items-center">
-                      <Upload className="h-8 w-8 text-muted-foreground" />
-                      <span className="mt-2 text-sm text-muted-foreground">Click to upload image</span>
-                    </div>
-                  )}
-                </label>
-              </div>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={isSubmitting || !itemStatus}>
-              Preview Report
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Summary Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>

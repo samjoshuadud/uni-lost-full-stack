@@ -211,17 +211,37 @@ export default function DashboardSection({
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {localItems.map((item) => (
         <Card 
           key={item.id} 
           id={`item-${item.id}`}
-          className="overflow-hidden transition-all duration-300"
-          style={{ transformOrigin: 'center' }}
+          className="bg-white overflow-hidden shadow-sm border border-gray-200 transition-all duration-300"
         >
+          {/* Card Header */}
+          <div className="bg-[#0052cc] p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-semibold text-lg text-white truncate">{item.name}</h3>
+              <Badge 
+                variant="outline"
+                className={`${
+                  item.status?.toLowerCase() === "lost" 
+                    ? "bg-yellow-400 text-blue-900" 
+                    : "bg-white text-blue-900"
+                } capitalize`}
+              >
+                {item.status}
+              </Badge>
+            </div>
+            <p className="text-sm text-white/90 truncate">
+              {item.location}
+            </p>
+          </div>
+
+          {/* Card Content */}
           <CardContent className="p-4">
             {/* Image Section */}
-            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-muted">
+            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
               {item.imageUrl ? (
                 <div className="w-full h-full relative">
                   <img
@@ -233,56 +253,40 @@ export default function DashboardSection({
                       e.target.nextSibling.style.display = 'flex';
                     }}
                   />
-                  <div 
-                    className="hidden w-full h-full absolute top-0 left-0 bg-muted flex-col items-center justify-center text-muted-foreground"
-                  >
+                  <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
                     <Package className="h-8 w-8 mb-2 opacity-50" />
                     <p className="text-xs">{item.category || 'Item'} Image</p>
                   </div>
                 </div>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground">
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
                   <Package className="h-8 w-8 mb-2 opacity-50" />
                   <p className="text-xs">{item.category || 'Item'} Image</p>
                 </div>
               )}
             </div>
-            
-            {/* Content Section */}
-            <div className="space-y-3">
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="font-semibold text-lg truncate">{item.name}</h3>
-                  <Badge 
-                    variant={item.status?.toLowerCase() === "lost" ? "destructive" : "success"}
-                    className="capitalize"
-                  >
-                    {item.status}
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground truncate">
-                  {item.location}
-                </p>
-              </div>
+
+            {/* Description and Actions */}
+            <div className="space-y-4">
+              <p className="text-gray-600 text-sm line-clamp-2">{item.description}</p>
               
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-gray-500">
                   {new Date(item.dateReported).toLocaleDateString()}
                 </span>
                 <div className="flex gap-2">
                   <Button 
-                    variant="outline" 
+                    className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
                     size="sm"
                     onClick={() => handleViewDetails(item)}
-                    className="gap-2"
                   >
-                    <ExternalLink className="h-4 w-4" />
+                    <ExternalLink className="h-4 w-4 mr-2" />
                     View Details
                   </Button>
                   {canDelete(item) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" className="border-gray-200">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
@@ -290,10 +294,9 @@ export default function DashboardSection({
                         {isAdmin && (
                           <DropdownMenuItem
                             onClick={() => handleUnapprove(item.id)}
-                            disabled={deletingItemId === item.id}
-                            className="gap-2"
+                            className="text-gray-600 hover:text-[#0052cc]"
                           >
-                            <X className="h-4 w-4" />
+                            <X className="h-4 w-4 mr-2" />
                             Unapprove
                           </DropdownMenuItem>
                         )}
@@ -302,17 +305,16 @@ export default function DashboardSection({
                             setItemToDelete(item);
                             setShowDeleteDialog(true);
                           }}
-                          disabled={deletingItemId === item.id}
-                          className="gap-2 text-destructive focus:text-destructive"
+                          className="text-red-600 hover:text-red-700"
                         >
                           {deletingItemId === item.id ? (
                             <>
-                              <Loader2 className="h-4 w-4 animate-spin" />
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                               Deleting...
                             </>
                           ) : (
                             <>
-                              <Trash className="h-4 w-4" />
+                              <Trash className="h-4 w-4 mr-2" />
                               Delete
                             </>
                           )}
