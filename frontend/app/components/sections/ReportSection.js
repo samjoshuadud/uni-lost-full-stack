@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock } from "lucide-react"
 
-export default function ReportSection({ onSubmit }) {
+export default function ReportSection({ onSubmit, adminMode = false }) {
   const { user, makeAuthenticatedRequest } = useAuth();
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
@@ -25,7 +25,7 @@ export default function ReportSection({ onSubmit }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
-  const [itemStatus, setItemStatus] = useState("")
+  const [itemStatus, setItemStatus] = useState(adminMode ? ItemStatus.FOUND : "")
   const [showQRCode, setShowQRCode] = useState(false);
   const qrCodeRef = useRef(null);
 
@@ -117,12 +117,13 @@ export default function ReportSection({ onSubmit }) {
         formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
       }
 
-      // Set process status and message for found items
-      if (itemStatus === ItemStatus.FOUND) {
-        console.log('Setting found item process status and message');
+      // Set process status and message based on whether it's admin mode
+      if (itemStatus === ItemStatus.FOUND && !adminMode) {
+        // Regular user reporting found item
         formData.append('processStatus', ProcessStatus.AWAITING_SURRENDER);
         formData.append('message', ProcessMessages.SURRENDER_REQUIRED);
       } else {
+        // Admin reporting or user reporting lost item
         formData.append('processStatus', ProcessStatus.PENDING_APPROVAL);
         formData.append('message', ProcessMessages.WAITING_APPROVAL);
       }
@@ -151,23 +152,22 @@ export default function ReportSection({ onSubmit }) {
       const data = await response.json();
       console.log('Response from server:', data);
 
-      if (itemStatus === ItemStatus.FOUND) {
-        console.log('Showing QR code dialog');
+      // Show QR code only for non-admin found item reports
+      if (itemStatus === ItemStatus.FOUND && !adminMode) {
         setShowQRCode(true);
         return;
       }
       
-      if (itemStatus === ItemStatus.LOST) {
-        setName('');
-        setDescription('');
-        setLocation('');
-        setCategory('');
-        setStudentId('');
-        setItemStatus('');
-        setAdditionalDescriptions([]);
-        setSelectedImage(null);
-        setImagePreview(null);
-      }
+      // Clear form
+      setName('');
+      setDescription('');
+      setLocation('');
+      setCategory('');
+      setStudentId('');
+      setItemStatus('');
+      setAdditionalDescriptions([]);
+      setSelectedImage(null);
+      setImagePreview(null);
 
       if (onSubmit) {
         onSubmit(data);
@@ -200,15 +200,25 @@ export default function ReportSection({ onSubmit }) {
                     <label className="text-sm font-medium text-gray-600 mb-1.5 block">
                       Report Type
                     </label>
-                    <Select value={itemStatus} onValueChange={setItemStatus} required>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select Report Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
-                        <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    {adminMode ? (
+                      // If in admin mode, show disabled input with "Found Item" value
+                      <Input
+                        value="Found Item"
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    ) : (
+                      // If not in admin mode, show the normal select
+                      <Select value={itemStatus} onValueChange={setItemStatus} required>
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Select Report Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
+                          <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   </div>
 
                   <div>
