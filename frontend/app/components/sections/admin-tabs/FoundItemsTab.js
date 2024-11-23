@@ -10,7 +10,14 @@ import {
   Trash,
   ExternalLink,
   Loader2,
+  QrCode,
+  Plus,
+  Camera,
+  Upload
 } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Html5QrcodeScanner } from "html5-qrcode"
+import ReportSection from "../ReportSection"
 import { useState, useEffect, memo } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProcessStatus } from '@/lib/constants';
@@ -26,42 +33,41 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [deletingItems, setDeletingItems] = useState(new Set());
   const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
   const [allItems, setAllItems] = useState(items);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [showScannerModal, setShowScannerModal] = useState(false);
+  const [scannerType, setScannerType] = useState(null); // 'camera' or 'upload'
+  const [scannedData, setScannedData] = useState(null);
+  const [showScannedDataModal, setShowScannedDataModal] = useState(false);
 
   useEffect(() => {
-    console.log('FoundItemsTab received items:', items);
-  }, [items]);
+    console.log('Raw items received:', items);
+    console.log('All items state:', allItems);
+  }, [items, allItems]);
 
   useEffect(() => {
-    setAllItems(items);
+    console.log('Items received in FoundItemsTab:', items);
+    if (items && items.$values) {
+      setAllItems(items.$values);
+    } else if (Array.isArray(items)) {
+      setAllItems(items);
+    }
   }, [items]);
 
   useEffect(() => {
     const updateCount = () => {
-      console.log('Current items:', items);
-      
-      const count = items.filter(process => {
-        console.log('Checking process:', process);
-        
-        return process.status === "pending_approval" && 
+      const count = allItems.filter(process => {
+        console.log('Checking process for count:', process);
+        return process.status === ProcessStatus.PENDING_APPROVAL && 
                process.item?.status?.toLowerCase() === "found" && 
                !process.item?.approved;
       }).length;
       
       console.log('Found items count:', count);
-      
-      setPendingFoundApprovalCount(prevCount => {
-        if (prevCount !== count) {
-          return count;
-        }
-        return prevCount;
-      });
+      setPendingFoundApprovalCount(count);
     };
 
     updateCount();
-    const interval = setInterval(updateCount, 5000);
-
-    return () => clearInterval(interval);
-  }, [items]);
+  }, [allItems]);
 
   const handleApprove = async (itemId) => {
     try {
@@ -117,6 +123,17 @@ const FoundItemsTab = memo(function FoundItemsTab({
     }
   };
 
+  const handleScan = (decodedText) => {
+    try {
+      const data = JSON.parse(decodedText);
+      setScannedData(data);
+      setShowScannerModal(false);
+      setShowScannedDataModal(true);
+    } catch (error) {
+      console.error('Error parsing QR code data:', error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="min-h-[600px]">
@@ -125,10 +142,10 @@ const FoundItemsTab = memo(function FoundItemsTab({
           Found Items Overview
         </h3>
 
-        {/* Status Cards */}
+        {/* Status Cards with New Buttons */}
         {isCountsLoading || !items?.length ? (
-          <div className="grid gap-4 md:grid-cols-1 mt-4">
-            <Card className="bg-background hover:bg-muted/50 transition-colors">
+          <div className="grid gap-4 grid-cols-3 mt-4">
+            <Card className="bg-white shadow-sm">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
                   <Skeleton className="w-12 h-12 rounded-full" />
@@ -141,7 +158,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
             </Card>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-1 mt-4">
+          <div className="grid gap-4 grid-cols-3 mt-4">
             <Card className="bg-background hover:bg-muted/50 transition-colors">
               <CardContent className="p-6">
                 <div className="flex items-center gap-4">
@@ -159,6 +176,26 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 </div>
               </CardContent>
             </Card>
+
+            <Button 
+              onClick={() => setShowReportModal(true)}
+              className="bg-white border border-gray-200 text-black h-auto p-6 shadow-sm hover:bg-[#0f172a] hover:text-white transition-colors"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <Plus className="h-5 w-5" />
+                <span>Report Found Item</span>
+              </div>
+            </Button>
+
+            <Button 
+              onClick={() => setShowScannerModal(true)}
+              className="bg-white border border-gray-200 text-black h-auto p-6 shadow-sm hover:bg-[#0f172a] hover:text-white transition-colors"
+            >
+              <div className="flex items-center justify-center gap-2">
+                <QrCode className="h-5 w-5" />
+                <span>Scan QR Code</span>
+              </div>
+            </Button>
           </div>
         )}
 
@@ -202,13 +239,24 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 </>
               ) : allItems
                 .filter(process => {
-                  const item = process.item || process.Item;
-                  const status = process.status || process.Status;
-                  const itemStatus = item?.status || item?.Status;
+                  console.log('Full process object:', process);
                   
-                  return status === ProcessStatus.PENDING_APPROVAL && 
-                         itemStatus?.toLowerCase() === "found" && 
-                         !(item?.approved || item?.Approved);
+                  // Check each condition separately and log the result
+                  const isPendingApproval = process.status === "pending_approval";
+                  const isFoundItem = process.item?.status?.toLowerCase() === "found";
+                  const isNotApproved = !process.item?.approved;
+
+                  console.log('Detailed filter conditions:', {
+                    isPendingApproval,
+                    isFoundItem,
+                    isNotApproved,
+                    processStatus: process.status,
+                    itemStatus: process.item?.status,
+                    itemApproved: process.item?.approved,
+                    shouldInclude: isPendingApproval && isFoundItem && isNotApproved
+                  });
+
+                  return isPendingApproval && isFoundItem && isNotApproved;
                 })
                 .length === 0 ? (
                 <Card>
@@ -219,30 +267,27 @@ const FoundItemsTab = memo(function FoundItemsTab({
                   </CardContent>
                 </Card>
               ) : (
+                // Items mapping
                 allItems
-                  .filter(process => {
-                    const item = process.item || process.Item;
-                    const status = process.status || process.Status;
-                    const itemStatus = item?.status || item?.Status;
-                    
-                    return status === ProcessStatus.PENDING_APPROVAL && 
-                           itemStatus?.toLowerCase() === "found" && 
-                           !(item?.approved || item?.Approved);
-                  })
+                  .filter(process => 
+                    process.status === "pending_approval" && 
+                    !process.item?.approved && 
+                    process.item?.status?.toLowerCase() === "found"
+                  )
                   .map((process) => {
-                    const item = process.item || process.Item;
-                    
+                    console.log('Rendering process:', process);
+                    // ... item rendering code ...
                     return (
                       <Card key={process.id || process.Id} className="overflow-hidden">
                         <CardContent className="p-6">
                           <div className="flex gap-6">
                             {/* Image Section */}
                             <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                              {(item?.imageUrl || item?.ImageUrl) ? (
+                              {(process.item?.imageUrl || process.item?.ImageUrl) ? (
                                 <div className="w-full h-full relative">
                                   <img
-                                    src={item.imageUrl || item.ImageUrl}
-                                    alt={item.name || item.Name}
+                                    src={process.item.imageUrl || process.item.ImageUrl}
+                                    alt={process.item.name || process.item.Name}
                                     className="w-full h-full object-cover"
                                     onError={(e) => {
                                       e.target.style.display = 'none';
@@ -254,7 +299,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                   >
                                     <Package className="h-8 w-8 mb-2 opacity-50" />
                                     <p className="text-xs text-center">
-                                      {item?.category || item?.Category || 'Item'} Image
+                                      {process.item?.category || process.item?.Category || 'Item'} Image
                                     </p>
                                   </div>
                                 </div>
@@ -262,7 +307,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground p-2">
                                   <Package className="h-8 w-8 mb-2 opacity-50" />
                                   <p className="text-xs text-center">
-                                    {item?.category || item?.Category || 'Item'} Image
+                                    {process.item?.category || process.item?.Category || 'Item'} Image
                                   </p>
                                 </div>
                               )}
@@ -274,31 +319,31 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 <div>
                                   <div className="flex items-center gap-2">
                                     <h3 className="font-bold text-lg truncate">
-                                      {item?.name || item?.Name}
+                                      {process.item?.name || process.item?.Name}
                                     </h3>
                                     <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
                                       For Approval
                                     </Badge>
                                   </div>
                                   <p className="text-sm text-muted-foreground">
-                                    Found by Student ID: {item?.studentId || item?.StudentId || "N/A"}
+                                    Student ID: {process.item?.studentId || process.item?.StudentId || "N/A"}
                                   </p>
                                 </div>
                                 <Badge variant="outline" className="ml-2 flex-shrink-0">
-                                  {item?.category || item?.Category}
+                                  {process.item?.category || process.item?.Category}
                                 </Badge>
                               </div>
                               <div className="space-y-1.5">
                                 <p className="text-sm">
-                                  <strong>Location:</strong> {item?.location || item?.Location}
+                                  <strong>Location:</strong> {process.item?.location || process.item?.Location}
                                 </p>
                                 <p className="text-sm">
-                                  <strong>Description:</strong> {item?.description || item?.Description}
+                                  <strong>Description:</strong> {process.item?.description || process.item?.Description}
                                 </p>
-                                {(item?.additionalDescriptions?.$values?.length > 0 || item?.AdditionalDescriptions?.$values?.length > 0) && (
+                                {(process.item?.additionalDescriptions?.$values?.length > 0 || process.item?.AdditionalDescriptions?.$values?.length > 0) && (
                                   <div className="mt-2">
                                     <p className="text-sm text-muted-foreground">
-                                      +{(item?.additionalDescriptions?.$values || item?.AdditionalDescriptions?.$values || []).length} additional details
+                                      +{(process.item?.additionalDescriptions?.$values || process.item?.AdditionalDescriptions?.$values || []).length} additional details
                                     </p>
                                   </div>
                                 )}
@@ -311,7 +356,11 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="outline"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => onViewDetails(item)}
+                                onClick={() => onViewDetails({
+                                  ...process.item,
+                                  additionalDescriptions: process.item?.additionalDescriptions?.$values || 
+                                                        process.item?.AdditionalDescriptions?.$values || []
+                                })}
                               >
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 View Details
@@ -320,10 +369,10 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="default"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => handleApprove(item?.id || item?.Id)}
-                                disabled={approvingItems.has(item?.id || item?.Id)}
+                                onClick={() => handleApprove(process.item?.id || process.item?.Id)}
+                                disabled={approvingItems.has(process.item?.id || process.item?.Id)}
                               >
-                                {approvingItems.has(item?.id || item?.Id) ? (
+                                {approvingItems.has(process.item?.id || process.item?.Id) ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                     Approving...
@@ -339,10 +388,10 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="destructive"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => handleDeleteClick(item?.id || item?.Id)}
-                                disabled={deletingItems.has(item?.id || item?.Id)}
+                                onClick={() => handleDeleteClick(process.item?.id || process.item?.Id)}
+                                disabled={deletingItems.has(process.item?.id || process.item?.Id)}
                               >
-                                {deletingItems.has(item?.id || item?.Id) ? (
+                                {deletingItems.has(process.item?.id || process.item?.Id) ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                     Deleting...
@@ -364,6 +413,54 @@ const FoundItemsTab = memo(function FoundItemsTab({
             </div>
           </div>
         </div>
+
+        {/* Report Modal */}
+        <Dialog open={showReportModal} onOpenChange={setShowReportModal}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Report Found Item</DialogTitle>
+            </DialogHeader>
+            <ReportSection 
+              onSubmit={() => setShowReportModal(false)}
+              adminMode={true}
+            />
+          </DialogContent>
+        </Dialog>
+
+        {/* Scanner Selection Modal */}
+        <Dialog open={showScannerModal} onOpenChange={setShowScannerModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Scan QR Code</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                onClick={() => setScannerType('camera')}
+                className="flex flex-col items-center p-6"
+              >
+                <Camera className="h-8 w-8 mb-2" />
+                Use Camera
+              </Button>
+              <Button
+                onClick={() => setScannerType('upload')}
+                className="flex flex-col items-center p-6"
+              >
+                <Upload className="h-8 w-8 mb-2" />
+                Upload Image
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Scanned Data Modal */}
+        <Dialog open={showScannedDataModal} onOpenChange={setShowScannedDataModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Scanned Item Details</DialogTitle>
+            </DialogHeader>
+            {/* We'll implement this part next */}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
