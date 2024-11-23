@@ -108,6 +108,7 @@ public class ItemService
                         UpdatedAt = DateTime.UtcNow
                     };
 
+                    _logger.LogInformation($"Creating process with status: {process.status} and message: {process.Message}");
                     await _processRepository.CreateAsync(process);
                     await _context.SaveChangesAsync(ct);
                     

@@ -24,6 +24,7 @@ frontend/out/
 
 # Production
 frontend/build
+frontend/public/uploads/*
 
 # Misc
 frontend/.DS_Store
