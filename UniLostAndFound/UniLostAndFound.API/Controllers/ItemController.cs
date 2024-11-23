@@ -35,6 +35,8 @@ public class ItemController : ControllerBase
         try
         {
             _logger.LogInformation($"Creating item with name: {createDto.Name}");
+            _logger.LogInformation($"Process Status from DTO: {createDto.ProcessStatus}");
+            _logger.LogInformation($"Message from DTO: {createDto.Message}");
             
             string imageUrl = string.Empty;
             
@@ -62,35 +64,18 @@ public class ItemController : ControllerBase
             }
 
             var itemId = await _itemService.CreateItemAsync(createDto, imageUrl);
-            
-            var existingProcesses = await _processService.GetAllWithItemsAsync();
-            var existingProcess = existingProcesses.FirstOrDefault(p => p.ItemId == itemId);
+            _logger.LogInformation($"Created item with ID: {itemId}");
 
-            if (existingProcess != null)
-            {
-                _logger.LogInformation($"Process already exists for item {itemId}");
-                return Ok(new { itemId, processId = existingProcess.Id });
-            }
-
-            var processId = Guid.NewGuid().ToString();
-            var process = new PendingProcess
-            {
-                Id = processId,
-                ItemId = itemId,
-                UserId = createDto.ReporterId,
-                status = "pending_approval",
-                Message = createDto.Message,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-
-            await _processService.CreateProcessAsync(process);
+            // Get the created process ID from the service
+            var process = await _processService.GetProcessByItemIdAsync(itemId);
+            var processId = process?.Id;
 
             return Ok(new { itemId, processId });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error creating item: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return BadRequest(new { error = ex.Message });
         }
     }

@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
+import { QRCodeSVG } from 'qrcode.react';
+import { toPng } from 'html-to-image';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
-import { Plus, X, Upload, Bell, AlertTriangle } from "lucide-react"
+import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock } from "lucide-react"
 
 export default function ReportSection({ onSubmit }) {
   const { user, makeAuthenticatedRequest } = useAuth();
@@ -24,6 +26,8 @@ export default function ReportSection({ onSubmit }) {
   const [selectedImage, setSelectedImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [itemStatus, setItemStatus] = useState("")
+  const [showQRCode, setShowQRCode] = useState(false);
+  const qrCodeRef = useRef(null);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -59,6 +63,34 @@ export default function ReportSection({ onSubmit }) {
     setShowConfirmDialog(true);
   };
 
+  const generateQRData = () => {
+    return JSON.stringify({
+      name,
+      description,
+      location,
+      category,
+      studentId,
+      additionalDescriptions,
+      status: itemStatus,
+      reporterId: user?.uid,
+      timestamp: new Date().toISOString(),
+    });
+  };
+
+  const downloadQRCode = async () => {
+    if (qrCodeRef.current) {
+      try {
+        const dataUrl = await toPng(qrCodeRef.current);
+        const link = document.createElement('a');
+        link.download = `found-item-qr-${new Date().getTime()}.png`;
+        link.href = dataUrl;
+        link.click();
+      } catch (err) {
+        console.error('Error downloading QR code:', err);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) return;
     
@@ -66,7 +98,6 @@ export default function ReportSection({ onSubmit }) {
     setShowConfirmDialog(false);
 
     try {
-      // Create FormData object
       const formData = new FormData();
       formData.append('name', name);
       formData.append('description', description);
@@ -75,27 +106,33 @@ export default function ReportSection({ onSubmit }) {
       formData.append('status', itemStatus);
       formData.append('reporterId', user.uid);
       formData.append('studentId', studentId);
-      formData.append('message', ProcessMessages.WAITING_APPROVAL);
-
-      // Format additional descriptions
-      if (additionalDescriptions.length > 0) {
-        const validDescriptions = additionalDescriptions.filter(
-          desc => desc.title && desc.description
-        );
-        if (validDescriptions.length > 0) {
-          console.log('Sending additional descriptions:', validDescriptions);
-          formData.append('additionalDescriptions', JSON.stringify(validDescriptions));
-        }
-      }
-
+      
       // Add image if selected
       if (selectedImage) {
         formData.append('image', selectedImage);
       }
 
-      console.log('Submitting form data:', Object.fromEntries(formData));
+      // Add additional descriptions if any
+      if (additionalDescriptions.length > 0) {
+        formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
+      }
 
-      // Make the request
+      // Set process status and message for found items
+      if (itemStatus === ItemStatus.FOUND) {
+        console.log('Setting found item process status and message');
+        formData.append('processStatus', ProcessStatus.AWAITING_SURRENDER);
+        formData.append('message', ProcessMessages.SURRENDER_REQUIRED);
+      } else {
+        formData.append('processStatus', ProcessStatus.PENDING_APPROVAL);
+        formData.append('message', ProcessMessages.WAITING_APPROVAL);
+      }
+
+      // Log the complete form data
+      console.log('Form Data contents:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
+      }
+
       const response = await fetch('http://localhost:5067/api/Item', {
         method: 'POST',
         headers: {
@@ -112,27 +149,32 @@ export default function ReportSection({ onSubmit }) {
       }
 
       const data = await response.json();
-      console.log('Report submitted successfully:', data);
-      
-      // Clear form
-      setName('');
-      setDescription('');
-      setLocation('');
-      setCategory('');
-      setStudentId('');
-      setItemStatus('');
-      setAdditionalDescriptions([]);
-      setSelectedImage(null);
-      setImagePreview(null);
+      console.log('Response from server:', data);
 
-      // Call onSubmit with the response data
+      if (itemStatus === ItemStatus.FOUND) {
+        console.log('Showing QR code dialog');
+        setShowQRCode(true);
+        return;
+      }
+      
+      if (itemStatus === ItemStatus.LOST) {
+        setName('');
+        setDescription('');
+        setLocation('');
+        setCategory('');
+        setStudentId('');
+        setItemStatus('');
+        setAdditionalDescriptions([]);
+        setSelectedImage(null);
+        setImagePreview(null);
+      }
+
       if (onSubmit) {
         onSubmit(data);
       }
 
     } catch (error) {
       console.error('Error submitting report:', error);
-      // You might want to show an error message to the user here
     } finally {
       setIsSubmitting(false);
     }
@@ -426,6 +468,80 @@ export default function ReportSection({ onSubmit }) {
               ) : (
                 "Submit Report"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Code Dialog */}
+      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Found Item Report - QR Code</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            {/* Warning Message */}
+            <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <div className="p-2 bg-yellow-200 rounded-full">
+                  <Clock className="h-5 w-5 text-yellow-700" />
+                </div>
+                <div>
+                  <p className="text-sm text-yellow-800">
+                    <span className="font-semibold">Important:</span> This report will be automatically deleted if the item is not surrendered within 3 days.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* QR Code */}
+            <div className="flex flex-col items-center space-y-4">
+              <div 
+                ref={qrCodeRef}
+                className="p-4 bg-white rounded-lg"
+              >
+                <QRCodeSVG
+                  value={generateQRData()}
+                  size={200}
+                  level="H"
+                  includeMargin={true}
+                  className="mx-auto"
+                />
+              </div>
+              <Button onClick={downloadQRCode} className="w-full">
+                <Download className="h-4 w-4 mr-2" />
+                Download QR Code
+              </Button>
+            </div>
+
+            {/* Instructions */}
+            <div className="text-sm text-muted-foreground space-y-2">
+              <p>Please:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Download or save this QR code</li>
+                <li>Surrender the found item to the Student Center</li>
+                <li>Show this QR code to the admin</li>
+              </ol>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setShowQRCode(false);
+                // Clear form
+                setName('');
+                setDescription('');
+                setLocation('');
+                setCategory('');
+                setStudentId('');
+                setItemStatus('');
+                setAdditionalDescriptions([]);
+                setSelectedImage(null);
+                setImagePreview(null);
+              }}
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

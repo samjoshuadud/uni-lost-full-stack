@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using UniLostAndFound.API.Data;
 using UniLostAndFound.API.Repositories;
+using UniLostAndFound.API.Services.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,13 +42,14 @@ try
     builder.Services.AddScoped<IUserAccessRepository, UserAccessRepository>();
     builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
-    // Register Services
-    builder.Services.AddScoped<ItemService>();
-    builder.Services.AddScoped<PendingProcessService>();
+    // Register Services in this order
+    builder.Services.AddScoped<PendingProcessService>();  // Register this first
+    builder.Services.AddScoped<ItemService>();  // Then this
     builder.Services.AddScoped<UserService>();
     builder.Services.AddScoped<UserAccessService>();
     builder.Services.AddScoped<AdminService>();
     builder.Services.AddScoped<VerificationQuestionService>();
+    builder.Services.AddHostedService<ItemCleanupService>();
 
     // Add CORS
     builder.Services.AddCors(options =>

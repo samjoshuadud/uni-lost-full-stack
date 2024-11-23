@@ -4,8 +4,9 @@ using UniLostAndFound.API.Models;
 
 public interface IPendingProcessRepository : IBaseRepository<PendingProcess>
 {
-    Task<IEnumerable<PendingProcess>> GetByUserIdAsync(string userId);
-    Task<IEnumerable<PendingProcess>> GetByItemIdAsync(string itemId);
+    Task<List<PendingProcess>> GetByUserIdAsync(string userId);
+    Task<List<PendingProcess>> GetAllWithItemsAsync();
+    Task<PendingProcess> GetProcessByIdAsync(string id);
+    Task<PendingProcess> GetProcessByItemIdAsync(string itemId);
     Task UpdateStatusAsync(string id, string status, string message);
-    Task<IEnumerable<PendingProcess>> GetAllWithItemsAsync();
 } 
