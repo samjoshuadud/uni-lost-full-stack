@@ -15,10 +15,10 @@ import {
   Camera,
   Upload
 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Html5QrcodeScanner } from "html5-qrcode"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Html5QrcodeScanner, Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode"
 import ReportSection from "../ReportSection"
-import { useState, useEffect, memo } from "react"
+import { useState, useEffect, memo, useRef } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProcessStatus } from '@/lib/constants';
 
@@ -35,9 +35,13 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [allItems, setAllItems] = useState(items);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showScannerModal, setShowScannerModal] = useState(false);
-  const [scannerType, setScannerType] = useState(null); // 'camera' or 'upload'
   const [scannedData, setScannedData] = useState(null);
   const [showScannedDataModal, setShowScannedDataModal] = useState(false);
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const scannerRef = useRef(null);
+  const scannerModalMounted = useRef(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     console.log('Raw items received:', items);
@@ -52,7 +56,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
       setAllItems(items);
     }
   }, [items]);
-
+  
   useEffect(() => {
     const updateCount = () => {
       const count = allItems.filter(process => {
@@ -68,6 +72,50 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
     updateCount();
   }, [allItems]);
+
+  useEffect(() => {
+    if (showQRScanner && !scannerRef.current && document.getElementById('qr-reader')) {
+      try {
+        // Stop any existing scanner
+        if (scannerRef.current) {
+          scannerRef.current.clear();
+          scannerRef.current = null;
+        }
+
+        // Create new scanner with simpler config first
+        scannerRef.current = new Html5QrcodeScanner(
+          "qr-reader",
+          {
+            fps: 10,
+            qrbox: 250,
+            aspectRatio: 1.0,
+            showTorchButtonIfSupported: true,
+            supportedScanTypes: [Html5QrcodeSupportedFormats.QR_CODE],
+          },
+          false
+        );
+
+        // Start scanning
+        scannerRef.current.render(handleScanResult, (error) => {
+          console.warn(`QR scan error = ${error}`);
+        });
+
+      } catch (error) {
+        console.error('Error initializing scanner:', error);
+      }
+    }
+
+    // Cleanup function
+    return () => {
+      if (scannerRef.current) {
+        scannerRef.current.clear()
+          .catch(error => console.error('Error clearing scanner:', error))
+          .finally(() => {
+            scannerRef.current = null;
+          });
+      }
+    };
+  }, [showQRScanner]);
 
   const handleApprove = async (itemId) => {
     try {
@@ -123,14 +171,101 @@ const FoundItemsTab = memo(function FoundItemsTab({
     }
   };
 
-  const handleScan = (decodedText) => {
+  const handleScanResult = (decodedText) => {
     try {
       const data = JSON.parse(decodedText);
-      setScannedData(data);
+      console.log('Scanned QR data:', data);
+      
+      // Close scanner modal
       setShowScannerModal(false);
+      if (scannerRef.current) {
+        scannerRef.current.clear();
+      }
+
+      // Show scanned data in modal
+      setScannedData(data);
       setShowScannedDataModal(true);
     } catch (error) {
-      console.error('Error parsing QR code data:', error);
+      console.error('Error processing QR code:', error);
+    }
+  };
+
+  const requestCameraPermission = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "environment"
+        }
+      });
+      // Don't stop the stream immediately
+      return true;
+    } catch (error) {
+      console.error('Error requesting camera permission:', error);
+      return false;
+    }
+  };
+
+  const handleScannerClick = async () => {
+    try {
+      const hasPermission = await requestCameraPermission();
+      if (hasPermission) {
+        setShowScannerModal(true);
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+          setShowQRScanner(true);
+        }, 100);
+      } else {
+        alert('Camera permission is required to scan QR codes');
+      }
+    } catch (error) {
+      console.error('Error initializing scanner:', error);
+      alert('Failed to initialize camera. Please try again.');
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      await processQRFile(file);
+    }
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await processQRFile(file);
+    }
+  };
+
+  const processQRFile = async (file) => {
+    try {
+      const html5QrCode = new Html5Qrcode("qr-reader-file");
+      const tempDiv = document.createElement('div');
+      tempDiv.id = 'qr-reader-file';
+      tempDiv.style.display = 'none';
+      document.body.appendChild(tempDiv);
+
+      try {
+        const result = await html5QrCode.scanFile(file, true);
+        handleScanResult(result);
+      } finally {
+        html5QrCode.clear();
+        tempDiv.remove();
+      }
+    } catch (error) {
+      console.error('Error scanning QR code from file:', error);
     }
   };
 
@@ -188,7 +323,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
             </Button>
 
             <Button 
-              onClick={() => setShowScannerModal(true)}
+              onClick={handleScannerClick}
               className="bg-white border border-gray-200 text-black h-auto p-6 shadow-sm hover:bg-[#0f172a] hover:text-white transition-colors"
             >
               <div className="flex items-center justify-center gap-2">
@@ -239,23 +374,11 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 </>
               ) : allItems
                 .filter(process => {
-                  console.log('Full process object:', process);
                   
                   // Check each condition separately and log the result
                   const isPendingApproval = process.status === "pending_approval";
                   const isFoundItem = process.item?.status?.toLowerCase() === "found";
                   const isNotApproved = !process.item?.approved;
-
-                  console.log('Detailed filter conditions:', {
-                    isPendingApproval,
-                    isFoundItem,
-                    isNotApproved,
-                    processStatus: process.status,
-                    itemStatus: process.item?.status,
-                    itemApproved: process.item?.approved,
-                    shouldInclude: isPendingApproval && isFoundItem && isNotApproved
-                  });
-
                   return isPendingApproval && isFoundItem && isNotApproved;
                 })
                 .length === 0 ? (
@@ -428,26 +551,77 @@ const FoundItemsTab = memo(function FoundItemsTab({
         </Dialog>
 
         {/* Scanner Selection Modal */}
-        <Dialog open={showScannerModal} onOpenChange={setShowScannerModal}>
-          <DialogContent>
+        <Dialog 
+          open={showScannerModal} 
+          onOpenChange={(open) => {
+            setShowScannerModal(open);
+            if (!open) {
+              // Cleanup when modal closes
+              if (scannerRef.current) {
+                scannerRef.current.clear()
+                  .catch(console.error)
+                  .finally(() => {
+                    scannerRef.current = null;
+                    setShowQRScanner(false);
+                  });
+              }
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Scan QR Code</DialogTitle>
             </DialogHeader>
-            <div className="grid grid-cols-2 gap-4">
-              <Button 
-                onClick={() => setScannerType('camera')}
-                className="flex flex-col items-center p-6"
+            <div className="space-y-4">
+              {/* Camera Scanner */}
+              <div className="mt-4">
+                <div id="qr-reader" className="w-full max-w-[600px] mx-auto"></div>
+              </div>
+              
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    or upload QR code
+                  </span>
+                </div>
+              </div>
+
+              {/* File Upload Area */}
+              <div
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                className={`
+                  border-2 border-dashed rounded-lg p-6 cursor-pointer
+                  transition-colors duration-200 ease-in-out
+                  ${isDragging 
+                    ? 'border-primary bg-primary/5' 
+                    : 'border-gray-200 hover:border-primary/50'
+                  }
+                `}
               >
-                <Camera className="h-8 w-8 mb-2" />
-                Use Camera
-              </Button>
-              <Button
-                onClick={() => setScannerType('upload')}
-                className="flex flex-col items-center p-6"
-              >
-                <Upload className="h-8 w-8 mb-2" />
-                Upload Image
-              </Button>
+                <div className="flex flex-col items-center gap-2 text-center">
+                  <Upload className={`h-8 w-8 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
+                  <p className="text-sm font-medium">
+                    {isDragging ? 'Drop QR code here' : 'Click to upload or drag and drop'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supported formats: JPG, PNG, GIF
+                  </p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                />
+              </div>
             </div>
           </DialogContent>
         </Dialog>
@@ -458,7 +632,43 @@ const FoundItemsTab = memo(function FoundItemsTab({
             <DialogHeader>
               <DialogTitle>Scanned Item Details</DialogTitle>
             </DialogHeader>
-            {/* We'll implement this part next */}
+            {scannedData && (
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium">Item Name</label>
+                  <p className="mt-1">{scannedData.name}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Description</label>
+                  <p className="mt-1">{scannedData.description}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Location</label>
+                  <p className="mt-1">{scannedData.location}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Category</label>
+                  <p className="mt-1">{scannedData.category}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Student ID</label>
+                  <p className="mt-1">{scannedData.studentId}</p>
+                </div>
+                {scannedData.additionalDescriptions?.length > 0 && (
+                  <div>
+                    <label className="text-sm font-medium">Additional Details</label>
+                    {scannedData.additionalDescriptions.map((desc, index) => (
+                      <div key={index} className="mt-1">
+                        <strong>{desc.title}:</strong> {desc.description}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button onClick={() => setShowScannedDataModal(false)}>Close</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
