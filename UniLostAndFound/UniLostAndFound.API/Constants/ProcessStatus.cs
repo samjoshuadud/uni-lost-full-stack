@@ -8,5 +8,6 @@ namespace UniLostAndFound.API.Constants
         public const string VERIFIED = "verified";
         public const string REJECTED = "rejected";
         public const string CANCELLED = "cancelled";
+        public const string AWAITING_SURRENDER = "awaiting_surrender";
     }
 } 
