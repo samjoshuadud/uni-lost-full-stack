@@ -160,4 +160,21 @@ public class PendingProcessService
         await _context.SaveChangesAsync();
         return process;
     }
+
+    public async Task<PendingProcess> GetProcessByItemIdAsync(string itemId)
+    {
+        try
+        {
+            var process = await _context.PendingProcesses
+                .Include(p => p.Item)
+                .FirstOrDefaultAsync(p => p.ItemId == itemId);
+
+            return process;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting process by item ID: {ex.Message}");
+            throw;
+        }
+    }
 } 

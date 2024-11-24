@@ -16,7 +16,7 @@ public class PendingProcessRepository : BaseRepository<PendingProcess>, IPending
         _logger = logger;
     }
 
-    public async Task<IEnumerable<PendingProcess>> GetByUserIdAsync(string userId)
+    public async Task<List<PendingProcess>> GetByUserIdAsync(string userId)
     {
         try
         {
@@ -28,46 +28,57 @@ public class PendingProcessRepository : BaseRepository<PendingProcess>, IPending
                 .OrderByDescending(p => p.CreatedAt)
                 .ToListAsync();
 
-            // Create a simplified version for logging
-            var logData = processes.Select(p => new
-            {
-                ProcessId = p.Id,
-                Status = p.status,
-                ItemName = p.Item?.Name,
-                UserEmail = p.User?.Email
-            });
-
             _logger.LogInformation($"Found {processes.Count} pending processes for user {userId}");
-            _logger.LogInformation($"Process details: {JsonSerializer.Serialize(logData, new JsonSerializerOptions 
-            { 
-                ReferenceHandler = ReferenceHandler.Preserve,
-                WriteIndented = true
-            })}");
-
             return processes;
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error getting pending processes: {ex.Message}");
-            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return new List<PendingProcess>();
         }
     }
 
-    public async Task<IEnumerable<PendingProcess>> GetByItemIdAsync(string itemId)
+    public async Task<List<PendingProcess>> GetAllWithItemsAsync()
+    {
+        try
+        {
+            var processes = await _dbSet
+                .Include(p => p.Item)
+                    .ThenInclude(i => i.AdditionalDescriptions)
+                .OrderByDescending(p => p.CreatedAt)
+                .ToListAsync();
+
+            _logger.LogInformation($"Retrieved {processes.Count} total pending processes");
+            return processes;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting all processes: {ex.Message}");
+            return new List<PendingProcess>();
+        }
+    }
+
+    public async Task<PendingProcess> GetProcessByIdAsync(string id)
     {
         try
         {
             return await _dbSet
                 .Include(p => p.Item)
-                .Where(p => p.ItemId == itemId)
-                .ToListAsync();
+                    .ThenInclude(i => i.AdditionalDescriptions)
+                .FirstOrDefaultAsync(p => p.Id == id);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error getting processes by item ID: {ex.Message}");
-            return new List<PendingProcess>();
+            _logger.LogError($"Error getting process by ID: {ex.Message}");
+            return null;
         }
+    }
+
+    public async Task<PendingProcess> GetProcessByItemIdAsync(string itemId)
+    {
+        return await _context.PendingProcesses
+            .Include(p => p.Item)
+            .FirstOrDefaultAsync(p => p.ItemId == itemId);
     }
 
     public async Task UpdateStatusAsync(string id, string status, string message)
@@ -92,26 +103,6 @@ public class PendingProcessRepository : BaseRepository<PendingProcess>, IPending
         {
             _logger.LogError($"Error updating process status: {ex.Message}");
             throw;
-        }
-    }
-
-    public async Task<IEnumerable<PendingProcess>> GetAllWithItemsAsync()
-    {
-        try
-        {
-            var processes = await _dbSet
-                .Include(p => p.Item)
-                    .ThenInclude(i => i.AdditionalDescriptions)
-                .OrderByDescending(p => p.CreatedAt)
-                .ToListAsync();
-
-            _logger.LogInformation($"Retrieved {processes.Count} total pending processes");
-            return processes;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error getting all processes: {ex.Message}");
-            return new List<PendingProcess>();
         }
     }
 

@@ -1,0 +1,62 @@
+.
+├── tree.txt
+├── UniLostAndFound.API
+│   ├── appsettings.Development.json
+│   ├── appsettings.json
+│   ├── Constants
+│   │   ├── ProcessMessages.cs
+│   │   └── ProcessStatus.cs
+│   ├── Controllers
+│   │   ├── AuthController.cs
+│   │   └── ItemController.cs
+│   ├── Data
+│   │   └── AppDbContext.cs
+│   ├── DTOs
+│   │   ├── ApiResponse.cs
+│   │   ├── ApproveItemDto.cs
+│   │   ├── CreateItemDto.cs
+│   │   ├── ItemDto.cs
+│   │   ├── UpdateItemDto.cs
+│   │   ├── UpdateProcessStatusDto.cs
+│   │   ├── UserAccessSettingsDto.cs
+│   │   └── VerifyAnswersDto.cs
+│   ├── Migrations
+│   │   ├── 20241120014937_InitialCreate.cs
+│   │   ├── 20241120014937_InitialCreate.Designer.cs
+│   │   └── AppDbContextModelSnapshot.cs
+│   ├── Models
+│   │   ├── AdditionalDescription.cs
+│   │   ├── BaseEntity.cs
+│   │   ├── Item.cs
+│   │   ├── Notification.cs
+│   │   ├── PendingProcess.cs
+│   │   ├── ProcessStatus.cs
+│   │   ├── UserAccess.cs
+│   │   ├── User.cs
+│   │   ├── UserRole.cs
+│   │   └── VerificationQuestion.cs
+│   ├── Program.cs
+│   ├── Properties
+│   │   └── launchSettings.json
+│   ├── Repositories
+│   │   ├── BaseRepository.cs
+│   │   ├── IBaseRepository.cs
+│   │   ├── IItemRepository.cs
+│   │   ├── IPendingProcessRepository.cs
+│   │   ├── ItemRepository.cs
+│   │   ├── IUserAccessRepository.cs
+│   │   ├── PendingProcessRepository.cs
+│   │   └── UserAccessRepository.cs
+│   ├── Services
+│   │   ├── AdminService.cs
+│   │   ├── FirestoreService.cs
+│   │   ├── ItemService.cs
+│   │   ├── PendingProcessService.cs
+│   │   ├── UserAccessService.cs
+│   │   ├── UserService.cs
+│   │   └── VerificationQuestionService.cs
+│   ├── UniLostAndFound.API.csproj
+│   └── UniLostAndFound.API.http
+└── UniLostAndFound.sln
+
+11 directories, 49 files

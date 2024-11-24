@@ -3,8 +3,7 @@ export const ProcessStatus = {
   APPROVED: "approved",
   IN_VERIFICATION: "in_verification",
   VERIFIED: "verified",
-  REJECTED: "rejected",
-  CANCELLED: "cancelled"
+  AWAITING_SURRENDER: "awaiting_surrender"
 };
 
 export const ProcessMessages = {
