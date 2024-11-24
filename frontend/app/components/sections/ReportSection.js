@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { QRCodeSVG } from 'qrcode.react';
 import { toPng } from 'html-to-image';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,33 +13,78 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock } from "lucide-react"
 
-export default function ReportSection({ onSubmit, adminMode = false }) {
+export default function ReportSection({ 
+  onSubmit, 
+  adminMode = false, 
+  initialData = null, 
+  isScannedData = false
+}) {
   const { user, makeAuthenticatedRequest } = useAuth();
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [location, setLocation] = useState("")
-  const [category, setCategory] = useState("")
-  const [studentId, setStudentId] = useState("")
-  const [additionalDescriptions, setAdditionalDescriptions] = useState([])
+  const [name, setName] = useState(initialData?.name || "")
+  const [description, setDescription] = useState(initialData?.description || "")
+  const [location, setLocation] = useState(initialData?.location || "")
+  const [category, setCategory] = useState(initialData?.category || "")
+  const [studentId, setStudentId] = useState(initialData?.studentId || "")
+  const [additionalDescriptions, setAdditionalDescriptions] = useState(
+    Array.isArray(initialData?.additionalDescriptions) 
+      ? initialData.additionalDescriptions 
+      : initialData?.additionalDescriptions?.$values 
+        ? initialData.additionalDescriptions.$values
+        : []
+  )
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedImage, setSelectedImage] = useState(null)
-  const [imagePreview, setImagePreview] = useState(null)
+  const [imagePreview, setImagePreview] = useState(initialData?.imageUrl || null)
   const [itemStatus, setItemStatus] = useState(adminMode ? ItemStatus.FOUND : "")
   const [showQRCode, setShowQRCode] = useState(false);
   const qrCodeRef = useRef(null);
+  const [scannedData, setScannedData] = useState(null);
+
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name || "");
+      setDescription(initialData.description || "");
+      setLocation(initialData.location || "");
+      setCategory(initialData.category || "");
+      setStudentId(initialData.studentId || "");
+      setAdditionalDescriptions(
+        Array.isArray(initialData.additionalDescriptions)
+          ? initialData.additionalDescriptions
+          : initialData.additionalDescriptions?.$values
+            ? initialData.additionalDescriptions.$values
+            : []
+      );
+      setImagePreview(initialData.imageUrl || null);
+    }
+  }, [initialData]);
 
   const handleImageChange = (e) => {
-    const file = e.target.files[0]
+    const file = e.target.files[0];
     if (file) {
-      setSelectedImage(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result)
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
       }
-      reader.readAsDataURL(file)
+
+      // Validate file size (e.g., max 5MB)
+      const maxSize = 5 * 1024 * 1024;
+      if (file.size > maxSize) {
+        alert('File is too large. Please select an image under 5MB');
+        return;
+      }
+
+      setSelectedImage(file);
+
+      // Create URL for preview
+      const objectUrl = URL.createObjectURL(file);
+      setImagePreview(objectUrl);
+
+      // Clean up the URL when component unmounts
+      return () => URL.revokeObjectURL(objectUrl);
     }
-  }
+  };
 
   const addDescription = () => {
     setAdditionalDescriptions([...additionalDescriptions, { title: '', description: '' }])
@@ -63,18 +108,22 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
     setShowConfirmDialog(true);
   };
 
-  const generateQRData = () => {
-    return JSON.stringify({
-      name,
-      description,
-      location,
-      category,
-      studentId,
-      additionalDescriptions,
-      status: itemStatus,
-      reporterId: user?.uid,
-      timestamp: new Date().toISOString(),
-    });
+  const generateQRData = (processId) => {
+    console.log('Generating QR data for process ID:', processId);
+    if (!processId) {
+      console.error('No process ID provided for QR generation');
+      return '';
+    }
+
+    // Encode the process ID and timestamp
+    const qrData = {
+      id: processId, // This will now be the process ID
+      t: new Date().getTime()
+    };
+
+    const qrString = JSON.stringify(qrData);
+    console.log('Generated QR data:', qrString);
+    return qrString;
   };
 
   const downloadQRCode = async () => {
@@ -98,6 +147,54 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
     setShowConfirmDialog(false);
 
     try {
+      // If this is a scanned item, update the pending process instead of creating new
+      if (isScannedData && initialData) {
+        console.log('Updating process for scanned item:', initialData);
+        
+        // Get the process ID from the initialData
+        const processId = initialData.processId;
+        
+        if (!processId) {
+          console.error('Response structure:', initialData);
+          throw new Error('Process ID not found in scanned data');
+        }
+
+        console.log('Request URL:', `http://localhost:5067/api/Item/process/${processId}/status`);
+        console.log('Request body:', {
+          Status: ProcessStatus.PENDING_APPROVAL,
+          Message: ProcessMessages.WAITING_APPROVAL
+        });
+
+        // Use the correct endpoint
+        const response = await fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${user.email}`,
+            'FirebaseUID': user.uid,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            Status: ProcessStatus.PENDING_APPROVAL,
+            Message: ProcessMessages.WAITING_APPROVAL
+          })
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Server response:', errorText);
+          throw new Error(`Failed to update process status: ${errorText}`);
+        }
+
+        const data = await response.json();
+        console.log('Update response:', data);
+
+        if (onSubmit) {
+          onSubmit();
+        }
+        return;
+      }
+
+      // Original code for new item submission
       const formData = new FormData();
       formData.append('name', name);
       formData.append('description', description);
@@ -107,33 +204,23 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
       formData.append('reporterId', user.uid);
       formData.append('studentId', studentId);
       
-      // Add image if selected
       if (selectedImage) {
         formData.append('image', selectedImage);
       }
 
-      // Add additional descriptions if any
       if (additionalDescriptions.length > 0) {
         formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
       }
 
-      // Set process status and message based on whether it's admin mode
       if (itemStatus === ItemStatus.FOUND && !adminMode) {
-        // Regular user reporting found item
         formData.append('processStatus', ProcessStatus.AWAITING_SURRENDER);
         formData.append('message', ProcessMessages.SURRENDER_REQUIRED);
       } else {
-        // Admin reporting or user reporting lost item
         formData.append('processStatus', ProcessStatus.PENDING_APPROVAL);
         formData.append('message', ProcessMessages.WAITING_APPROVAL);
       }
 
-      // Log the complete form data
-      console.log('Form Data contents:');
-      for (let [key, value] of formData.entries()) {
-        console.log(`${key}: ${value}`);
-      }
-
+      console.log('Submitting form data...');
       const response = await fetch('http://localhost:5067/api/Item', {
         method: 'POST',
         headers: {
@@ -150,35 +237,93 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
       }
 
       const data = await response.json();
-      console.log('Response from server:', data);
+      console.log('Full API Response:', JSON.stringify(data, null, 2));
 
       // Show QR code only for non-admin found item reports
       if (itemStatus === ItemStatus.FOUND && !adminMode) {
+        // Get the itemId from the response
+        const itemId = data.itemId; // Use itemId from response
+
+        console.log('Found Item ID:', itemId);
+
+        if (!itemId) {
+          console.error('Response structure:', data);
+          throw new Error('Could not find item ID in response');
+        }
+
+        // Store the data for QR generation
+        setScannedData({
+          id: itemId, // Use itemId here
+          processId: data.processId,
+          ...data
+        });
+
+        console.log('Setting scanned data with ID:', itemId);
         setShowQRCode(true);
         return;
       }
       
-      // Clear form
-      setName('');
-      setDescription('');
-      setLocation('');
-      setCategory('');
-      setStudentId('');
-      setItemStatus('');
-      setAdditionalDescriptions([]);
-      setSelectedImage(null);
-      setImagePreview(null);
-
       if (onSubmit) {
         onSubmit(data);
       }
 
     } catch (error) {
       console.error('Error submitting report:', error);
+      alert('Error submitting report: ' + error.message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const renderImageSection = () => (
+    <div>
+      <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+        {isScannedData ? "Item Image" : "Upload Image"}
+      </label>
+      <div className="mt-1">
+        <Input
+          type="file"
+          accept="image/*"
+          onChange={handleImageChange}
+          className="hidden"
+          id="image-upload"
+        />
+        <label
+          htmlFor="image-upload"
+          className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-white"
+        >
+          {imagePreview ? (
+            <div className="w-full h-full relative">
+              <img 
+                src={imagePreview} 
+                alt="Preview" 
+                className="h-full w-full object-contain"
+              />
+              {isScannedData && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="absolute top-2 right-2"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    document.getElementById('image-upload').click();
+                  }}
+                >
+                  Change Image
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <Upload className="h-8 w-8 text-gray-400" />
+              <span className="mt-2 text-sm text-gray-500">Click to upload image</span>
+              <span className="mt-1 text-xs text-gray-400">JPG, PNG, GIF up to 5MB</span>
+            </div>
+          )}
+        </label>
+      </div>
+    </div>
+  );
 
   return (
     <div className="bg-[#f8f9fa] p-6">
@@ -295,33 +440,7 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
                   </div>
 
                   {/* Image Upload */}
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
-                      Upload Image
-                    </label>
-                    <div className="mt-1">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                        className="hidden"
-                        id="image-upload"
-                      />
-                      <label
-                        htmlFor="image-upload"
-                        className="flex items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer hover:bg-gray-50 bg-white"
-                      >
-                        {imagePreview ? (
-                          <img src={imagePreview} alt="Preview" className="h-full object-contain" />
-                        ) : (
-                          <div className="flex flex-col items-center">
-                            <Upload className="h-8 w-8 text-gray-400" />
-                            <span className="mt-2 text-sm text-gray-500">Click to upload image</span>
-                          </div>
-                        )}
-                      </label>
-                    </div>
-                  </div>
+                  {renderImageSection()}
 
                   {/* Additional Descriptions */}
                   <div>
@@ -484,7 +603,25 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
       </Dialog>
 
       {/* QR Code Dialog */}
-      <Dialog open={showQRCode} onOpenChange={setShowQRCode}>
+      <Dialog 
+        open={showQRCode} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowQRCode(false);
+            setScannedData(null);
+            // Clear form after closing QR code dialog
+            setName('');
+            setDescription('');
+            setLocation('');
+            setCategory('');
+            setStudentId('');
+            setItemStatus('');
+            setAdditionalDescriptions([]);
+            setSelectedImage(null);
+            setImagePreview(null);
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle>Found Item Report - QR Code</DialogTitle>
@@ -505,24 +642,30 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
             </div>
 
             {/* QR Code */}
-            <div className="flex flex-col items-center space-y-4">
-              <div 
-                ref={qrCodeRef}
-                className="p-4 bg-white rounded-lg"
-              >
-                <QRCodeSVG
-                  value={generateQRData()}
-                  size={200}
-                  level="H"
-                  includeMargin={true}
-                  className="mx-auto"
-                />
+            {scannedData && scannedData.processId && (
+              <div className="flex flex-col items-center space-y-4">
+                <div 
+                  ref={qrCodeRef}
+                  className="p-4 bg-white rounded-lg"
+                >
+                  <QRCodeSVG
+                    value={generateQRData(scannedData.processId)}
+                    size={200}
+                    level="M"
+                    includeMargin={true}
+                    className="mx-auto"
+                    style={{
+                      backgroundColor: 'white',
+                      padding: '16px'
+                    }}
+                  />
+                </div>
+                <Button onClick={downloadQRCode} className="w-full">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download QR Code
+                </Button>
               </div>
-              <Button onClick={downloadQRCode} className="w-full">
-                <Download className="h-4 w-4 mr-2" />
-                Download QR Code
-              </Button>
-            </div>
+            )}
 
             {/* Instructions */}
             <div className="text-sm text-muted-foreground space-y-2">
@@ -535,22 +678,7 @@ export default function ReportSection({ onSubmit, adminMode = false }) {
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setShowQRCode(false);
-                // Clear form
-                setName('');
-                setDescription('');
-                setLocation('');
-                setCategory('');
-                setStudentId('');
-                setItemStatus('');
-                setAdditionalDescriptions([]);
-                setSelectedImage(null);
-                setImagePreview(null);
-              }}
-            >
+            <Button variant="outline" onClick={() => setShowQRCode(false)}>
               Close
             </Button>
           </DialogFooter>

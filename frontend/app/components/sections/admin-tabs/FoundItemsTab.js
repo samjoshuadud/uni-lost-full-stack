@@ -21,6 +21,7 @@ import ReportSection from "../ReportSection"
 import { useState, useEffect, memo, useRef } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProcessStatus } from '@/lib/constants';
+import { useAuth } from "@/lib/AuthContext"
 
 const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
@@ -29,6 +30,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
   onViewDetails,
   onApprove,
 }) {
+  const { user } = useAuth();
   const [approvingItems, setApprovingItems] = useState(new Set());
   const [deletingItems, setDeletingItems] = useState(new Set());
   const [pendingFoundApprovalCount, setPendingFoundApprovalCount] = useState(0);
@@ -76,40 +78,53 @@ const FoundItemsTab = memo(function FoundItemsTab({
   useEffect(() => {
     if (showQRScanner && !scannerRef.current && document.getElementById('qr-reader')) {
       try {
-        // Stop any existing scanner
-        if (scannerRef.current) {
-          scannerRef.current.clear();
-          scannerRef.current = null;
-        }
-
-        // Create new scanner with simpler config first
         scannerRef.current = new Html5QrcodeScanner(
           "qr-reader",
           {
             fps: 10,
-            qrbox: 250,
+            qrbox: {
+              width: 250,
+              height: 250
+            },
             aspectRatio: 1.0,
             showTorchButtonIfSupported: true,
-            supportedScanTypes: [Html5QrcodeSupportedFormats.QR_CODE],
-          },
-          false
+            videoConstraints: {
+              facingMode: "environment",
+              width: { min: 640, ideal: 1280, max: 1920 },
+              height: { min: 480, ideal: 720, max: 1080 }
+            },
+            experimentalFeatures: undefined,
+            rememberLastUsedCamera: true,
+            defaultZoomValueIfSupported: 1
+          }
         );
 
-        // Start scanning
-        scannerRef.current.render(handleScanResult, (error) => {
-          console.warn(`QR scan error = ${error}`);
-        });
+        scannerRef.current.render(
+          (decodedText) => {
+            try {
+              const cleanText = decodedText.trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+              console.log('Cleaned scanned data:', cleanText);
+              handleScanResult(cleanText);
+            } catch (error) {
+              console.error('Error processing scan result:', error);
+            }
+          },
+          (error) => {
+            if (!error.includes('NotFoundException')) {
+              console.error('Scanning error:', error);
+            }
+          }
+        );
 
       } catch (error) {
-        console.error('Error initializing scanner:', error);
+        console.error('Scanner initialization error:', error);
       }
     }
 
-    // Cleanup function
     return () => {
       if (scannerRef.current) {
         scannerRef.current.clear()
-          .catch(error => console.error('Error clearing scanner:', error))
+          .catch(error => console.error('Scanner cleanup error:', error))
           .finally(() => {
             scannerRef.current = null;
           });
@@ -171,22 +186,62 @@ const FoundItemsTab = memo(function FoundItemsTab({
     }
   };
 
-  const handleScanResult = (decodedText) => {
+  const handleScanResult = async (decodedText) => {
     try {
-      const data = JSON.parse(decodedText);
-      console.log('Scanned QR data:', data);
+      console.log('Raw scanned data:', decodedText);
+      const cleanText = decodedText.trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, '');
+      console.log('Cleaned scanned data:', cleanText);
+      const qrData = JSON.parse(cleanText);
       
-      // Close scanner modal
-      setShowScannerModal(false);
-      if (scannerRef.current) {
-        scannerRef.current.clear();
+      // Check if user exists
+      if (!user) {
+        throw new Error('User not authenticated');
       }
 
-      // Show scanned data in modal
-      setScannedData(data);
+      // Get all pending processes instead of just user's processes
+      const response = await fetch(`http://localhost:5067/api/Item/pending/all`, {
+        headers: {
+          'Authorization': `Bearer ${user.email}`,
+          'FirebaseUID': user.uid,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch process data');
+      }
+
+      const processes = await response.json();
+      console.log('All processes:', processes);
+
+      // Find the specific process from the QR code
+      const scannedProcess = processes.$values?.find(p => p.id === qrData.id);
+      
+      if (!scannedProcess) {
+        console.error('Process not found in data:', {
+          qrId: qrData.id,
+          availableProcesses: processes.$values?.map(p => p.id)
+        });
+        throw new Error('Process not found - Item may have expired or been processed');
+      }
+
+      console.log('Found process:', scannedProcess);
+      
+      setShowScannerModal(false);
+      if (scannerRef.current) {
+        scannerRef.current.clear().catch(console.error);
+      }
+
+      // Set the scanned data with both process and item information
+      setScannedData({
+        ...scannedProcess.item,
+        processId: scannedProcess.id,
+        additionalDescriptions: scannedProcess.item?.additionalDescriptions?.$values || []
+      });
+      
       setShowScannedDataModal(true);
     } catch (error) {
-      console.error('Error processing QR code:', error);
+      console.error('QR code processing error:', error);
+      alert(error.message || 'Could not read QR code. Please try again.');
     }
   };
 
@@ -237,35 +292,87 @@ const FoundItemsTab = memo(function FoundItemsTab({
     e.preventDefault();
     setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file) {
-      await processQRFile(file);
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please drop an image file');
+      return;
     }
+
+    // Validate file size
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('File is too large. Please select an image under 5MB');
+      return;
+    }
+
+    await processQRFile(file);
   };
 
   const handleFileSelect = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      await processQRFile(file);
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
     }
+
+    // Validate file size (e.g., max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      alert('File is too large. Please select an image under 5MB');
+      return;
+    }
+
+    await processQRFile(file);
   };
 
   const processQRFile = async (file) => {
     try {
-      const html5QrCode = new Html5Qrcode("qr-reader-file");
-      const tempDiv = document.createElement('div');
-      tempDiv.id = 'qr-reader-file';
-      tempDiv.style.display = 'none';
-      document.body.appendChild(tempDiv);
-
+      // Create a new instance of Html5Qrcode
+      const html5QrCode = new Html5Qrcode("qr-reader");
+      
       try {
-        const result = await html5QrCode.scanFile(file, true);
-        handleScanResult(result);
-      } finally {
-        html5QrCode.clear();
+        // First, create a temporary element
+        const tempDiv = document.createElement('div');
+        tempDiv.id = 'qr-reader-temp';
+        document.body.appendChild(tempDiv);
+        
+        // Create file URL and load image
+        const imageUrl = URL.createObjectURL(file);
+        
+        // Configure scanning options
+        const config = {
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          },
+          formatsToSupport: [ Html5QrcodeSupportedFormats.QR_CODE ]
+        };
+
+        // Scan the file with verbose option and higher quality
+        const scanResult = await html5QrCode.scanFileV2(file, config);
+        
+        if (scanResult && scanResult.decodedText) {
+          console.log("QR Code scan successful:", scanResult);
+          handleScanResult(scanResult.decodedText);
+        } else {
+          throw new Error('No QR code found in image');
+        }
+        
+        // Clean up
+        URL.revokeObjectURL(imageUrl);
         tempDiv.remove();
+        
+      } finally {
+        // Clean up the QR code scanner
+        await html5QrCode.clear();
       }
     } catch (error) {
-      console.error('Error scanning QR code from file:', error);
+      console.error('Error details:', error);
+      alert('Could not read QR code from this image. Please ensure the image contains a clear QR code and try again.');
     }
   };
 
@@ -573,54 +680,20 @@ const FoundItemsTab = memo(function FoundItemsTab({
               <DialogTitle>Scan QR Code</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
+              {/* Scanning Tips */}
+              <div className="p-3 bg-muted rounded-lg text-sm text-muted-foreground">
+                <p className="font-medium mb-2">Scanning Tips:</p>
+                <ul className="list-disc list-inside space-y-1">
+                  <li>Hold the QR code steady</li>
+                  <li>Ensure good lighting</li>
+                  <li>Keep the QR code within the frame</li>
+                  <li>Try different distances</li>
+                </ul>
+              </div>
+
               {/* Camera Scanner */}
               <div className="mt-4">
                 <div id="qr-reader" className="w-full max-w-[600px] mx-auto"></div>
-              </div>
-              
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    or upload QR code
-                  </span>
-                </div>
-              </div>
-
-              {/* File Upload Area */}
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`
-                  border-2 border-dashed rounded-lg p-6 cursor-pointer
-                  transition-colors duration-200 ease-in-out
-                  ${isDragging 
-                    ? 'border-primary bg-primary/5' 
-                    : 'border-gray-200 hover:border-primary/50'
-                  }
-                `}
-              >
-                <div className="flex flex-col items-center gap-2 text-center">
-                  <Upload className={`h-8 w-8 ${isDragging ? 'text-primary' : 'text-gray-400'}`} />
-                  <p className="text-sm font-medium">
-                    {isDragging ? 'Drop QR code here' : 'Click to upload or drag and drop'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Supported formats: JPG, PNG, GIF
-                  </p>
-                </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                  className="hidden"
-                />
               </div>
             </div>
           </DialogContent>
@@ -628,47 +701,18 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
         {/* Scanned Data Modal */}
         <Dialog open={showScannedDataModal} onOpenChange={setShowScannedDataModal}>
-          <DialogContent>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Scanned Item Details</DialogTitle>
             </DialogHeader>
             {scannedData && (
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Item Name</label>
-                  <p className="mt-1">{scannedData.name}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Description</label>
-                  <p className="mt-1">{scannedData.description}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Location</label>
-                  <p className="mt-1">{scannedData.location}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Category</label>
-                  <p className="mt-1">{scannedData.category}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Student ID</label>
-                  <p className="mt-1">{scannedData.studentId}</p>
-                </div>
-                {scannedData.additionalDescriptions?.length > 0 && (
-                  <div>
-                    <label className="text-sm font-medium">Additional Details</label>
-                    {scannedData.additionalDescriptions.map((desc, index) => (
-                      <div key={index} className="mt-1">
-                        <strong>{desc.title}:</strong> {desc.description}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ReportSection 
+                onSubmit={() => setShowScannedDataModal(false)}
+                adminMode={true}
+                initialData={scannedData} // Pass scanned data as initial values
+                isScannedData={true} // Add flag to indicate this is from QR scan
+              />
             )}
-            <DialogFooter>
-              <Button onClick={() => setShowScannedDataModal(false)}>Close</Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
