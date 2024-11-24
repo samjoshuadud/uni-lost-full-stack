@@ -147,26 +147,39 @@ export default function ReportSection({
     setShowConfirmDialog(false);
 
     try {
-      // If this is a scanned item, update the pending process instead of creating new
       if (isScannedData && initialData) {
-        console.log('Updating process for scanned item:', initialData);
+        // Create FormData for item update
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('description', description);
+        formData.append('location', location);
+        formData.append('category', category);
+        formData.append('studentId', studentId);
         
-        // Get the process ID from the initialData
-        const processId = initialData.processId;
-        
-        if (!processId) {
-          console.error('Response structure:', initialData);
-          throw new Error('Process ID not found in scanned data');
+        if (selectedImage) {
+          formData.append('image', selectedImage);
         }
 
-        console.log('Request URL:', `http://localhost:5067/api/Item/process/${processId}/status`);
-        console.log('Request body:', {
-          Status: ProcessStatus.PENDING_APPROVAL,
-          Message: ProcessMessages.WAITING_APPROVAL
+        if (additionalDescriptions.length > 0) {
+          formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
+        }
+
+        // First update item details
+        const itemUpdateResponse = await fetch(`http://localhost:5067/api/Item/update/${initialData.id}`, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${user.email}`,
+            'FirebaseUID': user.uid,
+          },
+          body: formData
         });
 
-        // Use the correct endpoint
-        const response = await fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+        if (!itemUpdateResponse.ok) {
+          throw new Error('Failed to update item details');
+        }
+
+        // Then update process status
+        const processUpdateResponse = await fetch(`http://localhost:5067/api/Item/process/${initialData.processId}/status`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${user.email}`,
@@ -179,14 +192,9 @@ export default function ReportSection({
           })
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Server response:', errorText);
-          throw new Error(`Failed to update process status: ${errorText}`);
+        if (!processUpdateResponse.ok) {
+          throw new Error('Failed to update process status');
         }
-
-        const data = await response.json();
-        console.log('Update response:', data);
 
         if (onSubmit) {
           onSubmit();

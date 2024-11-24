@@ -4,6 +4,7 @@ using UniLostAndFound.API.DTOs;
 using UniLostAndFound.API.Data;
 using UniLostAndFound.API.Constants;
 using System.Text.Json;
+using System.IO;
 
 namespace UniLostAndFound.API.Services;
 
@@ -162,5 +163,93 @@ public class ItemService
                 await DeleteItemAsync(itemId);
             }
         });
+    }
+
+    public async Task UpdateItemDetailsAsync(string id, UpdateItemDetailsDto dto, string? imageUrl)
+    {
+        var item = await _context.Items.FindAsync(id);
+        if (item == null)
+            throw new Exception("Item not found");
+
+        // Update basic details
+        item.Name = dto.Name;
+        item.Description = dto.Description;
+        item.Location = dto.Location;
+        item.Category = dto.Category;
+        item.StudentId = dto.StudentId;
+        
+        // Only update ImageUrl if a new image was uploaded
+        if (!string.IsNullOrEmpty(imageUrl))
+        {
+            // Delete old image file if it exists
+            if (!string.IsNullOrEmpty(item.ImageUrl))
+            {
+                var oldImagePath = Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "..",
+                    "..",
+                    "frontend",
+                    "public",
+                    item.ImageUrl.TrimStart('/')
+                );
+                
+                if (File.Exists(oldImagePath))
+                {
+                    try
+                    {
+                        File.Delete(oldImagePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError($"Error deleting old image: {ex.Message}");
+                        // Continue with update even if old image deletion fails
+                    }
+                }
+            }
+            
+            // Update with new image path
+            item.ImageUrl = imageUrl;
+        }
+
+        // Handle additional descriptions
+        if (!string.IsNullOrEmpty(dto.AdditionalDescriptions))
+        {
+            try
+            {
+                // Remove existing descriptions
+                var existingDescriptions = _context.AdditionalDescriptions
+                    .Where(d => d.ItemId == id);
+                _context.AdditionalDescriptions.RemoveRange(existingDescriptions);
+
+                // Add new descriptions
+                var descriptions = JsonSerializer.Deserialize<List<AdditionalDescriptionDto>>(
+                    dto.AdditionalDescriptions,
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                );
+
+                if (descriptions != null)
+                {
+                    foreach (var desc in descriptions)
+                    {
+                        var newDesc = new AdditionalDescription
+                        {
+                            ItemId = id,
+                            Title = desc.Title,
+                            Description = desc.Description,
+                            CreatedAt = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        };
+                        _context.AdditionalDescriptions.Add(newDesc);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error updating additional descriptions: {ex.Message}");
+                throw;
+            }
+        }
+
+        await _context.SaveChangesAsync();
     }
 } 
