@@ -806,15 +806,17 @@ export default function UniLostAndFound() {
         if (response && response.$values) {
           // Set items first
           setItems(response.$values);
-          setIsLoading(false); // Set loading to false after items are set
+          setIsLoading(false);
 
-          // Calculate count
+          // Calculate count - exclude awaiting_surrender status
           const newCount = isAdmin
             ? response.$values.filter(process => 
-                !process.item?.approved
+                !process.item?.approved && 
+                process.status !== "awaiting_surrender"  // Add this condition
               ).length
             : response.$values.filter(process => 
-                process.userId === user.uid
+                process.userId === user.uid && 
+                process.status !== "awaiting_surrender"  // Add this condition
               ).length;
 
           setPendingProcessCount(prevCount => {
@@ -827,13 +829,12 @@ export default function UniLostAndFound() {
       } catch (error) {
         console.error('Error fetching data:', error);
         setPendingProcessCount(0);
-        setIsLoading(false); // Make sure to set loading to false even on error
+        setIsLoading(false);
       } finally {
         setIsProcessCountLoading(false);
       }
     };
 
-    // Set initial loading state
     if (user && !authLoading) {
       setIsLoading(true);
       setIsProcessCountLoading(true);

@@ -2,6 +2,7 @@ using UniLostAndFound.API.Repositories;
 using UniLostAndFound.API.Models;
 using UniLostAndFound.API.DTOs;
 using UniLostAndFound.API.Data;
+using UniLostAndFound.API.Constants;
 using System.Text.Json;
 
 namespace UniLostAndFound.API.Services;
@@ -10,17 +11,20 @@ public class ItemService
 {
     private readonly IItemRepository _itemRepository;
     private readonly IPendingProcessRepository _processRepository;
+    private readonly PendingProcessService _processService;
     private readonly ILogger<ItemService> _logger;
     private readonly AppDbContext _context;
 
     public ItemService(
         IItemRepository itemRepository,
         IPendingProcessRepository processRepository,
+        PendingProcessService processService,
         ILogger<ItemService> logger,
         AppDbContext context)
     {
         _itemRepository = itemRepository;
         _processRepository = processRepository;
+        _processService = processService;
         _logger = logger;
         _context = context;
     }
@@ -92,15 +96,19 @@ public class ItemService
                         }
                     }
 
-                    // Create pending process
+                    // Create pending process with the correct status and message
                     var process = new PendingProcess
                     {
+                        Id = Guid.NewGuid().ToString(),
                         ItemId = createdItem.Id,
                         UserId = createDto.ReporterId,
-                        status = "pending_approval",
-                        Message = "Waiting for admin approval"
+                        status = createDto.ProcessStatus ?? ProcessMessages.Status.PENDING_APPROVAL,
+                        Message = createDto.Message ?? ProcessMessages.Messages.WAITING_APPROVAL,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow
                     };
 
+                    _logger.LogInformation($"Creating process with status: {process.status} and message: {process.Message}");
                     await _processRepository.CreateAsync(process);
                     await _context.SaveChangesAsync(ct);
                     
@@ -138,5 +146,21 @@ public class ItemService
     public async Task DeleteItemAsync(string id)
     {
         await _itemRepository.DeleteAsync(id);
+    }
+
+    public async Task ScheduleItemDeletion(string itemId, TimeSpan delay)
+    {
+        // Create a background task to delete the item after delay
+        _ = Task.Run(async () =>
+        {
+            await Task.Delay(delay);
+            
+            // Check if item still exists and is in awaiting_surrender status
+            var process = await _processService.GetProcessByItemIdAsync(itemId);
+            if (process != null && process.status == "awaiting_surrender")
+            {
+                await DeleteItemAsync(itemId);
+            }
+        });
     }
 } 

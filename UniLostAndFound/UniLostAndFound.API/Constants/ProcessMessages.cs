@@ -8,7 +8,7 @@ public static class ProcessMessages
         public const string APPROVED = "approved";
         public const string IN_VERIFICATION = "in_verification";
         public const string VERIFIED = "verified";
-        // Add more statuses as needed
+        public const string AWAITING_SURRENDER = "awaiting_surrender";
     }
 
     public static class Messages
@@ -16,6 +16,7 @@ public static class ProcessMessages
         public const string WAITING_APPROVAL = "Waiting for admin approval";
         public const string ITEM_APPROVED = "The item has been approved!";
         public const string IN_VERIFICATION = "Item is being verified";
-        // Add more messages as needed
+        public const string SURRENDER_REQUIRED = "Item must be surrendered within 3 days";
+        public const string VERIFICATION_COMPLETE = "Verification completed";
     }
 } 
