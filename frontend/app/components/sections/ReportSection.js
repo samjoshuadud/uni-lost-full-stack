@@ -503,95 +503,112 @@ export default function ReportSection({
 
       {/* Summary Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report Summary</DialogTitle>
-            <div className="text-sm text-muted-foreground">
-              <p>Please review your report details before submitting.</p>
-              
-              {itemStatus === ItemStatus.FOUND ? (
-                // Show only the warning message for found items
-                <div className="mt-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <div className="p-2 bg-yellow-200 rounded-full">
-                      <AlertTriangle className="h-5 w-5 text-yellow-700" />
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="font-semibold text-yellow-800 mb-1">Important Notice</div>
-                      <p className="text-sm text-yellow-700">
-                        Please surrender the found item to the Student Center after submitting this report. 
-                        <span className="font-medium">
-                          If the item is not surrendered within 3 days, this report will be disregarded.
-                        </span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                // Show admin review process only for lost items
-                <div className="mt-4 p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <div className="p-2 bg-primary/20 rounded-full">
-                      <Bell className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="font-semibold text-primary mb-1">Admin Review Process</div>
-                      <p className="text-sm text-muted-foreground">
-                        Our admin will check if the item is in possession. If not, then this will be posted.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#0052cc]">Report Summary</DialogTitle>
+            <p className="text-sm text-gray-600">Please review your report details before submitting.</p>
           </DialogHeader>
-          <div className="space-y-4">
-            {/* Image preview */}
-            {imagePreview && (
-              <div className="w-full">
-                <div className="font-medium mb-2"><strong>Image:</strong></div>
-                <div className="w-full h-48 rounded-lg overflow-hidden bg-muted">
-                  <img 
-                    src={imagePreview} 
-                    alt="Item preview" 
-                    className="w-full h-full object-contain"
-                  />
+
+          <div className="px-6 py-4 space-y-6 overflow-y-auto flex-grow">
+            {/* Status-specific notices */}
+            {itemStatus === ItemStatus.FOUND ? (
+              <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
+                <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50">
+                  <div className="flex items-center space-x-2">
+                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                    <span className="font-medium text-yellow-800">Important Notice</span>
+                  </div>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-sm text-yellow-700 leading-relaxed">
+                    Please surrender the found item to the University's Lost and Found after submitting this report.
+                    <span className="block mt-1 font-medium">
+                      Items not surrendered within 3 days will be automatically removed from the system.
+                    </span>
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-lg border border-[#0052cc]/20 bg-gradient-to-r from-[#0052cc]/5 to-[#0052cc]/10">
+                <div className="px-4 py-3 border-b border-[#0052cc]/20 bg-[#0052cc]/5">
+                  <div className="flex items-center space-x-2">
+                    <Bell className="h-5 w-5 text-[#0052cc]" />
+                    <span className="font-medium text-[#0052cc]">Admin Review Process</span>
+                  </div>
+                </div>
+                <div className="px-4 py-3">
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Our admin will verify if the item is in possession before posting it to the system.
+                    You will be notified once your report has been processed.
+                  </p>
                 </div>
               </div>
             )}
-            
-            {/* Report details */}
-            <div className="space-y-2">
-              <div><strong>Report Type:</strong> {itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"}</div>
-              <div><strong>Student ID:</strong> {studentId}</div>
-              <div><strong>Item:</strong> {name}</div>
-              <div><strong>Location:</strong> {location}</div>
-              <div><strong>Category:</strong> {category}</div>
+
+            {/* Report Details Card */}
+            <div className="rounded-lg border bg-white shadow-sm">
+              {imagePreview && (
+                <div className="border-b">
+                  <div className="aspect-video relative overflow-hidden">
+                    <img 
+                      src={imagePreview} 
+                      alt="Item preview" 
+                      className="absolute inset-0 w-full h-full object-contain bg-gray-50"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4 p-4">
+                <div className="space-y-3">
+                  <DetailItem label="Report Type" value={itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"} />
+                  <DetailItem label="Student ID" value={studentId} />
+                  <DetailItem label="Item Name" value={name} />
+                </div>
+                <div className="space-y-3">
+                  <DetailItem label="Category" value={category} />
+                  <DetailItem label="Location" value={location} />
+                </div>
+              </div>
+
+              {description && (
+                <div className="border-t p-4">
+                  <DetailItem label="Description" value={description} fullWidth />
+                </div>
+              )}
+
               {additionalDescriptions.length > 0 && (
-                <div>
-                  <div className="font-medium mt-2">Additional Descriptions:</div>
-                  {additionalDescriptions.map((desc, index) => (
-                    <div key={index}><strong>{desc.title}:</strong> {desc.description}</div>
-                  ))}
+                <div className="border-t p-4">
+                  <h4 className="font-medium text-gray-700 mb-3">Additional Details</h4>
+                  <div className="space-y-2">
+                    {additionalDescriptions.map((desc, index) => (
+                      <div key={index} className="bg-gray-50 rounded p-3">
+                        <DetailItem label={desc.title} value={desc.description} fullWidth />
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
           </div>
-          <DialogFooter>
+
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
             <Button 
               variant="outline" 
               onClick={() => setShowConfirmDialog(false)}
               disabled={isSubmitting}
+              className="border-gray-300"
             >
               Edit Report
             </Button>
             <Button 
               onClick={handleSubmit}
               disabled={isSubmitting}
+              className="bg-[#0052cc] hover:bg-[#0052cc]/90"
             >
               {isSubmitting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Submitting...
                 </>
               ) : (
@@ -622,63 +639,80 @@ export default function ReportSection({
           }
         }}
       >
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Found Item Report - QR Code</DialogTitle>
+        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
+            <DialogTitle className="text-xl font-semibold text-[#0052cc]">
+              Found Item Report - QR Code
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-6">
-            {/* Warning Message */}
-            <div className="p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
-              <div className="flex items-start space-x-3">
-                <div className="p-2 bg-yellow-200 rounded-full">
-                  <Clock className="h-5 w-5 text-yellow-700" />
+
+          <div className="px-6 py-4 space-y-6 overflow-y-auto flex-grow">
+            {/* Timer Warning */}
+            <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
+              <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50">
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-5 w-5 text-yellow-600" />
+                  <span className="font-medium text-yellow-800">Time Sensitive</span>
                 </div>
-                <div>
-                  <p className="text-sm text-yellow-800">
-                    <span className="font-semibold">Important:</span> This report will be automatically deleted if the item is not surrendered within 3 days.
-                  </p>
-                </div>
+              </div>
+              <div className="px-4 py-3">
+                <p className="text-sm text-yellow-700 leading-relaxed">
+                  This report will be automatically deleted if the item is not surrendered within 3 days.
+                </p>
               </div>
             </div>
 
-            {/* QR Code */}
+            {/* QR Code Display */}
             {scannedData && scannedData.processId && (
               <div className="flex flex-col items-center space-y-4">
                 <div 
                   ref={qrCodeRef}
-                  className="p-4 bg-white rounded-lg"
+                  className="p-6 bg-white rounded-lg border shadow-sm"
                 >
                   <QRCodeSVG
                     value={generateQRData(scannedData.processId)}
-                    size={200}
+                    size={240}
                     level="M"
                     includeMargin={true}
                     className="mx-auto"
-                    style={{
-                      backgroundColor: 'white',
-                      padding: '16px'
-                    }}
                   />
                 </div>
-                <Button onClick={downloadQRCode} className="w-full">
+                <Button 
+                  onClick={downloadQRCode} 
+                  className="w-full bg-[#0052cc] hover:bg-[#0052cc]/90"
+                >
                   <Download className="h-4 w-4 mr-2" />
                   Download QR Code
                 </Button>
               </div>
             )}
 
-            {/* Instructions */}
-            <div className="text-sm text-muted-foreground space-y-2">
-              <p>Please:</p>
-              <ol className="list-decimal list-inside space-y-1">
-                <li>Download or save this QR code</li>
-                <li>Surrender the found item to the Student Center</li>
-                <li>Show this QR code to the admin</li>
+            {/* Instructions Card */}
+            <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <h4 className="font-medium text-gray-700 mb-3">Next Steps</h4>
+              <ol className="space-y-2">
+                {[
+                  "Download or save this QR code",
+                  "Surrender the found item to the University's Lost and Found",
+                  "Show this QR code to the admin"
+                ].map((step, index) => (
+                  <li key={index} className="flex items-start space-x-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0052cc]/10 text-sm font-medium text-[#0052cc]">
+                      {index + 1}
+                    </span>
+                    <span className="text-sm text-gray-600 pt-0.5">{step}</span>
+                  </li>
+                ))}
               </ol>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowQRCode(false)}>
+
+          <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowQRCode(false)}
+              className="border-gray-300"
+            >
               Close
             </Button>
           </DialogFooter>
@@ -687,3 +721,11 @@ export default function ReportSection({
     </div>
   );
 } 
+
+// Add this helper component at the bottom of your file
+const DetailItem = ({ label, value, fullWidth = false }) => (
+  <div className={fullWidth ? 'col-span-2' : ''}>
+    <dt className="text-sm font-medium text-gray-600">{label}</dt>
+    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
+  </div>
+); 

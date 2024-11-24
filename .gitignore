@@ -17,6 +17,8 @@ frontend/out/
 
 # Testing
 frontend/coverage
+frontend/public/uploads/*
+frontend/public/uploads
 
 # Next.js build output
 frontend/.next/
