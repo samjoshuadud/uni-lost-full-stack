@@ -313,4 +313,45 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { message = "Error canceling verification", error = ex.Message });
         }
     }
+
+    [HttpPut("update/{id}")]
+    public async Task<ActionResult> UpdateItemDetails(string id, [FromForm] UpdateItemDetailsDto updateDto)
+    {
+        try
+        {
+            string? imageUrl = null;
+            if (updateDto.Image != null)
+            {
+                // Handle new image upload
+                var fileName = $"{Guid.NewGuid()}{Path.GetExtension(updateDto.Image.FileName)}";
+                var uploadsPath = Path.GetFullPath(Path.Combine(
+                    Directory.GetCurrentDirectory(),
+                    "..",
+                    "..",
+                    "frontend",
+                    "public",
+                    "uploads"
+                ));
+                
+                Directory.CreateDirectory(uploadsPath);
+                var filePath = Path.Combine(uploadsPath, fileName);
+                
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await updateDto.Image.CopyToAsync(stream);
+                }
+                
+                // Store the relative path that will be used by the frontend
+                imageUrl = $"/uploads/{fileName}";
+            }
+
+            await _itemService.UpdateItemDetailsAsync(id, updateDto, imageUrl);
+            return Ok(new { message = "Item updated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error updating item details: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 } 
