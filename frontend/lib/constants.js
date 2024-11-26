@@ -4,7 +4,8 @@ export const ProcessStatus = {
   IN_VERIFICATION: "in_verification",
   VERIFIED: "verified",
   AWAITING_SURRENDER: "awaiting_surrender",
-  VERIFICATION_FAILED: "verification_failed"
+  VERIFICATION_FAILED: "verification_failed",
+  AWAITING_REVIEW: "awaiting_review"
 };
 
 export const ProcessMessages = {

@@ -3,13 +3,14 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare } from "lucide-react"
+import { Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash } from "lucide-react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import FailedVerificationDialog from "../dialogs/FailedVerificationDialog";
 import VerificationDialog from "../dialogs/VerificationDialog";
 import { ProcessStatus, ProcessMessages } from "@/lib/constants";
+import { toast } from "react-hot-toast";
 
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
   const [cancelingItems, setCancelingItems] = useState(new Set());
@@ -41,21 +42,44 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
     try {
       setIsSubmitting(true);
-      const response = await fetch(`http://localhost:5067/api/Item/process/${selectedProcess.id}/verify`, {
+      
+      const formattedAnswers = {
+        processId: selectedProcess.id,
+        answers: verificationQuestions.map((question, index) => ({
+          questionId: question.id,
+          answer: answers[index]
+        }))
+      };
+
+      const response = await fetch('http://localhost:5067/api/Item/verify', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers })
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formattedAnswers)
       });
 
-      if (!response.ok) throw new Error('Failed to submit answers');
-
-      // Close dialog and reset state
+      const data = await response.json();
+      
+      // Close the answer dialog
       setShowAnswerDialog(false);
       setSelectedProcess(null);
       setAnswers([]);
       setVerificationQuestions([]);
+      
+      toast({
+        title: "Answers Submitted",
+        description: "Your answers have been submitted for review",
+        variant: "success",
+      });
+
     } catch (error) {
       console.error('Error submitting answers:', error);
+      toast({
+        title: "Error",
+        description: "Failed to submit verification answers",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -105,13 +129,17 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   const renderProcessCard = (process) => {
-    if (!process || !process.item) return null;
-
-    // Different card styles based on status
     let cardStyle = "";
     let statusBadge = null;
     let messageStyle = "";
     let content = null;
+
+    // Common action buttons layout
+    const renderActionButtons = (buttons) => (
+      <div className="flex justify-end gap-2 mt-auto pt-4">
+        {buttons}
+      </div>
+    );
 
     switch (process.status) {
       case "pending_approval":
@@ -123,21 +151,58 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         messageStyle = "text-yellow-800 bg-yellow-50";
         content = (
-          <div className="space-y-4">
-            <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
-              Your report is currently under review by our administrators. This usually takes 1-2 business days.
-            </p>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Category: {process.item?.category}
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
+                Your report is currently under review by our administrators. This usually takes 1-2 business days.
               </p>
-              <p className="text-sm text-muted-foreground">
-                Location: {process.item?.location}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Submitted: {new Date(process.createdAt).toLocaleDateString()}
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                <p className="text-sm">
+                  <strong>Submitted:</strong> {new Date(process.createdAt).toLocaleDateString()}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
             </div>
+            {renderActionButtons(
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onViewDetails(formatItemForDetails(process))}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleCancelRequest(process.item?.id)}
+                  disabled={cancelingItems.has(process.item?.id)}
+                >
+                  {cancelingItems.has(process.item?.id) ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         );
         break;
@@ -151,21 +216,58 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         messageStyle = "text-blue-800 bg-blue-50";
         content = (
-          <div className="space-y-4">
-            <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
-              Your item has been matched! Please answer the verification questions to confirm ownership.
-            </p>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Category: {process.item?.category}
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
+                Your item has been matched! Please answer the verification questions to confirm ownership.
               </p>
-              <p className="text-sm text-muted-foreground">
-                Location: {process.item?.location}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Status Updated: {new Date(process.updatedAt).toLocaleDateString()}
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                <p className="text-sm">
+                  <strong>Status Updated:</strong> {new Date(process.updatedAt).toLocaleDateString()}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
             </div>
+            {renderActionButtons(
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onViewDetails(formatItemForDetails(process))}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleCancelRequest(process.item?.id)}
+                  disabled={cancelingItems.has(process.item?.id)}
+                >
+                  {cancelingItems.has(process.item?.id) ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         );
         break;
@@ -179,21 +281,130 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         messageStyle = "text-green-800 bg-green-50";
         content = (
-          <div className="space-y-4">
-            <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
-              Your item has been approved and is now visible on the dashboard!
-            </p>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">
-                Category: {process.item?.category}
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
+                Your item has been approved and is now visible on the dashboard!
               </p>
-              <p className="text-sm text-muted-foreground">
-                Location: {process.item?.location}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Approved: {new Date(process.updatedAt).toLocaleDateString()}
-              </p>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                <p className="text-sm">
+                  <strong>Approved:</strong> {new Date(process.updatedAt).toLocaleDateString()}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
             </div>
+            {renderActionButtons(
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onViewPost(process.item)}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Post
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleCancelRequest(process.item?.id)}
+                  disabled={cancelingItems.has(process.item?.id)}
+                >
+                  {cancelingItems.has(process.item?.id) ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        );
+        break;
+
+      case ProcessStatus.AWAITING_REVIEW:
+        cardStyle = "border-l-4 border-l-indigo-500";
+        statusBadge = (
+          <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
+            Under Admin Review
+          </Badge>
+        );
+        messageStyle = "text-indigo-800 bg-indigo-50";
+        content = (
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <div className={`p-4 rounded-lg ${messageStyle} flex items-start gap-3`}>
+                <div className="flex-shrink-0 mt-1">
+                  <Clock className="h-5 w-5 text-indigo-500" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {ProcessMessages.AWAITING_ANSWER_REVIEW}
+                  </p>
+                  <p className="text-sm text-indigo-600">
+                    Submitted on {new Date(process.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
+            </div>
+            {renderActionButtons(
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onViewDetails(formatItemForDetails(process))}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleCancelRequest(process.item?.id)}
+                  disabled={cancelingItems.has(process.item?.id)}
+                >
+                  {cancelingItems.has(process.item?.id) ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Cancel Request
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
           </div>
         );
         break;
@@ -202,92 +413,15 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         return null;
     }
 
-    // Helper function to get status badge style
-    const getStatusBadge = () => {
-      switch (process.status) {
-        case ProcessStatus.VERIFICATION_FAILED:
-          return <Badge variant="destructive">Verification Failed</Badge>;
-        case ProcessStatus.IN_VERIFICATION:
-          return <Badge variant="warning">In Verification</Badge>;
-        case ProcessStatus.VERIFIED:
-          return <Badge variant="success">Verified</Badge>;
-        default:
-          return <Badge>{process.status}</Badge>;
-      }
-    };
-
     return (
-      <Card key={process.id} className={`${cardStyle} h-full`}>
-        <CardContent className="p-6">
-          <div className="flex flex-col h-full gap-6">
-            {/* Content Section */}
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h4 className="font-bold text-lg">
-                    {process.item?.name || 'Unknown Item'}
-                  </h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Student ID: {process.item?.studentId}
-                  </p>
-                </div>
-                {statusBadge}
-              </div>
-              {content}
+      <Card key={process.id} className={cardStyle}>
+        <CardContent className="p-6 h-full">
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">{process.item?.name}</h3>
+              {statusBadge}
             </div>
-
-            {/* Actions Section */}
-            <div className="flex flex-col gap-2 mt-auto pt-4">
-              {process.status === "approved" ? (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => onViewPost(process.item)}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Post
-                </Button>
-              ) : (
-                <>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => onViewDetails(formatItemForDetails(process))}
-                  >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View Details
-                  </Button>
-                  {process.status === "in_verification" && (
-                    <Button
-                      variant="default"
-                      className="w-full"
-                      onClick={() => handleAnswerQuestions(process)}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Answer Questions
-                    </Button>
-                  )}
-                </>
-              )}
-              <Button
-                variant="destructive"
-                className="w-full"
-                onClick={() => handleCancelRequest(process.item?.id)}
-                disabled={cancelingItems.has(process.item?.id)}
-              >
-                {cancelingItems.has(process.item?.id) ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Canceling...
-                  </>
-                ) : (
-                  <>
-                    <XCircle className="h-4 w-4 mr-2" />
-                    Cancel Request
-                  </>
-                )}
-              </Button>
-            </div>
+            {content}
           </div>
         </CardContent>
       </Card>

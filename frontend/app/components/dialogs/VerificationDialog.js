@@ -6,6 +6,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +19,8 @@ export default function VerificationDialog({
   onClose, 
   processId, 
   questions,
-  onVerificationComplete 
+  onVerificationComplete,
+  verificationAttempts = 0
 }) {
   const [answers, setAnswers] = useState(Array(questions?.length || 0).fill(""));
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,6 +80,11 @@ export default function VerificationDialog({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Verify Item Ownership</DialogTitle>
+          {verificationAttempts > 0 && (
+            <DialogDescription className="text-yellow-600">
+              You have {2 - verificationAttempts} attempt(s) remaining
+            </DialogDescription>
+          )}
         </DialogHeader>
         <div className="grid gap-4 py-4">
           {questions?.map((question, index) => (
