@@ -5,6 +5,9 @@ frontend/.pnp
 frontend/.pnp.js
 
 
+project.txt
+tree.txt
+
 # Dependencies
 **/node_modules
 node_modules
