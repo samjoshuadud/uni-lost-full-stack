@@ -10,21 +10,22 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle } from "lucide-react";
+import { ProcessMessages } from "@/lib/constants";
 
 export default function FailedVerificationDialog({ isOpen, onClose }) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <div className="flex items-center gap-2 text-yellow-600">
+          <div className="flex items-center gap-2 text-red-600">
             <AlertTriangle className="h-5 w-5" />
             <DialogTitle>Verification Failed</DialogTitle>
           </div>
           <DialogDescription className="pt-2">
-            You have exceeded the maximum number of verification attempts. Please visit the admin office during office hours (Mon-Sat) to claim your item.
-            <div className="mt-4 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-              <p className="text-sm text-yellow-700">
-                Please bring:
+            {ProcessMessages.VERIFICATION_FAILED}
+            <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-200">
+              <p className="text-sm text-red-700">
+                Please visit the admin office during office hours (Mon-Sat) with:
                 <ul className="list-disc list-inside mt-2 space-y-1">
                   <li>Valid University ID</li>
                   <li>Additional proof of ownership</li>
