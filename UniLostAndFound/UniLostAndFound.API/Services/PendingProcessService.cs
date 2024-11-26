@@ -191,40 +191,23 @@ public class PendingProcessService
                 return new ApiResponse<bool> { Success = false, Message = "Process not found" };
             }
 
-            // Increment verification attempts
-            process.VerificationAttempts++;
-
-            // Validate answers (implement your validation logic here)
-            bool areAnswersCorrect = await ValidateAnswers(process.ItemId, answers);
-
-            if (areAnswersCorrect)
+            // Save the answers first
+            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(process.Id);
+            for (int i = 0; i < questions.Count; i++)
             {
-                process.status = ProcessMessages.Status.VERIFIED;
-                process.Message = ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
-                await UpdateProcessAsync(process);
-                return new ApiResponse<bool> { Success = true, Message = ProcessMessages.Messages.VERIFICATION_SUCCESSFUL };
+                questions[i].Answer = answers[i];
+                await _context.SaveChangesAsync();
             }
 
-            // Handle failed attempt
-            if (process.HasExceededVerificationAttempts)
-            {
-                process.status = ProcessMessages.Status.VERIFICATION_FAILED;
-                process.Message = ProcessMessages.Messages.VERIFICATION_FAILED;
-                await UpdateProcessAsync(process);
-                return new ApiResponse<bool> 
-                { 
-                    Success = false, 
-                    Message = ProcessMessages.Messages.VERIFICATION_FAILED 
-                };
-            }
-
-            // Still has attempts remaining
-            process.Message = ProcessMessages.Messages.VERIFICATION_ATTEMPT_REMAINING;
+            // Update process status to awaiting review
+            process.status = ProcessMessages.Status.AWAITING_REVIEW;
+            process.Message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW;
             await UpdateProcessAsync(process);
+
             return new ApiResponse<bool> 
             { 
-                Success = false, 
-                Message = ProcessMessages.Messages.VERIFICATION_ATTEMPT_REMAINING 
+                Success = true, 
+                Message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW 
             };
         }
         catch (Exception ex)
