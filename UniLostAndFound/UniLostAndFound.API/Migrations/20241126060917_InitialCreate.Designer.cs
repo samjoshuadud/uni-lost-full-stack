@@ -11,7 +11,7 @@ using UniLostAndFound.API.Data;
 namespace UniLostAndFound.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241120014937_InitialCreate")]
+    [Migration("20241126060917_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -139,6 +139,9 @@ namespace UniLostAndFound.API.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
+                    b.Property<int>("VerificationAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -213,6 +216,9 @@ namespace UniLostAndFound.API.Migrations
                 {
                     b.Property<string>("Id")
                         .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Answer")
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

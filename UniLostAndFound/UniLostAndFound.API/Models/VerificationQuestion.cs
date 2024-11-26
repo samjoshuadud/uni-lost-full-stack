@@ -7,24 +7,17 @@ using System.Threading.Tasks;
 
 namespace UniLostAndFound.API.Models
 {
-    public class VerificationQuestion
+    public class VerificationQuestion : BaseEntity
     {
-        [Key]
-        public string Id { get; set; }
+        [Required]
+        public string ProcessId { get; set; } = string.Empty;
 
         [Required]
-        public string ProcessId { get; set; }
+        public string Question { get; set; } = string.Empty;
 
-        [Required]
-        public string Question { get; set; }
+        public string? Answer { get; set; }
 
-        [Required]
-        public DateTime CreatedAt { get; set; }
-
-        [Required]
-        public DateTime UpdatedAt { get; set; }
-
-        [ForeignKey("ProcessId")]
-        public virtual PendingProcess Process { get; set; }
+        // Navigation property
+        public virtual PendingProcess? Process { get; set; }
     }
 } 

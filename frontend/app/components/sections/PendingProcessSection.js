@@ -7,6 +7,9 @@ import { Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import FailedVerificationDialog from "../dialogs/FailedVerificationDialog";
+import VerificationDialog from "../dialogs/VerificationDialog";
+import { ProcessStatus, ProcessMessages } from "@/lib/constants";
 
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
   const [cancelingItems, setCancelingItems] = useState(new Set());
@@ -15,6 +18,8 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [verificationQuestions, setVerificationQuestions] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showFailedDialog, setShowFailedDialog] = useState(false);
 
   const handleAnswerQuestions = async (process) => {
     try {
@@ -67,6 +72,13 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         return next;
       });
     }
+  };
+
+  const handleVerificationComplete = async () => {
+    // Refresh the process list
+    setShowVerificationDialog(false);
+    setSelectedProcess(null);
+    setVerificationQuestions([]);
   };
 
   // Filter out null or undefined processes
@@ -189,6 +201,20 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       default:
         return null;
     }
+
+    // Helper function to get status badge style
+    const getStatusBadge = () => {
+      switch (process.status) {
+        case ProcessStatus.VERIFICATION_FAILED:
+          return <Badge variant="destructive">Verification Failed</Badge>;
+        case ProcessStatus.IN_VERIFICATION:
+          return <Badge variant="warning">In Verification</Badge>;
+        case ProcessStatus.VERIFIED:
+          return <Badge variant="success">Verified</Badge>;
+        default:
+          return <Badge>{process.status}</Badge>;
+      }
+    };
 
     return (
       <Card key={process.id} className={`${cardStyle} h-full`}>
@@ -358,6 +384,21 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Verification Dialog */}
+        <VerificationDialog
+          isOpen={showVerificationDialog}
+          onClose={() => setShowVerificationDialog(false)}
+          processId={selectedProcess?.id}
+          questions={verificationQuestions}
+          onVerificationComplete={handleVerificationComplete}
+        />
+
+        {/* Failed Verification Dialog */}
+        <FailedVerificationDialog
+          isOpen={showFailedDialog}
+          onClose={() => setShowFailedDialog(false)}
+        />
       </div>
     </div>
   );
