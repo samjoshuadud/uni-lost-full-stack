@@ -364,16 +364,6 @@ public class ItemController : ControllerBase
     {
         try
         {
-            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userId))
-            {
-                return Unauthorized(new ApiResponse<bool> 
-                { 
-                    Success = false, 
-                    Message = "User not authenticated" 
-                });
-            }
-
             var process = await _processService.GetProcessByIdAsync(dto.ProcessId);
             if (process == null)
             {
@@ -384,12 +374,7 @@ public class ItemController : ControllerBase
                 });
             }
 
-            // Check if the user owns this process
-            if (process.UserId != userId)
-            {
-                return Forbid();
-            }
-
+            // Save answers and update status
             var result = await _processService.VerifyAnswers(
                 dto.ProcessId, 
                 dto.Answers.Select(a => a.Answer).ToList()
