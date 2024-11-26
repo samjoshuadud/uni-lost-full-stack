@@ -249,26 +249,36 @@ public class ItemController : ControllerBase
         }
     }
 
-    [HttpGet("process/{processId}/questions")] 
-    public async Task<IActionResult> GetVerificationQuestions(string processId)
+    [HttpGet("process/{processId}/questions")]
+    public async Task<ActionResult<ApiResponse<List<VerificationQuestion>>>> GetVerificationQuestions(string processId)
     {
         try
         {
             var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
-            if (!questions.Any())
+            if (questions == null || !questions.Any())
             {
-                return NotFound(new { message = "No verification questions found for this process" });
+                return NotFound(new ApiResponse<List<VerificationQuestion>>
+                {
+                    Success = false,
+                    Message = "No questions found for this process"
+                });
             }
 
-            return Ok(new { 
-                processId = processId,
-                questions = questions.Select(q => q.Question).ToList()
+            // Return both questions and answers
+            return Ok(new ApiResponse<List<VerificationQuestion>>
+            {
+                Success = true,
+                Data = questions
             });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error getting verification questions: {ex.Message}");
-            return StatusCode(500, new { message = "Error retrieving verification questions", error = ex.Message });
+            return StatusCode(500, new ApiResponse<List<VerificationQuestion>>
+            {
+                Success = false,
+                Message = "Error retrieving verification questions"
+            });
         }
     }
 
@@ -296,25 +306,35 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Delete verification questions
-            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
-
-            // Update process status
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
                 return NotFound("Process not found");
 
-            process.status = "pending_approval";
-            process.Message = "Waiting for admin approval";
+            // Delete verification questions first
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
+            // Update process status and message
+            process.status = ProcessMessages.Status.PENDING_APPROVAL;
+            process.Message = ProcessMessages.Messages.WAITING_APPROVAL;
+            process.VerificationAttempts = 0; // Reset verification attempts
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new { message = "Verification canceled and questions deleted successfully" });
+            return Ok(new ApiResponse<bool>
+            { 
+                Success = true,
+                Message = "Verification canceled successfully",
+                Data = true
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error canceling verification: {ex.Message}");
-            return StatusCode(500, new { message = "Error canceling verification", error = ex.Message });
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error canceling verification",
+                Data = false
+            });
         }
     }
 
