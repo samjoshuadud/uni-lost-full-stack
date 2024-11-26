@@ -4,6 +4,7 @@ using UniLostAndFound.API.DTOs;
 using UniLostAndFound.API.Services;
 using System.Text.Json;
 using UniLostAndFound.API.Constants;
+using System.Security.Claims;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -15,17 +16,20 @@ public class ItemController : ControllerBase
     private readonly PendingProcessService _processService;
     private readonly ILogger<ItemController> _logger;
     private readonly VerificationQuestionService _verificationQuestionService;
+    private readonly AdminService _adminService;
 
     public ItemController(
         ItemService itemService,
         PendingProcessService processService,
         ILogger<ItemController> logger,
-        VerificationQuestionService verificationQuestionService)
+        VerificationQuestionService verificationQuestionService,
+        AdminService adminService)
     {
         _itemService = itemService;
         _processService = processService;
         _logger = logger;
         _verificationQuestionService = verificationQuestionService;
+        _adminService = adminService;
     }
 
     [HttpPost]
@@ -352,6 +356,85 @@ public class ItemController : ControllerBase
         {
             _logger.LogError($"Error updating item details: {ex.Message}");
             return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("verify")]
+    public async Task<ActionResult<ApiResponse<bool>>> VerifyItem([FromBody] VerifyAnswersDto dto)
+    {
+        try
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userId))
+            {
+                return Unauthorized(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "User not authenticated" 
+                });
+            }
+
+            var process = await _processService.GetProcessByIdAsync(dto.ProcessId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Process not found" 
+                });
+            }
+
+            // Check if the user owns this process
+            if (process.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            var result = await _processService.VerifyAnswers(
+                dto.ProcessId, 
+                dto.Answers.Select(a => a.Answer).ToList()
+            );
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error verifying item: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool> 
+            { 
+                Success = false, 
+                Message = "An error occurred while verifying the item" 
+            });
+        }
+    }
+
+    [HttpGet("verifications/failed")]
+    public async Task<ActionResult<IEnumerable<PendingProcess>>> GetFailedVerifications()
+    {
+        try
+        {
+            var failedVerifications = await _adminService.GetFailedVerificationsAsync();
+            return Ok(failedVerifications);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting failed verifications: {ex.Message}");
+            return StatusCode(500, new { error = "Error retrieving failed verifications" });
+        }
+    }
+
+    [HttpPost("verifications/{processId}/handle-failed")]
+    public async Task<IActionResult> HandleFailedVerification(string processId, [FromBody] bool deleteItem)
+    {
+        try
+        {
+            await _adminService.HandleFailedVerificationAsync(processId, deleteItem);
+            return Ok(new { message = deleteItem ? "Item deleted successfully" : "Process updated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling failed verification: {ex.Message}");
+            return StatusCode(500, new { error = "Error handling failed verification" });
         }
     }
 } 

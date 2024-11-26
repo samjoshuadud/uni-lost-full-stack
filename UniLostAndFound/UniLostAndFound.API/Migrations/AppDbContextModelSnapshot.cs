@@ -136,6 +136,9 @@ namespace UniLostAndFound.API.Migrations
                         .IsRequired()
                         .HasColumnType("varchar(255)");
 
+                    b.Property<int>("VerificationAttempts")
+                        .HasColumnType("int");
+
                     b.Property<string>("status")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -210,6 +213,9 @@ namespace UniLostAndFound.API.Migrations
                 {
                     b.Property<string>("Id")
                         .HasColumnType("varchar(255)");
+
+                    b.Property<string>("Answer")
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()

@@ -102,12 +102,19 @@ export default function PendingProcessesTab({
                           </p>
                         </div>
                         <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
-                          For Approval
+                          Pending Approval
                         </Badge>
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {process.message || 'Waiting for admin approval'}
-                      </p>
+                      <div className="space-y-2">
+                        <p className="text-sm">
+                          {process.item?.description}
+                        </p>
+                        {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            +{process.item.additionalDescriptions.$values.length} additional details
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-2 justify-start min-w-[140px]">
@@ -128,7 +135,7 @@ export default function PendingProcessesTab({
         ) : (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
-              <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="font-medium">No items pending approval</p>
             </CardContent>
           </Card>

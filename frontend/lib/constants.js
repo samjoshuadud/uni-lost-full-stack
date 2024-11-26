@@ -3,7 +3,8 @@ export const ProcessStatus = {
   APPROVED: "approved",
   IN_VERIFICATION: "in_verification",
   VERIFIED: "verified",
-  AWAITING_SURRENDER: "awaiting_surrender"
+  AWAITING_SURRENDER: "awaiting_surrender",
+  VERIFICATION_FAILED: "verification_failed"
 };
 
 export const ProcessMessages = {
@@ -15,7 +16,11 @@ export const ProcessMessages = {
   CANCELLED: "Process has been cancelled",
   PENDING_RETRIEVAL: "Waiting for item retrieval",
   SURRENDER_REQUIRED: "Item must be surrendered within 3 days",
-  VERIFICATION_REQUIRED: "Verification required"
+  VERIFICATION_REQUIRED: "Verification required",
+  VERIFICATION_SUCCESSFUL: "Verification successful! You can claim your item at the admin office during office hours (Mon-Sat)",
+  VERIFICATION_ATTEMPT_FAILED: "Incorrect answers. {attempts} attempt(s) remaining.",
+  VERIFICATION_FAILED_FINAL: "Verification failed. Please visit the admin office to claim your item.",
+  ADMIN_VERIFICATION_FAILED: "User failed verification after 2 attempts. Manual verification required."
 };
 
 export const ItemStatus = {

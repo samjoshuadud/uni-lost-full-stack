@@ -17,7 +17,12 @@ public class PendingProcess : BaseEntity
 
     public string Message { get; set; } = string.Empty;
 
+    public int VerificationAttempts { get; set; } = 0;
+
     // Navigation properties
     public virtual Item? Item { get; set; }
     public virtual User? User { get; set; }
+
+    // Helper property
+    public bool HasExceededVerificationAttempts => VerificationAttempts >= 2;
 } 
