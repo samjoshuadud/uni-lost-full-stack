@@ -102,6 +102,7 @@ export default function AdminSection({
   const [showApprovalSuccessDialog, setShowApprovalSuccessDialog] = useState(false);
   const [approvedItemName, setApprovedItemName] = useState("");
   const [inVerificationCount, setInVerificationCount] = useState(0);
+  const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
   const [failedVerificationCount, setFailedVerificationCount] = useState(0);
   const [allProcessesCount, setAllProcessesCount] = useState(0);
   const [readyForPickupCount, setReadyForPickupCount] = useState(0);
@@ -506,6 +507,10 @@ export default function AdminSection({
       process.status === ProcessStatus.IN_VERIFICATION
     ).length;
 
+    const awaitingCount = items.filter(process => 
+      process.status === ProcessStatus.AWAITING_REVIEW
+    ).length;
+
     const failedCount = items.filter(process => 
       process.status === ProcessStatus.VERIFICATION_FAILED
     ).length;
@@ -520,6 +525,7 @@ export default function AdminSection({
     setPendingLostApprovalCount(pendingLostCount);
     setPendingFoundApprovalCount(pendingFoundCount);
     setInVerificationCount(verificationCount);
+    setAwaitingReviewCount(awaitingCount);
     setFailedVerificationCount(failedCount);
     setReadyForPickupCount(pickupCount);
     setAllProcessesCount(totalProcesses);
@@ -613,19 +619,10 @@ export default function AdminSection({
                 >
                   <Activity className="h-4 w-4" />
                   Verifications
-                  {(inVerificationCount > 0 || failedVerificationCount > 0) && (
-                    <div className="flex gap-1">
-                      {inVerificationCount > 0 && (
-                        <Badge variant="secondary" className="bg-blue-400 text-white">
-                          {inVerificationCount}
-                        </Badge>
-                      )}
-                      {failedVerificationCount > 0 && (
-                        <Badge variant="secondary" className="bg-red-400 text-white">
-                          {failedVerificationCount}
-                        </Badge>
-                      )}
-                    </div>
+                  {(inVerificationCount + awaitingReviewCount + failedVerificationCount) > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-blue-400 text-white">
+                      {inVerificationCount + awaitingReviewCount + failedVerificationCount}
+                    </Badge>
                   )}
                 </TabsTrigger>
 

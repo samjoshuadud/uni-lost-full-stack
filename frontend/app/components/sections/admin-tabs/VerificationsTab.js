@@ -3,10 +3,12 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, Trash, ExternalLink, Loader2, Activity, RotateCcw } from "lucide-react"
+import { AlertTriangle, Package, Trash, ExternalLink, Loader2, Activity, RotateCcw, Clock, CheckCircle, XCircle } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useEffect } from "react"
+import { ProcessStatus } from "@/lib/constants"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
+import { toast } from "react-hot-toast"
 
 export default function VerificationsTab({ items = [], onDelete, handleViewDetails, isCountsLoading }) {
   const [activeSubTab, setActiveSubTab] = useState("in_progress");
@@ -25,12 +27,13 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
         }
         const data = await response.json();
         
-        if (data && data.questions && data.questions.$values) {
+        if (data && data.success && data.data && data.data.$values) {
           setQuestionsMap(prev => ({
             ...prev,
-            [processId]: data.questions.$values.map((q, index) => ({
-              id: index.toString(),
-              question: q
+            [processId]: data.data.$values.map(q => ({
+              question: q.question,
+              answer: q.answer,
+              id: q.id
             }))
           }));
         }
@@ -39,31 +42,74 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
       }
     };
 
-    const inVerificationProcesses = items.filter(p => p.status === "in_verification");
+    const processesToFetch = items.filter(p => 
+      p.status === ProcessStatus.IN_VERIFICATION || 
+      p.status === ProcessStatus.AWAITING_REVIEW
+    );
     
-    inVerificationProcesses.forEach(process => {
+    processesToFetch.forEach(process => {
       if (!questionsMap[process.id]) {
         fetchQuestionsForProcess(process.id);
       }
     });
   }, [items]);
 
-  const handleViewDetailsClick = (item) => {
-    if (!item) return;
-    
-    const formattedItem = {
-      ...item,
-      additionalDescriptions: item.additionalDescriptions?.$values || 
-                            item.AdditionalDescriptions?.$values || []
+  const formatItemForDetails = (process) => {
+    const additionalDescs = process.item?.additionalDescriptions?.$values || 
+                          process.item?.AdditionalDescriptions?.$values || [];
+                        
+    return {
+      id: process.item?.id || process.item?.Id,
+      name: process.item?.name || process.item?.Name,
+      description: process.item?.description || process.item?.Description,
+      location: process.item?.location || process.item?.Location,
+      category: process.item?.category || process.item?.Category,
+      status: process.item?.status || process.item?.Status,
+      imageUrl: process.item?.imageUrl || process.item?.ImageUrl,
+      dateReported: process.item?.dateReported || process.item?.DateReported,
+      reporterId: process.item?.reporterId || process.item?.ReporterId,
+      studentId: process.item?.studentId || process.item?.StudentId,
+      additionalDescriptions: Array.isArray(additionalDescs) ? additionalDescs : [],
+      approved: process.item?.approved || process.item?.Approved
     };
-    
-    handleViewDetails(formattedItem);
+  };
+
+  const handleViewDetailsClick = (process) => {
+    if (!process) return;
+    handleViewDetails(formatItemForDetails(process));
   };
 
   const handleCancelVerification = async (processId) => {
     try {
       setCancelingProcessId(processId);
-      await onDelete(processId);
+      
+      const response = await fetch(`http://localhost:5067/api/Item/process/${processId}/cancel`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to cancel verification');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Verification cancelled successfully",
+          variant: "success",
+        });
+        // Optionally refresh the data or update UI
+      }
+    } catch (error) {
+      console.error('Error canceling verification:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel verification",
+        variant: "destructive",
+      });
     } finally {
       setCancelingProcessId(null);
       setShowCancelDialog(false);
@@ -79,7 +125,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
       </h3>
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-2 bg-muted p-1 rounded-lg mb-6">
+        <TabsList className="w-full grid grid-cols-3 bg-muted p-1 rounded-lg mb-6">
           <TabsTrigger 
             value="in_progress"
             className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
@@ -87,10 +133,16 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
             In Progress
           </TabsTrigger>
           <TabsTrigger 
+            value="awaiting_review"
+            className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+          >
+            Under Review
+          </TabsTrigger>
+          <TabsTrigger 
             value="failed"
             className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
-            Failed Verifications
+            Failed
           </TabsTrigger>
         </TabsList>
 
@@ -168,14 +220,15 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                           <Button
                             variant="outline"
                             className="w-full"
-                            onClick={() => handleViewDetailsClick(process.item)}
+                            onClick={() => handleViewDetailsClick(process)}
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
                             View Details
                           </Button>
+                          
                           <Button
                             variant="outline"
-                            className="w-full"
+                            className="w-full text-red-600 border-red-200 hover:bg-red-50"
                             onClick={() => {
                               setSelectedProcessId(process.id);
                               setShowCancelDialog(true);
@@ -194,6 +247,128 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                               </>
                             )}
                           </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="awaiting_review">
+          <div className="space-y-4">
+            {items.filter(process => process.status === ProcessStatus.AWAITING_REVIEW).length === 0 ? (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="font-medium">No verifications awaiting review</p>
+                </CardContent>
+              </Card>
+            ) : (
+              items
+                .filter(process => process.status === ProcessStatus.AWAITING_REVIEW)
+                .map((process) => (
+                  <Card key={process.id} className="border-l-4 border-l-indigo-500">
+                    <CardContent className="p-6">
+                      <div className="flex gap-6">
+                        <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                          {process.item?.imageUrl ? (
+                            <img
+                              src={process.item.imageUrl}
+                              alt={process.item.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                              <Package className="h-8 w-8" />
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-4">
+                            <div>
+                              <h4 className="font-bold text-lg">
+                                {process.item?.name}
+                              </h4>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                Student ID: {process.item?.studentId}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
+                              Under Review
+                            </Badge>
+                          </div>
+                          <div className="space-y-3">
+                            <p className="text-sm font-medium text-indigo-600">Verification Questions & Answers:</p>
+                            {questionsMap[process.id] ? (
+                              questionsMap[process.id].map((qa, index) => (
+                                <div key={qa.id} className="bg-indigo-50 p-4 rounded-lg space-y-2">
+                                  <p className="text-sm text-indigo-800">
+                                    <span className="font-medium">Q{index + 1}:</span> {qa.question}
+                                  </p>
+                                  {qa.answer && (
+                                    <p className="text-sm text-indigo-600 pl-4">
+                                      <span className="font-medium">Answer:</span> {qa.answer}
+                                    </p>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <p className="text-sm text-gray-500 italic">Loading questions and answers...</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => handleViewDetailsClick(process)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                            onClick={() => {
+                              setSelectedProcessId(process.id);
+                              setShowCancelDialog(true);
+                            }}
+                            disabled={cancelingProcessId === process.id}
+                          >
+                            {cancelingProcessId === process.id ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Canceling...
+                              </>
+                            ) : (
+                              <>
+                                <RotateCcw className="h-4 w-4 mr-2" />
+                                Cancel Verification
+                              </>
+                            )}
+                          </Button>
+                          
+                          <div className="flex gap-2 mt-4">
+                            <Button
+                              variant="outline"
+                              className="flex-1 border-green-500 hover:bg-green-50 text-green-600"
+                            >
+                              <CheckCircle className="h-4 w-4 mr-2" />
+                              Correct
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              className="flex-1"
+                            >
+                              <XCircle className="h-4 w-4 mr-2" />
+                              Wrong
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
@@ -264,7 +439,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                           <Button
                             variant="outline"
                             className="w-full"
-                            onClick={() => handleViewDetailsClick(process.item)}
+                            onClick={() => handleViewDetailsClick(process)}
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
                             View Details

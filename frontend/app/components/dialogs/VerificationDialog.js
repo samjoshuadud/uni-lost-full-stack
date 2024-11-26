@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcessMessages } from "@/lib/constants";
-import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
 
 export default function VerificationDialog({ 
@@ -36,15 +35,23 @@ export default function VerificationDialog({
     try {
       setIsSubmitting(true);
 
-      const response = await apiClient.post(`/Item/verify`, {
-        processId,
-        answers: questions.map((q, index) => ({
-          questionId: q.id,
-          answer: answers[index]
-        }))
+      const response = await fetch('http://localhost:5067/api/Item/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          processId,
+          answers: questions.map((q, index) => ({
+            questionId: q.id,
+            answer: answers[index]
+          }))
+        })
       });
 
-      if (response.data.success) {
+      const data = await response.json();
+
+      if (data.success) {
         toast({
           title: "Verification Successful",
           description: ProcessMessages.VERIFICATION_SUCCESSFUL,
@@ -55,11 +62,10 @@ export default function VerificationDialog({
         toast({
           variant: "destructive",
           title: "Verification Failed",
-          description: response.data.message,
+          description: data.message,
         });
         
-        // If verification failed completely, close dialog
-        if (response.data.message === ProcessMessages.VERIFICATION_FAILED) {
+        if (data.message === ProcessMessages.VERIFICATION_FAILED) {
           onVerificationComplete();
           onClose();
         }
