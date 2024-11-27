@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { useState } from "react"
 import { ProcessStatus, ProcessMessages } from '@/lib/constants'
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { API_BASE_URL } from '@/lib/api-config'
 
 export default function ItemDetailSection({ 
   item, 
@@ -55,8 +56,8 @@ export default function ItemDetailSection({
     try {
       setIsUnapproving(true);
       onClose();
-      
-      const processResponse = await fetch('http://localhost:5067/api/Item/pending/all');
+
+      const processResponse = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
       const processData = await processResponse.json();
       const process = processData.$values?.find(p => {
         const processItemId = p.itemId || p.ItemId;
@@ -71,12 +72,12 @@ export default function ItemDetailSection({
       const processId = process.id || process.Id;
 
       await Promise.all([
-        fetch(`http://localhost:5067/api/Item/${item.id}/approve`, {
+        fetch(`${API_BASE_URL}/api/Item/${item.id}/approve`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ approved: false })
         }),
-        fetch(`http://localhost:5067/api/Item/process/${processId}/status`, {
+        fetch(`${API_BASE_URL}/api/Item/process/${processId}/status`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 

@@ -12,6 +12,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock } from "lucide-react"
+import { API_BASE_URL } from "@/lib/api-config";
 
 export default function ReportSection({ 
   onSubmit, 
@@ -165,7 +166,7 @@ export default function ReportSection({
         }
 
         // First update item details
-        const itemUpdateResponse = await fetch(`http://localhost:5067/api/Item/update/${initialData.id}`, {
+        const itemUpdateResponse = await fetch(`${API_BASE_URL}/api/Item/update/${initialData.id}`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${user.email}`,
@@ -179,7 +180,7 @@ export default function ReportSection({
         }
 
         // Then update process status
-        const processUpdateResponse = await fetch(`http://localhost:5067/api/Item/process/${initialData.processId}/status`, {
+        const processUpdateResponse = await fetch(`${API_BASE_URL}/api/Item/process/${initialData.processId}/status`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${user.email}`,
@@ -229,7 +230,7 @@ export default function ReportSection({
       }
 
       console.log('Submitting form data...');
-      const response = await fetch('http://localhost:5067/api/Item', {
+      const response = await fetch(`${API_BASE_URL}/api/Item`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${user.email}`,

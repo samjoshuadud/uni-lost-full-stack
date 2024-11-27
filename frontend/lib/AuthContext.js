@@ -7,7 +7,7 @@ import { auth } from './firebase';
 import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { useAuthState } from 'react-firebase-hooks/auth';
 import ErrorDialog from '@/app/components/dialogs/ErrorDialog';
-
+import { API_BASE_URL } from './api-config';
 const AuthContext = createContext({});
 
 export function AuthProvider({ children }) {
@@ -30,7 +30,7 @@ export function AuthProvider({ children }) {
 
     try {
       const email = user.email;
-      const url = `http://localhost:5067${endpoint}`;
+      const url = `${API_BASE_URL}${endpoint}`;
       console.log('Making authenticated request:', {
         url,
         email,
@@ -85,7 +85,7 @@ export function AuthProvider({ children }) {
       console.log('Is UMAK email:', isUmakEmail);
       
       // Make the request to check if email is allowed
-      const response = await fetch('http://localhost:5067/api/Auth/protected', {
+      const response = await fetch(`${API_BASE_URL}/api/Auth/protected`, {
         headers: {
           'Authorization': `Bearer ${email}`,
           'DisplayName': result.user.displayName || email,

@@ -54,7 +54,7 @@ import { itemApi } from "@/lib/api-client";
 import { ProcessStatus, ProcessMessages } from '@/lib/constants';
 import UserManagementTab from "./admin-tabs/UserManagementTab";
 import { debounce } from "lodash";
-
+import { API_BASE_URL } from '@/lib/api-config';
 export default function AdminSection({
   items = [],
   surrenderedItems = [],
@@ -119,7 +119,7 @@ export default function AdminSection({
     
     try {
       setIsCountsLoading(true);
-      const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
       if (!response.ok) throw new Error("Failed to fetch all pending processes");
       const data = await response.json();
       
@@ -163,7 +163,7 @@ export default function AdminSection({
         if (!isMounted) return;
         
         try {
-          const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+          const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
           if (!response.ok) throw new Error("Failed to fetch all pending processes");
           const data = await response.json();
           
@@ -260,7 +260,7 @@ export default function AdminSection({
 
       // First update item's approval status
       const itemResponse = await fetch(
-        `http://localhost:5067/api/Item/${itemId}/approve`,
+        `${API_BASE_URL}/api/Item/${itemId}/approve`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -276,7 +276,7 @@ export default function AdminSection({
 
       // Then update process status using process ID
       const processResponse = await fetch(
-        `http://localhost:5067/api/Item/process/${processId}/status`,
+        `${API_BASE_URL}/api/Item/process/${processId}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -344,7 +344,7 @@ export default function AdminSection({
         setIsLoadingVisible(true);
         setIsCountsLoading(true);
         
-        const response = await fetch(`http://localhost:5067/api/Item/pending/all`);
+        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
         if (!response.ok) throw new Error("Failed to fetch pending processes");
         
         const data = await response.json();
@@ -398,7 +398,7 @@ export default function AdminSection({
 
     try {
       const response = await makeAuthenticatedRequest(
-        "http://localhost:5067/api/auth/assign-admin",
+        `${API_BASE_URL}/api/auth/assign-admin`,
         {
           method: "POST",
           body: JSON.stringify({ email: newAdminEmail.trim() })

@@ -56,12 +56,14 @@ try
     builder.Services.AddCors(options =>
     {
         options.AddPolicy("AllowNextJS",
-            builder =>
+            corsBuilder =>
             {
-                builder.WithOrigins("http://localhost:3000")
-                       .AllowAnyMethod()
-                       .AllowAnyHeader()
-                       .AllowCredentials();
+                var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+                
+                corsBuilder.WithOrigins(allowedOrigins)
+                    .AllowAnyMethod()
+                    .AllowAnyHeader()
+                    .AllowCredentials();
             });
     });
 
