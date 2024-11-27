@@ -13,17 +13,20 @@ public class PendingProcessService
     private readonly IItemRepository _itemRepository;
     private readonly ILogger<PendingProcessService> _logger;
     private readonly AppDbContext _context;
+    private readonly IVerificationQuestionService _verificationQuestionService;
 
     public PendingProcessService(
         IPendingProcessRepository processRepository,
         IItemRepository itemRepository,
         ILogger<PendingProcessService> logger,
-        AppDbContext context)
+        AppDbContext context,
+        IVerificationQuestionService verificationQuestionService)
     {
         _processRepository = processRepository;
         _itemRepository = itemRepository;
         _logger = logger;
         _context = context;
+        _verificationQuestionService = verificationQuestionService;
     }
 
     public async Task<IEnumerable<PendingProcess>> GetByUserIdAsync(string userId)
@@ -174,6 +177,97 @@ public class PendingProcessService
         catch (Exception ex)
         {
             _logger.LogError($"Error getting process by item ID: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<ApiResponse<bool>> VerifyAnswers(string processId, List<string> answers)
+    {
+        try
+        {
+            var process = await GetProcessByIdAsync(processId);
+            if (process == null)
+            {
+                return new ApiResponse<bool> { Success = false, Message = "Process not found" };
+            }
+
+            // Save the answers first
+            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(process.Id);
+            for (int i = 0; i < questions.Count; i++)
+            {
+                questions[i].Answer = answers[i];
+                await _context.SaveChangesAsync();
+            }
+
+            // Update process status to awaiting review
+            process.status = ProcessMessages.Status.AWAITING_REVIEW;
+            process.Message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW;
+            await UpdateProcessAsync(process);
+
+            return new ApiResponse<bool> 
+            { 
+                Success = true, 
+                Message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW 
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error during verification process: {ex.Message}");
+            throw;
+        }
+    }
+
+    private async Task<bool> ValidateAnswers(string itemId, List<string> submittedAnswers)
+    {
+        try
+        {
+            // Get the process with its verification questions
+            var process = await _context.PendingProcesses
+                .Include(p => p.Item)
+                .FirstOrDefaultAsync(p => p.ItemId == itemId);
+
+            if (process == null) return false;
+
+            // Get verification questions for this process
+            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(process.Id);
+            if (!questions.Any() || questions.Count != submittedAnswers.Count) return false;
+
+            // Compare each answer with its corresponding stored answer
+            for (int i = 0; i < questions.Count; i++)
+            {
+                var storedAnswer = questions[i].Answer?.Trim().ToLower();
+                var submittedAnswer = submittedAnswers[i]?.Trim().ToLower();
+
+                if (string.IsNullOrEmpty(storedAnswer) || 
+                    string.IsNullOrEmpty(submittedAnswer) || 
+                    storedAnswer != submittedAnswer)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error validating answers: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<PendingProcess>> GetFailedVerifications()
+    {
+        try
+        {
+            return await _context.PendingProcesses
+                .Include(p => p.Item)
+                .Include(p => p.User)
+                .Where(p => p.status == ProcessMessages.Status.VERIFICATION_FAILED)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting failed verifications: {ex.Message}");
             throw;
         }
     }

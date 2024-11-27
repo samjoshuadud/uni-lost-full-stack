@@ -1,10 +1,13 @@
+namespace UniLostAndFound.API.DTOs;
+
 public class VerifyAnswersDto
 {
-    public List<VerificationAnswer> Answers { get; set; }
+    public string ProcessId { get; set; } = string.Empty;
+    public List<VerificationAnswerDto> Answers { get; set; } = new List<VerificationAnswerDto>();
 }
 
-public class VerificationAnswer
+public class VerificationAnswerDto
 {
-    public string QuestionId { get; set; }
-    public string Answer { get; set; }
+    public string QuestionId { get; set; } = string.Empty;
+    public string Answer { get; set; } = string.Empty;
 } 

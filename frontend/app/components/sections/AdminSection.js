@@ -41,6 +41,7 @@ import {
   PieChart,
   Activity,
   TrendingUp,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import StatisticsSection from "./admin-tabs/StatisticsSection";
@@ -101,6 +102,10 @@ export default function AdminSection({
   const [showApprovalSuccessDialog, setShowApprovalSuccessDialog] = useState(false);
   const [approvedItemName, setApprovedItemName] = useState("");
   const [inVerificationCount, setInVerificationCount] = useState(0);
+  const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
+  const [failedVerificationCount, setFailedVerificationCount] = useState(0);
+  const [allProcessesCount, setAllProcessesCount] = useState(0);
+  const [readyForPickupCount, setReadyForPickupCount] = useState(0);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -486,19 +491,44 @@ export default function AdminSection({
   const calculateCounts = useCallback(() => {
     if (!items) return;
     
-    const pendingCount = items.filter(process => 
+    const pendingLostCount = items.filter(process => 
       process.status === ProcessStatus.PENDING_APPROVAL && 
       process.item?.status?.toLowerCase() === "lost" && 
       !process.item?.approved
     ).length;
 
-    const verificationCount = items.filter(process => 
-      process.status === ProcessStatus.IN_VERIFICATION && 
-      process.item?.status?.toLowerCase() === "lost"
+    const pendingFoundCount = items.filter(process => 
+      process.status === ProcessStatus.PENDING_APPROVAL && 
+      process.item?.status?.toLowerCase() === "found" && 
+      !process.item?.approved
     ).length;
 
-    setPendingLostApprovalCount(pendingCount);
+    const verificationCount = items.filter(process => 
+      process.status === ProcessStatus.IN_VERIFICATION
+    ).length;
+
+    const awaitingCount = items.filter(process => 
+      process.status === ProcessStatus.AWAITING_REVIEW
+    ).length;
+
+    const failedCount = items.filter(process => 
+      process.status === ProcessStatus.VERIFICATION_FAILED
+    ).length;
+
+    const pickupCount = items.filter(process => 
+      process.status === ProcessStatus.VERIFIED && 
+      !process.item?.approved
+    ).length;
+
+    const totalProcesses = items.length;
+
+    setPendingLostApprovalCount(pendingLostCount);
+    setPendingFoundApprovalCount(pendingFoundCount);
     setInVerificationCount(verificationCount);
+    setAwaitingReviewCount(awaitingCount);
+    setFailedVerificationCount(failedCount);
+    setReadyForPickupCount(pickupCount);
+    setAllProcessesCount(totalProcesses);
   }, [items]);
 
   // Add useEffect to update counts
@@ -545,47 +575,83 @@ export default function AdminSection({
           <CardContent className="p-6">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
               <TabsList className="w-full grid grid-cols-6 bg-gray-50 p-1 rounded-lg mb-6">
+                {/* Overview Tab */}
                 <TabsTrigger 
                   value="statistics"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
                 >
-                  <BarChart className="h-4 w-4 mr-2" />
-                  Statistics
+                  <BarChart className="h-4 w-4" />
+                  Overview
                 </TabsTrigger>
+
+                {/* Lost Items Tab */}
                 <TabsTrigger 
                   value="reports"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
                 >
-                  <ClipboardList className="h-4 w-4 mr-2" />
-                  Lost Report
+                  <ClipboardList className="h-4 w-4" />
+                  Lost Items
+                  {pendingLostApprovalCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-yellow-400 text-[#0052cc]">
+                      {pendingLostApprovalCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
+
+                {/* Found Items Tab */}
                 <TabsTrigger 
                   value="found"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
                 >
-                  <Package className="h-4 w-4 mr-2" />
+                  <Package className="h-4 w-4" />
                   Found Items
+                  {pendingFoundApprovalCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-yellow-400 text-[#0052cc]">
+                      {pendingFoundApprovalCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
+
+                {/* Verifications Tab */}
                 <TabsTrigger 
                   value="verifications"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
                 >
-                  <Activity className="h-4 w-4 mr-2" />
-                  Verification
+                  <Activity className="h-4 w-4" />
+                  Verifications
+                  {(inVerificationCount + awaitingReviewCount + failedVerificationCount) > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-blue-400 text-white">
+                      {inVerificationCount + awaitingReviewCount + failedVerificationCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
+
+                {/* All Processes Tab */}
                 <TabsTrigger 
                   value="pending"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
                 >
-                  <TrendingUp className="h-4 w-4 mr-2" />
-                  Processes
+                  <TrendingUp className="h-4 w-4" />
+                  All Processes
+                  {allProcessesCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-gray-400 text-white">
+                      {allProcessesCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
+
+                {/* Retrieval Tab */}
                 <TabsTrigger 
                   value="retrieval"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
                 >
-                  <PieChart className="h-4 w-4 mr-2" />
-                  Pending Retrieval
+                  <PieChart className="h-4 w-4" />
+                  Ready for Pickup
+                  {readyForPickupCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-green-400 text-white">
+                      {readyForPickupCount}
+                    </Badge>
+                  )}
                 </TabsTrigger>
               </TabsList>
 
@@ -630,7 +696,7 @@ export default function AdminSection({
                 <VerificationsTab
                   items={pendingProcesses}
                   isCountsLoading={isCountsLoading}
-                  onVerificationResult={handleVerificationResult}
+                  onDelete={handleDelete}
                   handleViewDetails={handleViewDetails}
                 />
               </TabsContent>
@@ -651,6 +717,8 @@ export default function AdminSection({
                   isCountsLoading={isCountsLoading}
                 />
               </TabsContent>
+
+            
             </Tabs>
           </CardContent>
         </Card>

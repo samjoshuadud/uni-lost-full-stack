@@ -4,6 +4,7 @@ using UniLostAndFound.API.DTOs;
 using UniLostAndFound.API.Services;
 using System.Text.Json;
 using UniLostAndFound.API.Constants;
+using System.Security.Claims;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -15,17 +16,20 @@ public class ItemController : ControllerBase
     private readonly PendingProcessService _processService;
     private readonly ILogger<ItemController> _logger;
     private readonly VerificationQuestionService _verificationQuestionService;
+    private readonly AdminService _adminService;
 
     public ItemController(
         ItemService itemService,
         PendingProcessService processService,
         ILogger<ItemController> logger,
-        VerificationQuestionService verificationQuestionService)
+        VerificationQuestionService verificationQuestionService,
+        AdminService adminService)
     {
         _itemService = itemService;
         _processService = processService;
         _logger = logger;
         _verificationQuestionService = verificationQuestionService;
+        _adminService = adminService;
     }
 
     [HttpPost]
@@ -245,26 +249,36 @@ public class ItemController : ControllerBase
         }
     }
 
-    [HttpGet("process/{processId}/questions")] 
-    public async Task<IActionResult> GetVerificationQuestions(string processId)
+    [HttpGet("process/{processId}/questions")]
+    public async Task<ActionResult<ApiResponse<List<VerificationQuestion>>>> GetVerificationQuestions(string processId)
     {
         try
         {
             var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
-            if (!questions.Any())
+            if (questions == null || !questions.Any())
             {
-                return NotFound(new { message = "No verification questions found for this process" });
+                return NotFound(new ApiResponse<List<VerificationQuestion>>
+                {
+                    Success = false,
+                    Message = "No questions found for this process"
+                });
             }
 
-            return Ok(new { 
-                processId = processId,
-                questions = questions.Select(q => q.Question).ToList()
+            // Return both questions and answers
+            return Ok(new ApiResponse<List<VerificationQuestion>>
+            {
+                Success = true,
+                Data = questions
             });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error getting verification questions: {ex.Message}");
-            return StatusCode(500, new { message = "Error retrieving verification questions", error = ex.Message });
+            return StatusCode(500, new ApiResponse<List<VerificationQuestion>>
+            {
+                Success = false,
+                Message = "Error retrieving verification questions"
+            });
         }
     }
 
@@ -292,25 +306,35 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Delete verification questions
-            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
-
-            // Update process status
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
                 return NotFound("Process not found");
 
-            process.status = "pending_approval";
-            process.Message = "Waiting for admin approval";
+            // Delete verification questions first
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
+            // Update process status and message
+            process.status = ProcessMessages.Status.PENDING_APPROVAL;
+            process.Message = ProcessMessages.Messages.WAITING_APPROVAL;
+            process.VerificationAttempts = 0; // Reset verification attempts
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new { message = "Verification canceled and questions deleted successfully" });
+            return Ok(new ApiResponse<bool>
+            { 
+                Success = true,
+                Message = "Verification canceled successfully",
+                Data = true
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error canceling verification: {ex.Message}");
-            return StatusCode(500, new { message = "Error canceling verification", error = ex.Message });
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error canceling verification",
+                Data = false
+            });
         }
     }
 
@@ -352,6 +376,70 @@ public class ItemController : ControllerBase
         {
             _logger.LogError($"Error updating item details: {ex.Message}");
             return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("verify")]
+    public async Task<ActionResult<ApiResponse<bool>>> VerifyItem([FromBody] VerifyAnswersDto dto)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(dto.ProcessId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Process not found" 
+                });
+            }
+
+            // Save answers and update status
+            var result = await _processService.VerifyAnswers(
+                dto.ProcessId, 
+                dto.Answers.Select(a => a.Answer).ToList()
+            );
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error verifying item: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool> 
+            { 
+                Success = false, 
+                Message = "An error occurred while verifying the item" 
+            });
+        }
+    }
+
+    [HttpGet("verifications/failed")]
+    public async Task<ActionResult<IEnumerable<PendingProcess>>> GetFailedVerifications()
+    {
+        try
+        {
+            var failedVerifications = await _adminService.GetFailedVerificationsAsync();
+            return Ok(failedVerifications);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting failed verifications: {ex.Message}");
+            return StatusCode(500, new { error = "Error retrieving failed verifications" });
+        }
+    }
+
+    [HttpPost("verifications/{processId}/handle-failed")]
+    public async Task<IActionResult> HandleFailedVerification(string processId, [FromBody] bool deleteItem)
+    {
+        try
+        {
+            await _adminService.HandleFailedVerificationAsync(processId, deleteItem);
+            return Ok(new { message = deleteItem ? "Item deleted successfully" : "Process updated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling failed verification: {ex.Message}");
+            return StatusCode(500, new { error = "Error handling failed verification" });
         }
     }
 } 
