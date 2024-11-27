@@ -22,7 +22,7 @@ import { useState, useEffect, memo, useRef } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ProcessStatus } from '@/lib/constants';
 import { useAuth } from "@/lib/AuthContext"
-
+import { API_BASE_URL } from "@/lib/api-config"
 const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
   isCountsLoading,
@@ -199,7 +199,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
       }
 
       // Get all pending processes instead of just user's processes
-      const response = await fetch(`http://localhost:5067/api/Item/pending/all`, {
+      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`, {
         headers: {
           'Authorization': `Bearer ${user.email}`,
           'FirebaseUID': user.uid,

@@ -9,7 +9,7 @@ import { useState, useEffect } from "react"
 import { ProcessStatus } from "@/lib/constants"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { toast } from "react-hot-toast"
-
+import { API_BASE_URL } from "@/lib/api-config"
 export default function VerificationsTab({ items = [], onDelete, handleViewDetails, isCountsLoading }) {
   const [activeSubTab, setActiveSubTab] = useState("in_progress");
   const [cancelingProcessId, setCancelingProcessId] = useState(null);
@@ -20,7 +20,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
   useEffect(() => {
     const fetchQuestionsForProcess = async (processId) => {
       try {
-        const response = await fetch(`http://localhost:5067/api/Item/process/${processId}/questions`);
+        const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/questions`);
         if (!response.ok) {
           console.error('Failed to fetch questions for process:', processId);
           return;
@@ -83,7 +83,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
     try {
       setCancelingProcessId(processId);
       
-      const response = await fetch(`http://localhost:5067/api/Item/process/${processId}/cancel`, {
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/cancel`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json'

@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-
+import { API_BASE_URL } from "@/lib/api-config"
 const LostReportsTab = memo(function LostReportsTab({
   items = [],
   isCountsLoading,
@@ -157,7 +157,7 @@ const LostReportsTab = memo(function LostReportsTab({
       setIsSubmittingQuestions(true);
       
       const response = await fetch(
-        `http://localhost:5067/api/Item/process/${selectedItemForVerification.processId}/status`,
+        `${API_BASE_URL}/api/Item/process/${selectedItemForVerification.processId}/status`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },

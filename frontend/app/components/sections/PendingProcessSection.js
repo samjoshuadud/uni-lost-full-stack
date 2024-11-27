@@ -11,6 +11,7 @@ import FailedVerificationDialog from "../dialogs/FailedVerificationDialog";
 import VerificationDialog from "../dialogs/VerificationDialog";
 import { ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { toast } from "react-hot-toast";
+import { API_BASE_URL } from "@/lib/api-config";
 
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
   const [cancelingItems, setCancelingItems] = useState(new Set());
@@ -24,7 +25,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
   const handleAnswerQuestions = async (process) => {
     try {
-      const response = await fetch(`http://localhost:5067/api/Item/process/${process.id}/questions`);
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${process.id}/questions`);
       if (!response.ok) throw new Error('Failed to fetch questions');
       const data = await response.json();
       
@@ -51,7 +52,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         }))
       };
 
-      const response = await fetch('http://localhost:5067/api/Item/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/Item/verify`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json'

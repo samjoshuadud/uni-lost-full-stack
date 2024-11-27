@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ProcessMessages } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
+import { API_BASE_URL } from "@/lib/api-config";
 
 export default function VerificationDialog({ 
   isOpen, 
@@ -35,7 +36,7 @@ export default function VerificationDialog({
     try {
       setIsSubmitting(true);
 
-      const response = await fetch('http://localhost:5067/api/Item/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/Item/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

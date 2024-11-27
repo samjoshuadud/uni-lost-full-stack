@@ -1,5 +1,5 @@
 // API base URL
-const API_BASE_URL = 'http://localhost:5067';
+const API_BASE_URL = 'https://689e-136-158-1-190.ngrok-free.app';
 
 // API endpoints configuration
 const API_ENDPOINTS = {
