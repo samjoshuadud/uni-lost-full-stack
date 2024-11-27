@@ -1,0 +1,58 @@
+.
+├── frontend
+│   ├── app
+│   │   ├── components
+│   │   ├── favicon.ico
+│   │   ├── globals.css
+│   │   ├── layout.js
+│   │   ├── page.js
+│   │   └── uni-lost-and-found.js
+│   ├── components
+│   │   └── ui
+│   ├── components.json
+│   ├── hooks
+│   │   └── use-toast.js
+│   ├── jsconfig.json
+│   ├── lib
+│   │   ├── api-client.js
+│   │   ├── api-config.js
+│   │   ├── AuthContext.js
+│   │   ├── constants.js
+│   │   ├── firebase.js
+│   │   └── utils.js
+│   ├── next.config.mjs
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.mjs
+│   ├── public
+│   │   ├── file.svg
+│   │   ├── globe.svg
+│   │   ├── logo
+│   │   ├── next.svg
+│   │   ├── uploads
+│   │   ├── vercel.svg
+│   │   └── window.svg
+│   ├── README.md
+│   └── tailwind.config.js
+├── project.txt
+├── tree.txt
+└── UniLostAndFound
+    ├── tree.txt
+    ├── UniLostAndFound.API
+    │   ├── appsettings.Development.json
+    │   ├── appsettings.json
+    │   ├── Constants
+    │   ├── Controllers
+    │   ├── Data
+    │   ├── DTOs
+    │   ├── Migrations
+    │   ├── Models
+    │   ├── Program.cs
+    │   ├── Properties
+    │   ├── Repositories
+    │   ├── Services
+    │   ├── UniLostAndFound.API.csproj
+    │   └── UniLostAndFound.API.http
+    └── UniLostAndFound.sln
+
+22 directories, 34 files
