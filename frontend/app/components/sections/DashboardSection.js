@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
 import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants'
-import { Package, ExternalLink, Trash, Loader2, X } from "lucide-react"
+import { Package, ExternalLink, Trash, Loader2, X, CheckCircle } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { ProcessStatus, ProcessMessages } from '@/lib/constants'
@@ -242,47 +242,91 @@ export default function DashboardSection({
           <CardContent className="p-4">
             {/* Image Section */}
             <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
-              {item.imageUrl ? (
-                <div className="w-full h-full relative">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                  <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
+              {isAdmin ? (
+                // Admin sees the actual image
+                item.imageUrl ? (
+                  <div className="w-full h-full relative">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
+                      <Package className="h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-xs">{item.category || 'Item'} Image</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
                     <Package className="h-8 w-8 mb-2 opacity-50" />
                     <p className="text-xs">{item.category || 'Item'} Image</p>
                   </div>
-                </div>
+                )
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
-                  <Package className="h-8 w-8 mb-2 opacity-50" />
-                  <p className="text-xs">{item.category || 'Item'} Image</p>
+                // Non-admin sees a placeholder with message
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+                  <Package className="h-12 w-12 mb-3 opacity-50" />
+                  <p className="text-sm text-center px-4">
+                    Image is hidden for security. Contact admin to view full details.
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Description and Actions */}
             <div className="space-y-4">
-              <p className="text-gray-600 text-sm line-clamp-2">{item.description}</p>
+              {isAdmin ? (
+                // Admin sees full description
+                <p className="text-gray-600 text-sm line-clamp-2">
+                  {item.description}
+                </p>
+              ) : (
+                // Non-admin sees minimal info
+                <p className="text-gray-600 text-sm line-clamp-2">
+                  {item.category} • Found at {item.location}
+                </p>
+              )}
               
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500">
                   {new Date(item.dateReported).toLocaleDateString()}
                 </span>
                 <div className="flex gap-2">
-                  <Button 
-                    className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
-                    size="sm"
-                    onClick={() => handleViewDetails(item)}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Details
-                  </Button>
+                  {isAdmin ? (
+                    <>
+                      <Button 
+                        className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        size="sm"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      {/* Admin actions remain the same */}
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white hover:bg-gray-50"
+                    >
+                      {item.status?.toLowerCase() === "lost" ? (
+                        <>
+                          <Package className="h-4 w-4 mr-2" />
+                          I Found This
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          This Is Mine
+                        </>
+                      )}
+                    </Button>
+                  )}
                   {canDelete(item) && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

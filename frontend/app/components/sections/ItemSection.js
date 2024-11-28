@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Package, ExternalLink, Trash, Loader2, X, MapPin, Calendar, MoreVertical } from "lucide-react"
+import { Package, ExternalLink, Trash, Loader2, X, MapPin, Calendar, MoreVertical, CheckCircle } from "lucide-react"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
@@ -133,33 +133,65 @@ export default function ItemSection({
           <CardContent className="p-4">
             {/* Image Section */}
             <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
-              {item.imageUrl ? (
-                <div className="w-full h-full relative">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                      e.target.nextSibling.style.display = 'flex';
-                    }}
-                  />
-                  <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
+              {isAdmin ? (
+                // Admin sees the actual image
+                item.imageUrl ? (
+                  <div className="w-full h-full relative">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
+                      <Package className="h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-xs">{item.category || 'Item'} Image</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
                     <Package className="h-8 w-8 mb-2 opacity-50" />
                     <p className="text-xs">{item.category || 'Item'} Image</p>
                   </div>
-                </div>
+                )
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
-                  <Package className="h-8 w-8 mb-2 opacity-50" />
-                  <p className="text-xs">{item.category || 'Item'} Image</p>
+                // Non-admin sees a placeholder with message
+                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+                  <Package className="h-12 w-12 mb-3 opacity-50" />
+                  <p className="text-sm text-center px-4">
+                    Image is hidden for security. Contact admin to view full details.
+                  </p>
                 </div>
               )}
             </div>
 
             {/* Description and Actions */}
             <div className="space-y-4">
-              <p className="text-gray-600 text-sm line-clamp-2">{item.description}</p>
+              {isAdmin ? (
+                <>
+                  <p className="text-gray-600 text-sm line-clamp-2">
+                    {item.description}
+                  </p>
+                  {item.additionalDescriptions?.$values?.length > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      +{item.additionalDescriptions.$values.length} additional details
+                    </p>
+                  )}
+                </>
+              ) : (
+                // Non-admin sees generic info
+                <div className="space-y-2">
+                  <p className="text-gray-600 text-sm">
+                    Category: {item.category}
+                  </p>
+                  <p className="text-gray-600 text-sm">
+                    Location: {item.location}
+                  </p>
+                </div>
+              )}
               
               <div className="flex items-center justify-between">
                 <span className="text-xs text-gray-500">
@@ -167,52 +199,74 @@ export default function ItemSection({
                   {new Date(item.dateReported).toLocaleDateString()}
                 </span>
                 <div className="flex gap-2">
-                  <Button 
-                    className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
-                    size="sm"
-                    onClick={() => handleViewDetails(item)}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    View Details
-                  </Button>
-                  {canDelete(item) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-gray-200">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {isAdmin && (
-                          <DropdownMenuItem
-                            onClick={() => onUnapprove(item.id)}
-                            className="text-gray-600 hover:text-[#0052cc]"
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Unapprove
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setItemToDelete(item);
-                            setShowDeleteDialog(true);
-                          }}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          {deletingItemId === item.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Deleting...
-                            </>
-                          ) : (
-                            <>
-                              <Trash className="h-4 w-4 mr-2" />
-                              Delete
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  {isAdmin ? (
+                    <>
+                      <Button 
+                        className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        size="sm"
+                        onClick={() => handleViewDetails(item)}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      {canDelete(item) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm" className="border-gray-200">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => onUnapprove(item.id)}
+                                className="text-gray-600 hover:text-[#0052cc]"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Unapprove
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setItemToDelete(item);
+                                setShowDeleteDialog(true);
+                              }}
+                              className="text-red-600 hover:text-red-700"
+                            >
+                              {deletingItemId === item.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  Delete
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-white hover:bg-gray-50"
+                    >
+                      {item.status?.toLowerCase() === "lost" ? (
+                        <>
+                          <Package className="h-4 w-4 mr-2" />
+                          I Found This
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                          This Is Mine
+                        </>
+                      )}
+                    </Button>
                   )}
                 </div>
               </div>
