@@ -28,20 +28,28 @@ export default function ItemSection({
   useEffect(() => {
     setIsLoading(true);
     const filteredItems = items.filter(item => {
+      // Category filter
+      const matchesCategory = searchCategory === "all" || 
+        item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+      // Search terms - only filter if there's a search query
       if (searchQuery.trim()) {
         const searchTerms = searchQuery.toLowerCase().trim();
-        return (
+        const matchesSearch = 
           item.name?.toLowerCase().includes(searchTerms) ||
           item.location?.toLowerCase().includes(searchTerms) ||
           item.description?.toLowerCase().includes(searchTerms) ||
-          item.category?.toLowerCase().includes(searchTerms)
-        );
+          item.category?.toLowerCase().includes(searchTerms);
+
+        return matchesCategory && matchesSearch;
       }
-      return true;
+
+      // If no search query, just filter by category
+      return matchesCategory;
     });
     setLocalItems(filteredItems);
     setIsLoading(false);
-  }, [items, searchQuery]);
+  }, [items, searchQuery, searchCategory]);
 
   const handleDeleteClick = async () => {
     if (!itemToDelete) return;
@@ -106,25 +114,27 @@ export default function ItemSection({
         <Card 
           key={item.id}
           id={`item-${item.id}`}
-          className="bg-white overflow-hidden shadow-sm border border-gray-200 transition-all duration-300"
+          className="bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group"
         >
+          {/* Status Badge - Moved outside header for better visibility */}
+          <Badge 
+            variant="outline"
+            className={`absolute top-3 right-3 z-10 ${
+              item.status?.toLowerCase() === "lost" 
+                ? "bg-yellow-400 text-blue-900 border-yellow-500" 
+                : "bg-green-500 text-white border-green-600"
+            } capitalize font-medium shadow-sm`}
+          >
+            {item.status}
+          </Badge>
+
           {/* Card Header */}
-          <div className="bg-[#0052cc] p-4">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-gradient-to-r from-[#0052cc] to-[#0065ff] p-4">
+            <div className="mb-2">
               <h3 className="font-semibold text-lg text-white truncate">{item.name}</h3>
-              <Badge 
-                variant="outline"
-                className={`${
-                  item.status?.toLowerCase() === "lost" 
-                    ? "bg-yellow-400 text-blue-900" 
-                    : "bg-white text-blue-900"
-                } capitalize`}
-              >
-                {item.status}
-              </Badge>
             </div>
-            <p className="text-sm text-white/90 truncate">
-              <MapPin className="h-4 w-4 inline mr-1" />
+            <p className="text-sm text-white/90 truncate flex items-center">
+              <MapPin className="h-4 w-4 mr-1 opacity-70" />
               {item.location}
             </p>
           </div>
@@ -132,7 +142,7 @@ export default function ItemSection({
           {/* Card Content */}
           <CardContent className="p-4">
             {/* Image Section */}
-            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
+            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100 shadow-inner relative group-hover:shadow-md transition-all duration-300">
               {isAdmin ? (
                 // Admin sees the actual image
                 item.imageUrl ? (
@@ -140,7 +150,7 @@ export default function ItemSection({
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
@@ -160,10 +170,12 @@ export default function ItemSection({
               ) : (
                 // Non-admin sees a placeholder with message
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
-                  <Package className="h-12 w-12 mb-3 opacity-50" />
-                  <p className="text-sm text-center px-4">
-                    Image is hidden for security. Contact admin to view full details.
-                  </p>
+                  <div className="bg-gray-100/80 p-6 rounded-lg backdrop-blur-sm">
+                    <Package className="h-12 w-12 mb-3 opacity-50" />
+                    <p className="text-sm text-center px-4">
+                      Image is hidden for security. Contact admin to view full details.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -176,33 +188,32 @@ export default function ItemSection({
                     {item.description}
                   </p>
                   {item.additionalDescriptions?.$values?.length > 0 && (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
                       +{item.additionalDescriptions.$values.length} additional details
                     </p>
                   )}
                 </>
               ) : (
-                // Non-admin sees generic info
+                // Non-admin sees minimal info
                 <div className="space-y-2">
-                  <p className="text-gray-600 text-sm">
-                    Category: {item.category}
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    Location: {item.location}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-gray-100/80">
+                      {item.category}
+                    </Badge>
+                  </div>
                 </div>
               )}
               
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
-                  <Calendar className="h-4 w-4 inline mr-1" />
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-500 flex items-center">
+                  <Calendar className="h-4 w-4 mr-1 opacity-70" />
                   {new Date(item.dateReported).toLocaleDateString()}
                 </span>
                 <div className="flex gap-2">
                   {isAdmin ? (
                     <>
                       <Button 
-                        className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90 shadow-sm"
                         size="sm"
                         onClick={() => handleViewDetails(item)}
                       >
@@ -212,15 +223,19 @@ export default function ItemSection({
                       {canDelete(item) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="outline" size="sm" className="border-gray-200">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-gray-200 hover:bg-gray-50"
+                            >
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
+                          <DropdownMenuContent align="end" className="w-48">
                             {isAdmin && (
                               <DropdownMenuItem
                                 onClick={() => onUnapprove(item.id)}
-                                className="text-gray-600 hover:text-[#0052cc]"
+                                className="text-gray-600 hover:text-[#0052cc] hover:bg-blue-50"
                               >
                                 <X className="h-4 w-4 mr-2" />
                                 Unapprove
@@ -231,7 +246,7 @@ export default function ItemSection({
                                 setItemToDelete(item);
                                 setShowDeleteDialog(true);
                               }}
-                              className="text-red-600 hover:text-red-700"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
                             >
                               {deletingItemId === item.id ? (
                                 <>
@@ -253,7 +268,7 @@ export default function ItemSection({
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-white hover:bg-gray-50"
+                      className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                     >
                       {item.status?.toLowerCase() === "lost" ? (
                         <>
