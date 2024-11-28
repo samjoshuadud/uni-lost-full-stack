@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "@/lib/AuthContext"
 import { ItemStatus, ItemStatusLabels, ItemStatusVariants } from '@/lib/constants'
-import { Package, ExternalLink, Trash, Loader2, X, CheckCircle } from "lucide-react"
+import { Package, ExternalLink, Trash, Loader2, X, CheckCircle, MapPin, Calendar } from "lucide-react"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { ProcessStatus, ProcessMessages } from '@/lib/constants'
@@ -216,24 +216,27 @@ export default function DashboardSection({
         <Card 
           key={item.id} 
           id={`item-${item.id}`}
-          className="bg-white overflow-hidden shadow-sm border border-gray-200 transition-all duration-300"
+          className="bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group"
         >
+          {/* Status Badge - Moved outside header for better visibility */}
+          <Badge 
+            variant="outline"
+            className={`absolute top-3 right-3 z-10 ${
+              item.status?.toLowerCase() === "lost" 
+                ? "bg-yellow-400 text-blue-900 border-yellow-500" 
+                : "bg-green-500 text-white border-green-600"
+            } capitalize font-medium shadow-sm`}
+          >
+            {item.status}
+          </Badge>
+
           {/* Card Header */}
-          <div className="bg-[#0052cc] p-4">
-            <div className="flex items-center justify-between mb-2">
+          <div className="bg-gradient-to-r from-[#0052cc] to-[#0065ff] p-4">
+            <div className="mb-2">
               <h3 className="font-semibold text-lg text-white truncate">{item.name}</h3>
-              <Badge 
-                variant="outline"
-                className={`${
-                  item.status?.toLowerCase() === "lost" 
-                    ? "bg-yellow-400 text-blue-900" 
-                    : "bg-white text-blue-900"
-                } capitalize`}
-              >
-                {item.status}
-              </Badge>
             </div>
-            <p className="text-sm text-white/90 truncate">
+            <p className="text-sm text-white/90 truncate flex items-center">
+              <MapPin className="h-4 w-4 mr-1 opacity-70" />
               {item.location}
             </p>
           </div>
@@ -241,7 +244,7 @@ export default function DashboardSection({
           {/* Card Content */}
           <CardContent className="p-4">
             {/* Image Section */}
-            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100">
+            <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100 shadow-inner relative group-hover:shadow-md transition-all duration-300">
               {isAdmin ? (
                 // Admin sees the actual image
                 item.imageUrl ? (
@@ -249,7 +252,7 @@ export default function DashboardSection({
                     <img
                       src={item.imageUrl}
                       alt={item.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
@@ -269,10 +272,12 @@ export default function DashboardSection({
               ) : (
                 // Non-admin sees a placeholder with message
                 <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
-                  <Package className="h-12 w-12 mb-3 opacity-50" />
-                  <p className="text-sm text-center px-4">
-                    Image is hidden for security. Contact admin to view full details.
-                  </p>
+                  <div className="bg-gray-100/80 p-6 rounded-lg backdrop-blur-sm">
+                    <Package className="h-12 w-12 mb-3 opacity-50" />
+                    <p className="text-sm text-center px-4">
+                      Image is hidden for security. Contact admin to view full details.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
@@ -280,39 +285,92 @@ export default function DashboardSection({
             {/* Description and Actions */}
             <div className="space-y-4">
               {isAdmin ? (
-                // Admin sees full description
-                <p className="text-gray-600 text-sm line-clamp-2">
-                  {item.description}
-                </p>
+                <>
+                  <p className="text-gray-600 text-sm line-clamp-2">
+                    {item.description}
+                  </p>
+                  {item.additionalDescriptions?.$values?.length > 0 && (
+                    <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block">
+                      +{item.additionalDescriptions.$values.length} additional details
+                    </p>
+                  )}
+                </>
               ) : (
                 // Non-admin sees minimal info
-                <p className="text-gray-600 text-sm line-clamp-2">
-                  {item.category} • Found at {item.location}
-                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-gray-100/80">
+                      {item.category}
+                    </Badge>
+                  </div>
+                </div>
               )}
               
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-500">
+              <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                <span className="text-xs text-gray-500 flex items-center">
+                  <Calendar className="h-4 w-4 mr-1 opacity-70" />
                   {new Date(item.dateReported).toLocaleDateString()}
                 </span>
                 <div className="flex gap-2">
                   {isAdmin ? (
                     <>
                       <Button 
-                        className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90 shadow-sm"
                         size="sm"
                         onClick={() => handleViewDetails(item)}
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Details
                       </Button>
-                      {/* Admin actions remain the same */}
+                      {canDelete(item) && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-gray-200 hover:bg-gray-50"
+                            >
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {isAdmin && (
+                              <DropdownMenuItem
+                                onClick={() => onUnapprove(item.id)}
+                                className="text-gray-600 hover:text-[#0052cc] hover:bg-blue-50"
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Unapprove
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setItemToDelete(item);
+                                setShowDeleteDialog(true);
+                              }}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            >
+                              {deletingItemId === item.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Deleting...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  Delete
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </>
                   ) : (
                     <Button
                       variant="outline"
                       size="sm"
-                      className="bg-white hover:bg-gray-50"
+                      className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                     >
                       {item.status?.toLowerCase() === "lost" ? (
                         <>
@@ -326,45 +384,6 @@ export default function DashboardSection({
                         </>
                       )}
                     </Button>
-                  )}
-                  {canDelete(item) && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-gray-200">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {isAdmin && (
-                          <DropdownMenuItem
-                            onClick={() => handleUnapprove(item.id)}
-                            className="text-gray-600 hover:text-[#0052cc]"
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Unapprove
-                          </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setItemToDelete(item);
-                            setShowDeleteDialog(true);
-                          }}
-                          className="text-red-600 hover:text-red-700"
-                        >
-                          {deletingItemId === item.id ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Deleting...
-                            </>
-                          ) : (
-                            <>
-                              <Trash className="h-4 w-4 mr-2" />
-                              Delete
-                            </>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   )}
                 </div>
               </div>

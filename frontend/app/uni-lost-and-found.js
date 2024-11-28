@@ -292,6 +292,7 @@ export default function UniLostAndFound() {
           id: process.item.id,
           name: process.item.name,
           description: process.item.description,
+          category: process.item.category,
           location: process.item.location,
           status: process.item.status,
           imageUrl: process.item.imageUrl,
@@ -312,7 +313,7 @@ export default function UniLostAndFound() {
           onDelete={handleDelete}
           onUnapprove={handleUnapprove}
           searchQuery={searchQuery}
-          
+          searchCategory={searchCategory}
         />
       case "found":
         const foundItems = items.filter(process => 
@@ -323,6 +324,7 @@ export default function UniLostAndFound() {
           id: process.item.id,
           name: process.item.name,
           description: process.item.description,
+          category: process.item.category,
           location: process.item.location,
           status: process.item.status,
           imageUrl: process.item.imageUrl,
