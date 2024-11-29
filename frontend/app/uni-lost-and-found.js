@@ -679,6 +679,9 @@ export default function UniLostAndFound() {
     setSelectedItem(item);
     setActiveSection("dashboard");
     
+    // Reset category filter to "all" to ensure item is visible
+    setSearchCategory("all");
+    
     // Add a small delay to ensure items are loaded
     setTimeout(() => {
       const findAndHighlightItem = () => {
@@ -718,7 +721,7 @@ export default function UniLostAndFound() {
 
       findAndHighlightItem();
     }, 100); // Initial delay to allow for section change
-  }, []);
+  }, [setSearchCategory]); // Add setSearchCategory to dependencies
 
   const handleUpdateItemStatus = async (itemId, status, verificationQuestions = null) => {
     try {
