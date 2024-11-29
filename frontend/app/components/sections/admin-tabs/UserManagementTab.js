@@ -24,7 +24,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 
 export default function UserManagementTab({ currentUserEmail }) {
-  const { makeAuthenticatedRequest } = useAuth();
+  const { makeAuthenticatedRequest, signOut } = useAuth();
   const [users, setUsers] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,6 +134,11 @@ export default function UserManagementTab({ currentUserEmail }) {
         setUsers(prevUsers => prevUsers.filter(user => user.email !== email));
         setShowDeleteDialog(false);
         setUserToDelete(null);
+
+        // If the deleted user is currently logged in, sign them out
+        if (email === currentUserEmail) {
+          await signOut();
+        }
       }
     } catch (error) {
       console.error('Error deleting user:', error);

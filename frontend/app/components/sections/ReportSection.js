@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
-import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock } from "lucide-react"
+import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock, Eye } from "lucide-react"
 import { API_BASE_URL } from "@/lib/api-config";
 import { Label } from "@/components/ui/label"
 
@@ -19,7 +19,8 @@ export default function ReportSection({
   onSubmit, 
   adminMode = false, 
   initialData = null, 
-  isScannedData = false
+  isScannedData = false,
+  activeSection = null
 }) {
   const { user, makeAuthenticatedRequest, userData } = useAuth();
   const [name, setName] = useState(initialData?.name || "")
@@ -149,10 +150,14 @@ export default function ReportSection({
     setAdditionalDescriptions(newDescriptions)
   }
 
+  const handlePreview = () => {
+    // Show the confirmation dialog with the current form data
+    setShowConfirmDialog(true);
+  };
+
   const handlePreSubmit = (e) => {
     e.preventDefault();
-    // Show confirmation dialog with summary
-    setShowConfirmDialog(true);
+    handlePreview();
   };
 
   const generateQRData = (processId) => {
@@ -380,6 +385,17 @@ export default function ReportSection({
     </div>
   );
 
+  const isFormValid = () => {
+    // For lost reports tab, we know it's always a lost item
+    if (activeSection === "reports") {
+      return name && description && location && category && studentId;
+    }
+    
+    // For other cases, check itemStatus as well
+    return name && description && location && category && studentId && 
+      (activeSection === "found" || itemStatus);
+  };
+
   return (
     <div className="bg-[#f8f9fa] p-6">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -401,14 +417,24 @@ export default function ReportSection({
                       Report Type
                     </label>
                     {adminMode ? (
-                      // If in admin mode, show disabled input with "Found Item" value
                       <Input
                         value="Found Item"
                         disabled
                         className="bg-gray-50"
                       />
+                    ) : isScannedData ? (
+                      <Input
+                        value="Found Item"
+                        disabled
+                        className="bg-gray-50"
+                      />
+                    ) : activeSection === "reports" ? (
+                      <Input
+                        value="Lost Item"
+                        disabled
+                        className="bg-gray-50"
+                      />
                     ) : (
-                      // If not in admin mode, show the normal select
                       <Select value={itemStatus} onValueChange={setItemStatus} required>
                         <SelectTrigger className="bg-white">
                           <SelectValue placeholder="Select Report Type" />
@@ -602,11 +628,14 @@ export default function ReportSection({
 
               {/* Submit Button */}
               <div className="flex justify-end">
-                <Button 
-                  type="submit" 
-                  className="bg-[#0052cc] hover:bg-[#0052cc]/90 text-white px-8"
-                  disabled={isSubmitting || !itemStatus}
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePreview}
+                  disabled={!isFormValid() || isSubmitting || (adminMode && !itemStatus)}
+                  className="w-full sm:w-auto"
                 >
+                  <Eye className="h-4 w-4 mr-2" />
                   Preview Report
                 </Button>
               </div>
@@ -616,122 +645,124 @@ export default function ReportSection({
       </div>
 
       {/* Summary Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
-            <DialogTitle className="text-xl font-semibold text-[#0052cc]">Report Summary</DialogTitle>
-            <p className="text-sm text-gray-600">Please review your report details before submitting.</p>
-          </DialogHeader>
+      {showConfirmDialog && (
+        <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+          <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
+            <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
+              <DialogTitle className="text-xl font-semibold text-[#0052cc]">Report Summary</DialogTitle>
+              <p className="text-sm text-gray-600">Please review your report details before submitting.</p>
+            </DialogHeader>
 
-          <div className="px-6 py-4 space-y-6 overflow-y-auto flex-grow">
-            {/* Status-specific notices */}
-            {itemStatus === ItemStatus.FOUND ? (
-              <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
-                <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50">
-                  <div className="flex items-center space-x-2">
-                    <AlertTriangle className="h-5 w-5 text-yellow-600" />
-                    <span className="font-medium text-yellow-800">Important Notice</span>
+            <div className="px-6 py-4 space-y-6 overflow-y-auto flex-grow">
+              {/* Status-specific notices */}
+              {itemStatus === ItemStatus.FOUND ? (
+                <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
+                  <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50">
+                    <div className="flex items-center space-x-2">
+                      <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                      <span className="font-medium text-yellow-800">Important Notice</span>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-yellow-700 leading-relaxed">
+                      Please surrender the found item to the University's Lost and Found after submitting this report.
+                      <span className="block mt-1 font-medium">
+                        Items not surrendered within 3 days will be automatically removed from the system.
+                      </span>
+                    </p>
                   </div>
                 </div>
-                <div className="px-4 py-3">
-                  <p className="text-sm text-yellow-700 leading-relaxed">
-                    Please surrender the found item to the University's Lost and Found after submitting this report.
-                    <span className="block mt-1 font-medium">
-                      Items not surrendered within 3 days will be automatically removed from the system.
-                    </span>
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-[#0052cc]/20 bg-gradient-to-r from-[#0052cc]/5 to-[#0052cc]/10">
-                <div className="px-4 py-3 border-b border-[#0052cc]/20 bg-[#0052cc]/5">
-                  <div className="flex items-center space-x-2">
-                    <Bell className="h-5 w-5 text-[#0052cc]" />
-                    <span className="font-medium text-[#0052cc]">Admin Review Process</span>
-                  </div>
-                </div>
-                <div className="px-4 py-3">
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    Our admin will verify if the item is in possession before posting it to the system.
-                    You will be notified once your report has been processed.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Report Details Card */}
-            <div className="rounded-lg border bg-white shadow-sm">
-              {imagePreview && (
-                <div className="border-b">
-                  <div className="aspect-video relative overflow-hidden">
-                    <img 
-                      src={imagePreview} 
-                      alt="Item preview" 
-                      className="absolute inset-0 w-full h-full object-contain bg-gray-50"
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4 p-4">
-                <div className="space-y-3">
-                  <DetailItem label="Report Type" value={itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"} />
-                  <DetailItem label="Student ID" value={studentId} />
-                  <DetailItem label="Item Name" value={name} />
-                </div>
-                <div className="space-y-3">
-                  <DetailItem label="Category" value={category} />
-                  <DetailItem label="Location" value={location} />
-                </div>
-              </div>
-
-              {description && (
-                <div className="border-t p-4">
-                  <DetailItem label="Description" value={description} fullWidth />
-                </div>
-              )}
-
-              {additionalDescriptions.length > 0 && (
-                <div className="border-t p-4">
-                  <h4 className="font-medium text-gray-700 mb-3">Additional Details</h4>
-                  <div className="space-y-2">
-                    {additionalDescriptions.map((desc, index) => (
-                      <div key={index} className="bg-gray-50 rounded p-3">
-                        <DetailItem label={desc.title} value={desc.description} fullWidth />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowConfirmDialog(false)}
-              disabled={isSubmitting}
-              className="border-gray-300"
-            >
-              Edit Report
-            </Button>
-            <Button 
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="bg-[#0052cc] hover:bg-[#0052cc]/90"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Submitting...
-                </>
               ) : (
-                "Submit Report"
+                <div className="rounded-lg border border-[#0052cc]/20 bg-gradient-to-r from-[#0052cc]/5 to-[#0052cc]/10">
+                  <div className="px-4 py-3 border-b border-[#0052cc]/20 bg-[#0052cc]/5">
+                    <div className="flex items-center space-x-2">
+                      <Bell className="h-5 w-5 text-[#0052cc]" />
+                      <span className="font-medium text-[#0052cc]">Admin Review Process</span>
+                    </div>
+                  </div>
+                  <div className="px-4 py-3">
+                    <p className="text-sm text-gray-600 leading-relaxed">
+                      Our admin will verify if the item is in possession before posting it to the system.
+                      You will be notified once your report has been processed.
+                    </p>
+                  </div>
+                </div>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
+              {/* Report Details Card */}
+              <div className="rounded-lg border bg-white shadow-sm">
+                {imagePreview && (
+                  <div className="border-b">
+                    <div className="aspect-video relative overflow-hidden">
+                      <img 
+                        src={imagePreview} 
+                        alt="Item preview" 
+                        className="absolute inset-0 w-full h-full object-contain bg-gray-50"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4 p-4">
+                  <div className="space-y-3">
+                    <DetailItem label="Report Type" value={itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"} />
+                    <DetailItem label="Student ID" value={studentId} />
+                    <DetailItem label="Item Name" value={name} />
+                  </div>
+                  <div className="space-y-3">
+                    <DetailItem label="Category" value={category} />
+                    <DetailItem label="Location" value={location} />
+                  </div>
+                </div>
+
+                {description && (
+                  <div className="border-t p-4">
+                    <DetailItem label="Description" value={description} fullWidth />
+                  </div>
+                )}
+
+                {additionalDescriptions.length > 0 && (
+                  <div className="border-t p-4">
+                    <h4 className="font-medium text-gray-700 mb-3">Additional Details</h4>
+                    <div className="space-y-2">
+                      {additionalDescriptions.map((desc, index) => (
+                        <div key={index} className="bg-gray-50 rounded p-3">
+                          <DetailItem label={desc.title} value={desc.description} fullWidth />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowConfirmDialog(false)}
+                disabled={isSubmitting}
+                className="border-gray-300"
+              >
+                Edit Report
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="bg-[#0052cc] hover:bg-[#0052cc]/90"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Report"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* QR Code Dialog */}
       <Dialog 
