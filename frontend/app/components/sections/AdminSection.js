@@ -726,7 +726,7 @@ export default function AdminSection({
 
       {/* Admin Management Dialog */}
       <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
-        <DialogContent className="max-w-6xl h-[85vh] p-0 overflow-hidden bg-white">
+        <DialogContent className="max-w-[80vw] h-[85vh] p-0 overflow-hidden bg-white">
           <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
             <DialogTitle className="text-2xl font-semibold text-[#0052cc]">
               User Management
