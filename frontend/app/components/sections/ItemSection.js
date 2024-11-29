@@ -144,7 +144,7 @@ export default function ItemSection({
             {/* Image Section */}
             <div className="w-full h-48 mb-4 rounded-lg overflow-hidden bg-gray-100 shadow-inner relative group-hover:shadow-md transition-all duration-300">
               {isAdmin ? (
-                // Admin sees the actual image
+                // Admin sees all images
                 item.imageUrl ? (
                   <div className="w-full h-full relative">
                     <img
@@ -168,15 +168,41 @@ export default function ItemSection({
                   </div>
                 )
               ) : (
-                // Non-admin sees a placeholder with message
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
-                  <div className="bg-gray-100/80 p-6 rounded-lg backdrop-blur-sm">
-                    <Package className="h-12 w-12 mb-3 opacity-50" />
-                    <p className="text-sm text-center px-4">
-                      Image is hidden for security. Contact admin to view full details.
-                    </p>
+                // Non-admin: Show image only for lost items
+                item.status?.toLowerCase() === "lost" ? (
+                  item.imageUrl ? (
+                    <div className="w-full h-full relative">
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          e.target.style.display = 'none';
+                          e.target.nextSibling.style.display = 'flex';
+                        }}
+                      />
+                      <div className="hidden w-full h-full absolute top-0 left-0 bg-gray-100 flex-col items-center justify-center text-gray-500">
+                        <Package className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-xs">{item.category || 'Item'} Image</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
+                      <Package className="h-8 w-8 mb-2 opacity-50" />
+                      <p className="text-xs">{item.category || 'Item'} Image</p>
+                    </div>
+                  )
+                ) : (
+                  // Found items show placeholder
+                  <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500">
+                    <div className="bg-gray-100/80 p-6 rounded-lg backdrop-blur-sm">
+                      <Package className="h-12 w-12 mb-3 opacity-50" />
+                      <p className="text-sm text-center px-4">
+                        Image is hidden for security. Contact admin to view full details.
+                      </p>
+                    </div>
                   </div>
-                </div>
+                )
               )}
             </div>
 
@@ -265,23 +291,39 @@ export default function ItemSection({
                       )}
                     </>
                   ) : (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
-                    >
+                    <>
+                      {/* For non-admin: Show View Details only for lost items */}
                       {item.status?.toLowerCase() === "lost" ? (
-                        <>
-                          <Package className="h-4 w-4 mr-2" />
-                          I Found This
-                        </>
+                        <div className="flex gap-2">
+                          <Button 
+                            className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90 shadow-sm"
+                            size="sm"
+                            onClick={() => handleViewDetails(item)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                          >
+                            <Package className="h-4 w-4 mr-2" />
+                            I Found This
+                          </Button>
+                        </div>
                       ) : (
-                        <>
+                        // For found items, only show claim button
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                        >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           This Is Mine
-                        </>
+                        </Button>
                       )}
-                    </Button>
+                    </>
                   )}
                 </div>
               </div>

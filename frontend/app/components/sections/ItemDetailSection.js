@@ -46,10 +46,12 @@ export default function ItemDetailSection({
   };
 
   const hasValidAdditionalDescriptions = () => {
-    return item.additionalDescriptions && 
-           Array.isArray(item.additionalDescriptions) && 
-           item.additionalDescriptions.length > 0 &&
-           item.additionalDescriptions.some(desc => desc.title || desc.description);
+    const descriptions = Array.isArray(item.additionalDescriptions) 
+      ? item.additionalDescriptions 
+      : item.additionalDescriptions?.$values;
+
+    return descriptions?.length > 0 && 
+           descriptions.some(desc => desc.title?.trim() || desc.description?.trim());
   };
 
   const handleUnapprove = async () => {
@@ -95,74 +97,39 @@ export default function ItemDetailSection({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 border-2 border-yellow-400 rounded-lg overflow-hidden">
-        <div className="bg-[#0052cc] p-6 text-white">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-white">{item.name}</DialogTitle>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-white/90 flex items-center">
-                <Calendar className="h-4 w-4 mr-2" />
-                {format(new Date(item.dateReported), 'PPP')}
-              </span>
-              <Badge 
-                variant="outline"
-                className={`${
-                  item.status?.toLowerCase() === "lost" 
-                    ? "bg-yellow-400 text-blue-900" 
-                    : "bg-white text-blue-900"
-                } capitalize px-3 py-1`}
-              >
-                {item.status}
-              </Badge>
-            </div>
-          </DialogHeader>
-        </div>
+      <DialogContent className="max-w-[600px] p-0 max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
+          <DialogTitle className="text-xl font-semibold text-[#0052cc]">Item Details</DialogTitle>
+          <div className="flex items-center justify-between mt-2">
+            <span className="text-sm text-gray-600 flex items-center">
+              <Calendar className="h-4 w-4 mr-2" />
+              {format(new Date(item.dateReported), 'PPP')}
+            </span>
+            <Badge 
+              variant="outline"
+              className={`${
+                item.status?.toLowerCase() === "lost" 
+                  ? "bg-yellow-400 text-blue-900 border-yellow-500" 
+                  : "bg-green-500 text-white border-green-600"
+              } capitalize px-3 py-1`}
+            >
+              {item.status}
+            </Badge>
+          </div>
+        </DialogHeader>
 
-        <style jsx global>{`
-          .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #0052cc;
-            border-radius: 4px;
-            opacity: 0.8;
-          }
-
-          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #003d99;
-          }
-
-          /* For Firefox */
-          .custom-scrollbar {
-            scrollbar-width: thin;
-            scrollbar-color: #0052cc #f1f1f1;
-          }
-        `}</style>
-
-        <ScrollArea 
-          className="max-h-[calc(90vh-180px)] p-6 custom-scrollbar"
-          style={{
-            scrollbarWidth: 'thin',
-            scrollbarColor: '#0052cc transparent'
-          }}
-        >
-          <div className="space-y-6">
-            {/* Image Section */}
-            <Card className="border border-gray-200">
-              <div className="aspect-video w-full relative bg-gray-100">
-                {item.imageUrl ? (
-                  <div className="w-full h-full relative">
+        <ScrollArea className="flex-grow overflow-auto">
+          <div className="px-6 py-4 space-y-6">
+            {/* Report Details Card */}
+            <div className="rounded-lg border bg-white shadow-sm">
+              {/* Image Section */}
+              {item.imageUrl && (
+                <div className="border-b">
+                  <div className="aspect-video relative overflow-hidden">
                     <img 
                       src={item.imageUrl} 
-                      alt={item.name}
-                      className="w-full h-full object-cover"
+                      alt={item.name} 
+                      className="absolute inset-0 w-full h-full object-contain bg-gray-50"
                       style={{
                         objectFit: 'contain',
                         backgroundColor: 'rgb(243 244 246)',
@@ -178,71 +145,67 @@ export default function ItemDetailSection({
                       <p className="text-sm">{item.category || 'Item'} Image</p>
                     </div>
                   </div>
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-500">
-                    <Package className="h-12 w-12 mb-2 opacity-50" />
-                    <p className="text-sm">{item.category || 'Item'} Image</p>
-                  </div>
-                )}
+                </div>
+              )}
+
+              {/* Basic Details Grid */}
+              <div className="grid grid-cols-2 gap-4 p-4">
+                <div className="space-y-3">
+                  <DetailItem label="Item Name" value={item.name} />
+                  <DetailItem label="Category" value={item.category} />
+                </div>
+                <div className="space-y-3">
+                  <DetailItem label="Status" value={item.status} />
+                  <DetailItem 
+                    label="Location" 
+                    value={
+                      <span className="flex items-center">
+                        <MapPin className="h-4 w-4 mr-1 text-gray-400" />
+                        {item.location}
+                      </span>
+                    } 
+                  />
+                </div>
               </div>
-            </Card>
 
-            {/* Details Grid */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500 flex items-center">
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Location
-                </p>
-                <p className="text-gray-700">{item.location || 'Not specified'}</p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500 flex items-center">
-                  <Tag className="h-4 w-4 mr-2" />
-                  Category
-                </p>
-                <p className="text-gray-700">{item.category || 'Not specified'}</p>
-              </div>
-            </div>
+              {/* Description Section */}
+              {item.description && (
+                <div className="border-t p-4">
+                  <DetailItem 
+                    label="Description" 
+                    value={item.description} 
+                    fullWidth 
+                  />
+                </div>
+              )}
 
-            <Separator className="my-6" />
-
-            {/* Description */}
-            <div>
-              <h3 className="text-sm font-medium text-gray-500 mb-3">Description</h3>
-              <Card className="border border-gray-200">
-                <CardContent className="p-4">
-                  <p className="text-gray-700 whitespace-pre-wrap">{item.description || 'No description provided'}</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Additional Descriptions */}
-            {hasValidAdditionalDescriptions() && (
-              <>
-                <Separator className="my-6" />
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-3">Additional Details</h3>
-                  <div className="space-y-4">
-                    {item.additionalDescriptions
-                      .filter(desc => desc.title || desc.description)
+              {/* Additional Descriptions */}
+              {hasValidAdditionalDescriptions() && (
+                <div className="border-t p-4">
+                  <h4 className="font-medium text-gray-700 mb-3">Additional Details</h4>
+                  <div className="space-y-2">
+                    {(Array.isArray(item.additionalDescriptions) 
+                      ? item.additionalDescriptions 
+                      : item.additionalDescriptions.$values)
+                      .filter(desc => desc.title?.trim() || desc.description?.trim())
                       .map((desc, index) => (
-                        <Card key={index} className="border border-gray-200">
-                          <CardContent className="p-4">
-                            <h4 className="font-medium text-[#0052cc] mb-2">{desc.title}</h4>
-                            <p className="text-sm text-gray-600">{desc.description}</p>
-                          </CardContent>
-                        </Card>
+                        <div key={index} className="bg-gray-50 rounded p-3">
+                          <DetailItem 
+                            label={desc.title || "Additional Detail"} 
+                            value={desc.description || "No description provided"} 
+                            fullWidth 
+                          />
+                        </div>
                       ))}
                   </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
         </ScrollArea>
 
-        {/* Action Buttons */}
-        <div className="p-4 sticky bottom-0">
+        {/* Footer Actions */}
+        <div className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
           <div className="flex justify-end gap-2">
             {isAdmin && (
               <>
@@ -333,4 +296,11 @@ export default function ItemDetailSection({
       </DialogContent>
     </Dialog>
   );
-} 
+}
+
+const DetailItem = ({ label, value, fullWidth = false }) => (
+  <div className={fullWidth ? 'col-span-2' : ''}>
+    <dt className="text-sm font-medium text-gray-600">{label}</dt>
+    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
+  </div>
+); 
