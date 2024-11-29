@@ -162,11 +162,12 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   const formatStatus = (status) => {
-    return status === "all" 
-      ? "All Statuses"
-      : status.split("_")
-          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(" ");
+    if (status === "all") return "All Statuses";
+    if (status === "approved") return "Posted";
+    
+    return status.split("_")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
   };
 
   const formatItemForDetails = (process) => {
