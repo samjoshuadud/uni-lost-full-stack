@@ -467,7 +467,6 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     process.item?.status?.toLowerCase() === "found"
                   )
                   .map((process) => {
-                    console.log('Rendering process:', process);
                     // ... item rendering code ...
                     return (
                       <Card key={process.id || process.Id} className="overflow-hidden">

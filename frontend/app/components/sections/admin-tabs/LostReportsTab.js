@@ -80,7 +80,7 @@ const LostReportsTab = memo(function LostReportsTab({
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3 mt-4">
+            <div className="grid gap-4 md:grid-cols-2 mt-4">
               <Card className="bg-background hover:bg-muted/50 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
@@ -96,27 +96,6 @@ const LostReportsTab = memo(function LostReportsTab({
                           process.status === ProcessStatus.PENDING_APPROVAL && 
                           process.item?.status?.toLowerCase() === "lost" && 
                           !process.item?.approved
-                        ).length}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-background hover:bg-muted/50 transition-colors">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 bg-orange-100 rounded-full">
-                      <CheckCircle className="h-6 w-6 text-orange-600" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">
-                        In Verification
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {items.filter(process => 
-                          process.status === ProcessStatus.IN_VERIFICATION && 
-                          process.item?.status?.toLowerCase() === "lost"
                         ).length}
                       </p>
                     </div>
@@ -267,9 +246,14 @@ const LostReportsTab = memo(function LostReportsTab({
                                       For Approval
                                     </Badge>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    Student ID: {process.item?.studentId || "N/A"}
-                                  </p>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                      <span className="font-medium">
+                                        {process.item?.studentId?.startsWith('ADMIN') ? 'Reported by:' : 'Student ID:'}
+                                      </span>
+                                      <span>{process.item?.studentId || 'N/A'}</span>
+                                    </div>
+                                  </div>
                                 </div>
                                 <Badge
                                   variant="outline"
