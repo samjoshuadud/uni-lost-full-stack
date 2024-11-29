@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash } from "lucide-react"
+import { Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter } from "lucide-react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,13 @@ import VerificationDialog from "../dialogs/VerificationDialog";
 import { ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { toast } from "react-hot-toast";
 import { API_BASE_URL } from "@/lib/api-config";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
   const [cancelingItems, setCancelingItems] = useState(new Set());
@@ -22,6 +29,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showFailedDialog, setShowFailedDialog] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const handleAnswerQuestions = async (process) => {
     try {
@@ -145,6 +153,21 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
   // Filter out null or undefined processes
   const validProcesses = pendingProcesses.filter(process => process && process.item);
+
+  const getUniqueStatuses = (processes) => {
+    const statuses = processes
+      .map(p => p.status)
+      .filter(status => status !== ProcessStatus.AWAITING_SURRENDER);
+    return ["all", ...new Set(statuses)];
+  };
+
+  const formatStatus = (status) => {
+    return status === "all" 
+      ? "All Statuses"
+      : status.split("_")
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(" ");
+  };
 
   const formatItemForDetails = (process) => {
     const additionalDescs = process.item?.additionalDescriptions?.$values || 
@@ -482,8 +505,30 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       <div className="max-w-full mx-auto space-y-6">
         {/* Header */}
         <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-          <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
-          <p className="text-gray-600 mt-1">Track the status of your reported items</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
+              <p className="text-gray-600 mt-1">Track the status of your reported items</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getUniqueStatuses(validProcesses).map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {formatStatus(status)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
 
         {/* Process Cards */}
@@ -503,7 +548,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               </Card>
             </div>
           ) : (
-            validProcesses.map(renderProcessCard)
+            validProcesses
+              .filter(process => statusFilter === "all" || process.status === statusFilter)
+              .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+              .map(renderProcessCard)
           )}
         </div>
 
