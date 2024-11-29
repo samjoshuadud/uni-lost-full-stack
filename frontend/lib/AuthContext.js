@@ -39,15 +39,22 @@ export function AuthProvider({ children }) {
         uid: user.uid
       });
       
+      const headers = {
+        'Authorization': `Bearer ${email}`,
+        'DisplayName': user.displayName || email,
+        'FirebaseUID': user.uid,
+        'Accept': 'application/json',
+      };
+      
+      if (!(options.body instanceof FormData)) {
+        headers['Content-Type'] = 'application/json';
+      }
+      
       const response = await fetch(url, {
         ...options,
         headers: {
-          ...options.headers,
-          'Authorization': `Bearer ${email}`,
-          'DisplayName': user.displayName || email,
-          'FirebaseUID': user.uid,
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          ...headers,
+          ...options.headers
         }
       });
 

@@ -90,6 +90,12 @@ export default function ReportSection({
     fetchOriginalItem();
   }, [isScannedData, initialData, userData]);
 
+  useEffect(() => {
+    if (userData?.studentId) {
+      setStudentId(userData.studentId);
+    }
+  }, [userData]);
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -161,21 +167,18 @@ export default function ReportSection({
   };
 
   const generateQRData = (processId) => {
-    console.log('Generating QR data for process ID:', processId);
     if (!processId) {
-      console.error('No process ID provided for QR generation');
+      console.warn('No process ID provided for QR generation');
       return '';
     }
 
-    // Encode the process ID and timestamp
     const qrData = {
-      id: processId, // This will now be the process ID
-      t: new Date().getTime()
+      id: processId,
+      timestamp: new Date().getTime()
     };
 
-    const qrString = JSON.stringify(qrData);
-    console.log('Generated QR data:', qrString);
-    return qrString;
+    console.log('Generated QR data:', qrData);
+    return JSON.stringify(qrData);
   };
 
   const downloadQRCode = async () => {
@@ -193,143 +196,101 @@ export default function ReportSection({
   };
 
   const handleSubmit = async () => {
-    if (!user) return;
-    
     setIsSubmitting(true);
-    setShowConfirmDialog(false);
-
     try {
-      if (isScannedData && initialData) {
-        // Create FormData for item update
-        const formData = new FormData();
-        formData.append('name', name);
-        formData.append('description', description);
-        formData.append('location', location);
-        formData.append('category', category);
-        formData.append('studentId', studentId);
-        
-        if (selectedImage) {
-          formData.append('image', selectedImage);
-        }
-
-        if (additionalDescriptions.length > 0) {
-          formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
-        }
-
-        // First update item details
-        const itemUpdateResponse = await fetch(`${API_BASE_URL}/api/Item/update/${initialData.id}`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${user.email}`,
-            'FirebaseUID': user.uid,
-          },
-          body: formData
-        });
-
-        if (!itemUpdateResponse.ok) {
-          throw new Error('Failed to update item details');
-        }
-
-        // Then update process status
-        const processUpdateResponse = await fetch(`${API_BASE_URL}/api/Item/process/${initialData.processId}/status`, {
-          method: 'PUT',
-          headers: {
-            'Authorization': `Bearer ${user.email}`,
-            'FirebaseUID': user.uid,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            Status: ProcessStatus.PENDING_APPROVAL,
-            Message: ProcessMessages.WAITING_APPROVAL
-          })
-        });
-
-        if (!processUpdateResponse.ok) {
-          throw new Error('Failed to update process status');
-        }
-
-        if (onSubmit) {
-          onSubmit();
-        }
-        return;
-      }
-
-      // Original code for new item submission
+      // Prepare form data
       const formData = new FormData();
-      formData.append('name', name);
-      formData.append('description', description);
-      formData.append('location', location);
-      formData.append('category', category || 'Books');
-      formData.append('status', itemStatus);
-      formData.append('reporterId', user.uid);
-      formData.append('studentId', studentId);
+      formData.append("Name", name);
+      formData.append("Description", description);
+      formData.append("Location", location);
+      formData.append("Category", category);
+      formData.append("StudentId", userData?.studentId || "");
+      formData.append("ReporterId", user.uid);
       
-      if (selectedImage) {
-        formData.append('image', selectedImage);
-      }
-
-      if (additionalDescriptions.length > 0) {
-        formData.append('additionalDescriptions', JSON.stringify(additionalDescriptions));
-      }
-
-      if (itemStatus === ItemStatus.FOUND && !adminMode) {
-        formData.append('processStatus', ProcessStatus.AWAITING_SURRENDER);
-        formData.append('message', ProcessMessages.SURRENDER_REQUIRED);
+      // Set the status and process status based on who's reporting
+      if (activeSection === "reports") {
+        formData.append("Status", ItemStatus.LOST);
+        formData.append("ProcessStatus", ProcessStatus.PENDING_APPROVAL);
+        formData.append("ProcessMessage", ProcessMessages.WAITING_APPROVAL);
+      } else if (adminMode) {
+        formData.append("Status", ItemStatus.FOUND);
+        formData.append("ProcessStatus", ProcessStatus.PENDING_APPROVAL);
+        formData.append("ProcessMessage", ProcessMessages.WAITING_APPROVAL);
+      } else if (itemStatus === ItemStatus.FOUND) {
+        formData.append("Status", ItemStatus.FOUND);
+        formData.append("ProcessStatus", ProcessStatus.AWAITING_SURRENDER);
+        formData.append("ProcessMessage", ProcessMessages.SURRENDER_REQUIRED);
       } else {
-        formData.append('processStatus', ProcessStatus.PENDING_APPROVAL);
-        formData.append('message', ProcessMessages.WAITING_APPROVAL);
+        formData.append("Status", itemStatus || ItemStatus.LOST);
+        formData.append("ProcessStatus", ProcessStatus.PENDING_APPROVAL);
+        formData.append("ProcessMessage", ProcessMessages.WAITING_APPROVAL);
       }
 
-      console.log('Submitting form data...');
-      const response = await fetch(`${API_BASE_URL}/api/Item`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${user.email}`,
-          'FirebaseUID': user.uid,
-        },
-        body: formData
+      // Add additional descriptions as a JSON array
+      if (additionalDescriptions && additionalDescriptions.length > 0) {
+        const additionalDescriptionsJson = JSON.stringify(additionalDescriptions.map(desc => ({
+          Title: desc.title,
+          Description: desc.description,
+          ItemId: null  // This will be set by the backend
+        })));
+        formData.append("AdditionalDescriptions", additionalDescriptionsJson);
+      } else {
+        formData.append("AdditionalDescriptions", JSON.stringify([]));
+      }
+
+      // Add image if selected
+      if (selectedImage) {
+        formData.append("Image", selectedImage);
+      }
+
+      const response = await makeAuthenticatedRequest("/api/Item", {
+        method: "POST",
+        body: formData,
       });
 
-      if (!response.ok) {
-        const errorData = await response.text();
-        console.error('Error response:', errorData);
-        throw new Error('Failed to submit report');
+      if (!response) {
+        throw new Error("Failed to submit report");
       }
-
-      const data = await response.json();
-      console.log('Full API Response:', JSON.stringify(data, null, 2));
 
       // Show QR code only for non-admin found item reports
-      if (itemStatus === ItemStatus.FOUND && !adminMode) {
-        // Get the itemId from the response
-        const itemId = data.itemId; // Use itemId from response
-
-        console.log('Found Item ID:', itemId);
-
-        if (!itemId) {
-          console.error('Response structure:', data);
-          throw new Error('Could not find item ID in response');
+      if (!adminMode && itemStatus === ItemStatus.FOUND) {
+        const processId = response.id || response.Id || response.processId;
+        if (!processId) {
+          throw new Error("No process ID in response");
         }
 
-        // Store the data for QR generation
         setScannedData({
-          id: itemId, // Use itemId here
-          processId: data.processId,
-          ...data
+          ...response,
+          processId: processId
         });
-
-        console.log('Setting scanned data with ID:', itemId);
+        setShowConfirmDialog(false);
         setShowQRCode(true);
-        return;
+      } else {
+        // For all other cases, just close the dialog
+        setShowConfirmDialog(false);
+        if (onSubmit) {
+          onSubmit(response);
+        }
       }
-      
-      if (onSubmit) {
-        onSubmit(data);
-      }
+
+      // Reset form except for studentId
+      setName('');
+      setDescription('');
+      setLocation('');
+      setCategory('');
+      setItemStatus('');
+      setAdditionalDescriptions([]);
+      setSelectedImage(null);
+      setImagePreview(null);
+      // Don't reset studentId since it should stay constant
+      // setStudentId('');  // Remove this line
 
     } catch (error) {
-      console.error('Error submitting report:', error);
-      alert('Error submitting report: ' + error.message);
+      console.error("Error submitting report:", error);
+      if (error.response) {
+        console.error("Error response:", await error.response.json());
+      }
+      throw error;
     } finally {
       setIsSubmitting(false);
     }
@@ -448,7 +409,9 @@ export default function ReportSection({
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="studentId">Student ID</Label>
+                    <Label htmlFor="studentId">
+                      {adminMode || userData?.isAdmin ? 'Reported By:' : 'Student ID'}
+                    </Label>
                     <Input
                       id="studentId"
                       name="studentId"
@@ -771,96 +734,40 @@ export default function ReportSection({
           if (!open) {
             setShowQRCode(false);
             setScannedData(null);
-            // Clear form after closing QR code dialog
+            // Clear form except for studentId
             setName('');
             setDescription('');
             setLocation('');
             setCategory('');
-            setStudentId('');
             setItemStatus('');
             setAdditionalDescriptions([]);
             setSelectedImage(null);
             setImagePreview(null);
+            // Don't reset studentId here
           }
         }}
       >
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
-            <DialogTitle className="text-xl font-semibold text-[#0052cc]">
-              Found Item Report - QR Code
-            </DialogTitle>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Item QR Code</DialogTitle>
           </DialogHeader>
-
-          <div className="px-6 py-4 space-y-6 overflow-y-auto flex-grow">
-            {/* Timer Warning */}
-            <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
-              <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50">
-                <div className="flex items-center space-x-2">
-                  <Clock className="h-5 w-5 text-yellow-600" />
-                  <span className="font-medium text-yellow-800">Time Sensitive</span>
-                </div>
-              </div>
-              <div className="px-4 py-3">
-                <p className="text-sm text-yellow-700 leading-relaxed">
-                  This report will be automatically deleted if the item is not surrendered within 3 days.
-                </p>
-              </div>
-            </div>
-
-            {/* QR Code Display */}
-            {scannedData && scannedData.processId && (
-              <div className="flex flex-col items-center space-y-4">
-                <div 
-                  ref={qrCodeRef}
-                  className="p-6 bg-white rounded-lg border shadow-sm"
-                >
-                  <QRCodeSVG
-                    value={generateQRData(scannedData.processId)}
-                    size={240}
-                    level="M"
-                    includeMargin={true}
-                    className="mx-auto"
-                  />
-                </div>
-                <Button 
-                  onClick={downloadQRCode} 
-                  className="w-full bg-[#0052cc] hover:bg-[#0052cc]/90"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download QR Code
-                </Button>
-              </div>
-            )}
-
-            {/* Instructions Card */}
-            <div className="rounded-lg border bg-white p-4 shadow-sm">
-              <h4 className="font-medium text-gray-700 mb-3">Next Steps</h4>
-              <ol className="space-y-2">
-                {[
-                  "Download or save this QR code",
-                  "Surrender the found item to the University's Lost and Found",
-                  "Show this QR code to the admin"
-                ].map((step, index) => (
-                  <li key={index} className="flex items-start space-x-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0052cc]/10 text-sm font-medium text-[#0052cc]">
-                      {index + 1}
-                    </span>
-                    <span className="text-sm text-gray-600 pt-0.5">{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </div>
-
-          <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowQRCode(false)}
-              className="border-gray-300"
+          <div className="flex flex-col items-center gap-4 p-4">
+            <div 
+              ref={qrCodeRef}
+              className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
             >
-              Close
+              <QRCodeSVG 
+                value={generateQRData(scannedData?.processId)} 
+                size={200}
+                level="H"
+                includeMargin
+              />
+            </div>
+            <Button onClick={downloadQRCode} className="w-full">
+              <Download className="h-4 w-4 mr-2" />
+              Download QR Code
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
