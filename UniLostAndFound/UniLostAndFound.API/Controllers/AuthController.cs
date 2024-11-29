@@ -103,7 +103,9 @@ public class AuthController : ControllerBase
                     email = user.Email,
                     name = user.DisplayName,
                     isAdmin = isAdmin,
-                    displayName = user.DisplayName
+                    displayName = user.DisplayName,
+                    studentId = user.StudentId,
+                    createdAt = user.CreatedAt
                 },
                 settings = new
                 {
@@ -204,6 +206,43 @@ public class AuthController : ControllerBase
         {
             _logger.LogError($"Error getting admins: {ex.Message}");
             return StatusCode(500, new { message = "Failed to get admins" });
+        }
+    }
+
+    [HttpDelete("users/{email}")]
+    public async Task<ActionResult> DeleteUser(string email)
+    {
+        try
+        {
+            _logger.LogInformation($"Attempting to delete user: {email}");
+
+            // Check if user exists
+            var user = await _userService.GetUserByEmailAsync(email);
+            if (user == null)
+            {
+                return NotFound(new { message = "User not found" });
+            }
+
+            // Check if user is admin
+            bool isAdmin = await _userAccessService.IsAdminEmailAsync(email);
+            if (isAdmin)
+            {
+                return BadRequest(new { message = "Cannot delete admin users" });
+            }
+
+            // Delete user
+            bool success = await _userService.DeleteUserAsync(email);
+            if (!success)
+            {
+                return StatusCode(500, new { message = "Failed to delete user" });
+            }
+
+            return Ok(new { message = "User deleted successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error deleting user: {ex.Message}");
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 }

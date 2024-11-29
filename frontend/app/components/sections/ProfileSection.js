@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/lib/AuthContext"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CalendarDays, Mail, School, User, Clock, Package, AlertCircle } from "lucide-react"
+import { CalendarDays, Mail, School, User, Clock, Package, AlertCircle, IdCard } from "lucide-react"
 import { format } from "date-fns"
 
 export default function ProfileSection() {
@@ -49,6 +49,10 @@ export default function ProfileSection() {
                     <div className="flex items-center gap-2 text-gray-600">
                       <Mail className="h-4 w-4 text-gray-400" />
                       <span>{user.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <IdCard className="h-4 w-4 text-gray-400" />
+                      <span>{userData?.studentId || "No Student ID"}</span>
                     </div>
                     <div className="flex items-center gap-2 text-gray-600">
                       <School className="h-4 w-4 text-gray-400" />
@@ -159,18 +163,18 @@ export default function ProfileSection() {
                       <p className="font-medium text-gray-700">Account Created</p>
                       <p className="text-sm text-gray-500 mt-1">
                         {userData?.createdAt ? 
-                          format(new Date(userData.createdAt.seconds * 1000), 'PPP') :
+                          format(new Date(userData.createdAt), 'PPP') :
                           format(new Date(user.metadata.creationTime), 'PPP')}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-4 p-4 bg-gray-50 rounded-lg">
-                    <CalendarDays className="h-5 w-5 text-gray-400 mt-1" />
+                    <Clock className="h-5 w-5 text-gray-400 mt-1" />
                     <div>
                       <p className="font-medium text-gray-700">Last Sign In</p>
                       <p className="text-sm text-gray-500 mt-1">
                         {userData?.lastLogin ? 
-                          format(new Date(userData.lastLogin.seconds * 1000), 'PPP') :
+                          format(new Date(userData.lastLogin), 'PPP') :
                           format(new Date(user.metadata.lastSignInTime), 'PPP')}
                       </p>
                     </div>
