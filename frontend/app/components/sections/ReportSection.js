@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock } from "lucide-react"
 import { API_BASE_URL } from "@/lib/api-config";
+import { Label } from "@/components/ui/label"
 
 export default function ReportSection({ 
   onSubmit, 
@@ -20,12 +21,12 @@ export default function ReportSection({
   initialData = null, 
   isScannedData = false
 }) {
-  const { user, makeAuthenticatedRequest } = useAuth();
+  const { user, makeAuthenticatedRequest, userData } = useAuth();
   const [name, setName] = useState(initialData?.name || "")
   const [description, setDescription] = useState(initialData?.description || "")
   const [location, setLocation] = useState(initialData?.location || "")
   const [category, setCategory] = useState(initialData?.category || "")
-  const [studentId, setStudentId] = useState(initialData?.studentId || "")
+  const [studentId, setStudentId] = useState(userData?.studentId || "")
   const [additionalDescriptions, setAdditionalDescriptions] = useState(
     Array.isArray(initialData?.additionalDescriptions) 
       ? initialData.additionalDescriptions 
@@ -41,6 +42,11 @@ export default function ReportSection({
   const [showQRCode, setShowQRCode] = useState(false);
   const qrCodeRef = useRef(null);
   const [scannedData, setScannedData] = useState(null);
+  const [additionalDescriptionTitle, setAdditionalDescriptionTitle] = useState("")
+  const [additionalDescriptionText, setAdditionalDescriptionText] = useState("")
+  const [isAddingDescription, setIsAddingDescription] = useState(false)
+  const [showEmptyDescriptionError, setShowEmptyDescriptionError] = useState(false)
+  const [originalItem, setOriginalItem] = useState(null);
 
   useEffect(() => {
     if (initialData) {
@@ -48,7 +54,7 @@ export default function ReportSection({
       setDescription(initialData.description || "");
       setLocation(initialData.location || "");
       setCategory(initialData.category || "");
-      setStudentId(initialData.studentId || "");
+      setStudentId(userData?.studentId || "");
       setAdditionalDescriptions(
         Array.isArray(initialData.additionalDescriptions)
           ? initialData.additionalDescriptions
@@ -59,6 +65,29 @@ export default function ReportSection({
       setImagePreview(initialData.imageUrl || null);
     }
   }, [initialData]);
+
+  useEffect(() => {
+    const fetchOriginalItem = async () => {
+      if (isScannedData && initialData?.id) {
+        try {
+          // Fetch the original item details using the scanned ID
+          const response = await makeAuthenticatedRequest(`/api/Item/${initialData.id}`);
+          if (response) {
+            setOriginalItem(response);
+            // Set the studentId from the original reporter
+            setStudentId(response.studentId || "");
+          }
+        } catch (error) {
+          console.error("Error fetching original item:", error);
+        }
+      } else {
+        // If not from QR scan, use current user's studentId
+        setStudentId(userData?.studentId || "");
+      }
+    };
+
+    fetchOriginalItem();
+  }, [isScannedData, initialData, userData]);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -87,8 +116,25 @@ export default function ReportSection({
     }
   };
 
-  const addDescription = () => {
-    setAdditionalDescriptions([...additionalDescriptions, { title: '', description: '' }])
+  const handleAddDescription = () => {
+    // Check if either field is empty when Add button is clicked
+    if (!additionalDescriptionTitle.trim() || !additionalDescriptionText.trim()) {
+      setShowEmptyDescriptionError(true)
+      return
+    }
+
+    setAdditionalDescriptions([
+      ...additionalDescriptions,
+      {
+        title: additionalDescriptionTitle,
+        description: additionalDescriptionText
+      }
+    ])
+    // Reset fields and error state
+    setAdditionalDescriptionTitle("")
+    setAdditionalDescriptionText("")
+    setIsAddingDescription(false)
+    setShowEmptyDescriptionError(false)
   }
 
   const removeDescription = (index) => {
@@ -375,16 +421,15 @@ export default function ReportSection({
                     )}
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
-                      Student ID
-                    </label>
+                  <div className="grid gap-2">
+                    <Label htmlFor="studentId">Student ID</Label>
                     <Input
+                      id="studentId"
+                      name="studentId"
                       value={studentId}
-                      onChange={(e) => setStudentId(e.target.value)}
-                      placeholder="Enter your Student ID"
-                      className="bg-white"
-                      required
+                      readOnly
+                      disabled
+                      className="bg-gray-100 text-gray-600 cursor-not-allowed"
                     />
                   </div>
 
@@ -452,16 +497,76 @@ export default function ReportSection({
                   {renderImageSection()}
 
                   {/* Additional Descriptions */}
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-sm font-medium text-gray-600">
-                        Additional Descriptions
-                      </label>
-                      <Button type="button" variant="outline" onClick={addDescription} className="h-8">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <Label>Additional Descriptions</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsAddingDescription(true)}
+                      >
                         <Plus className="h-4 w-4 mr-2" />
-                        Add
+                        Add Description
                       </Button>
                     </div>
+
+                    {isAddingDescription && (
+                      <Card className="border border-gray-200">
+                        <CardContent className="p-4 space-y-4">
+                          <div className="space-y-2">
+                            <Label>Title</Label>
+                            <Input
+                              value={additionalDescriptionTitle}
+                              onChange={(e) => {
+                                setAdditionalDescriptionTitle(e.target.value)
+                                setShowEmptyDescriptionError(false)
+                              }}
+                              className={showEmptyDescriptionError && !additionalDescriptionTitle.trim() ? 
+                                "border-red-500" : ""}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Description</Label>
+                            <Textarea
+                              value={additionalDescriptionText}
+                              onChange={(e) => {
+                                setAdditionalDescriptionText(e.target.value)
+                                setShowEmptyDescriptionError(false)
+                              }}
+                              className={showEmptyDescriptionError && !additionalDescriptionText.trim() ? 
+                                "border-red-500" : ""}
+                            />
+                          </div>
+                          {showEmptyDescriptionError && (
+                            <p className="text-sm text-red-500">
+                              Please fill in both title and description before adding
+                            </p>
+                          )}
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                setIsAddingDescription(false)
+                                setAdditionalDescriptionTitle("")
+                                setAdditionalDescriptionText("")
+                                setShowEmptyDescriptionError(false)
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={handleAddDescription}
+                            >
+                              Add
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     <div className="space-y-3">
                       {additionalDescriptions.map((desc, index) => (
                         <div key={index} className="relative bg-white p-3 rounded-lg border">

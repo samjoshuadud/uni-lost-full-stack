@@ -61,18 +61,33 @@ public class UserService
         try
         {
             var user = await _userRepository.GetByIdAsync(uid);
+            var isAdmin = await _userAccessService.IsAdminEmailAsync(email);
+            
             if (user == null)
             {
-                // Extract student ID from UMAK email
-                string studentId = "";
-                if (email.ToLower().EndsWith("@umak.edu.ph"))
+                string studentId;
+                if (isAdmin)
                 {
+                    // If admin, set studentId as "ADMIN - {FirstName}"
+                    string firstName = displayName.Split(' ')[0];
+                    studentId = $"ADMIN - {firstName.ToUpper()}";
+                }
+                else if (email.ToLower().EndsWith("@umak.edu.ph"))
+                {
+                    // Extract student ID from UMAK email
                     var parts = email.Split('@')[0].Split('.');
                     if (parts.Length > 1)
                     {
-                        // Get the part after the dot and convert to uppercase
                         studentId = parts[1].ToUpper();
                     }
+                    else
+                    {
+                        studentId = "";
+                    }
+                }
+                else
+                {
+                    studentId = "";
                 }
 
                 user = new User
@@ -80,17 +95,25 @@ public class UserService
                     Id = uid,
                     Email = email,
                     DisplayName = displayName,
-                    StudentId = studentId, // Save the extracted student ID
+                    StudentId = studentId,
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow
                 };
                 
-                _logger.LogInformation($"Creating new user with email: {email}, studentId: {studentId}");
+                _logger.LogInformation($"Creating new user with email: {email}, studentId: {studentId}, isAdmin: {isAdmin}");
                 return await _userRepository.CreateAsync(user);
             }
 
             // Update existing user if needed
-            if (string.IsNullOrEmpty(user.StudentId) && email.ToLower().EndsWith("@umak.edu.ph"))
+            if (isAdmin && !user.StudentId.StartsWith("ADMIN -"))
+            {
+                string firstName = displayName.Split(' ')[0];
+                user.StudentId = $"ADMIN - {firstName.ToUpper()}";
+                user.UpdatedAt = DateTime.UtcNow;
+                await _context.SaveChangesAsync();
+                _logger.LogInformation($"Updated existing admin user with studentId: {user.StudentId}");
+            }
+            else if (!isAdmin && string.IsNullOrEmpty(user.StudentId) && email.ToLower().EndsWith("@umak.edu.ph"))
             {
                 var parts = email.Split('@')[0].Split('.');
                 if (parts.Length > 1)
