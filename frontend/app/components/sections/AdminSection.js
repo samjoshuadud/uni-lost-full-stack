@@ -726,11 +726,40 @@ export default function AdminSection({
 
       {/* Admin Management Dialog */}
       <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>User Management</DialogTitle>
+        <DialogContent className="max-w-6xl h-[85vh] p-0 overflow-hidden bg-white">
+          {/* Header */}
+          <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
+            <DialogTitle className="text-2xl font-semibold text-[#0052cc]">
+              User Management
+            </DialogTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              Manage user roles and permissions for the Lost and Found system
+            </p>
           </DialogHeader>
-          <UserManagementTab />
+          
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="px-6 py-4">
+              <div className="rounded-lg border border-gray-200 bg-white">
+                <div className="p-4">
+                  <UserManagementTab />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t bg-[#f8f9fa] flex-shrink-0">
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                onClick={() => setShowAdminDialog(false)}
+                className="border-gray-200 hover:bg-gray-50"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
