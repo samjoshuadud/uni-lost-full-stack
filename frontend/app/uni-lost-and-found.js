@@ -679,26 +679,45 @@ export default function UniLostAndFound() {
     setSelectedItem(item);
     setActiveSection("dashboard");
     
-    // Use requestAnimationFrame to wait for the next frame
-    requestAnimationFrame(() => {
-      // Find the item element
-      const itemElement = document.getElementById(`item-${item.id}`);
-      if (itemElement) {
-        // First scroll to the item
-        itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        
-        // Add highlight effect
-        itemElement.style.transition = 'all 0.3s ease-in-out';
-        itemElement.style.boxShadow = '0 0 0 4px rgb(var(--primary))';
-        itemElement.style.transform = 'scale(1.02)';
-        
-        // Remove highlight after animation
-        setTimeout(() => {
-          itemElement.style.boxShadow = '';
-          itemElement.style.transform = '';
-        }, 2000);
-      }
-    });
+    // Add a small delay to ensure items are loaded
+    setTimeout(() => {
+      const findAndHighlightItem = () => {
+        const itemElement = document.getElementById(`item-${item.id}`);
+        if (itemElement) {
+          // First scroll to the item
+          itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Add highlight effect with improved styling
+          itemElement.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+          itemElement.style.boxShadow = '0 0 0 3px rgb(0, 82, 204), 0 8px 20px -4px rgba(0, 82, 204, 0.3)';
+          itemElement.style.transform = 'scale(1.02)';
+          itemElement.style.zIndex = '50';
+          
+          // Add a pulsing animation
+          const pulseAnimation = itemElement.animate([
+            { boxShadow: '0 0 0 3px rgba(0, 82, 204, 0.8), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' },
+            { boxShadow: '0 0 0 6px rgba(0, 82, 204, 0.2), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' },
+            { boxShadow: '0 0 0 3px rgba(0, 82, 204, 0.8), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' }
+          ], {
+            duration: 1500,
+            iterations: 2
+          });
+          
+          // Remove highlight after animation
+          setTimeout(() => {
+            itemElement.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+            itemElement.style.boxShadow = '';
+            itemElement.style.transform = '';
+            itemElement.style.zIndex = '';
+          }, 3000);
+        } else {
+          // If element not found, try again after a short delay
+          setTimeout(findAndHighlightItem, 100);
+        }
+      };
+
+      findAndHighlightItem();
+    }, 100); // Initial delay to allow for section change
   }, []);
 
   const handleUpdateItemStatus = async (itemId, status, verificationQuestions = null) => {
