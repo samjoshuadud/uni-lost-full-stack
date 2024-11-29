@@ -27,7 +27,7 @@ export default function ReportSection({
   const [description, setDescription] = useState(initialData?.description || "")
   const [location, setLocation] = useState(initialData?.location || "")
   const [category, setCategory] = useState(initialData?.category || "")
-  const [studentId, setStudentId] = useState(userData?.studentId || "")
+  const [studentId, setStudentId] = useState(userData?.studentId || "Not Available")
   const [additionalDescriptions, setAdditionalDescriptions] = useState(
     Array.isArray(initialData?.additionalDescriptions) 
       ? initialData.additionalDescriptions 
@@ -55,7 +55,7 @@ export default function ReportSection({
       setDescription(initialData.description || "");
       setLocation(initialData.location || "");
       setCategory(initialData.category || "");
-      setStudentId(userData?.studentId || "");
+      setStudentId(userData?.studentId || "Not Available");
       setAdditionalDescriptions(
         Array.isArray(initialData.additionalDescriptions)
           ? initialData.additionalDescriptions
@@ -71,19 +71,16 @@ export default function ReportSection({
     const fetchOriginalItem = async () => {
       if (isScannedData && initialData?.id) {
         try {
-          // Fetch the original item details using the scanned ID
           const response = await makeAuthenticatedRequest(`/api/Item/${initialData.id}`);
           if (response) {
             setOriginalItem(response);
-            // Set the studentId from the original reporter
-            setStudentId(response.studentId || "");
+            setStudentId(response.studentId || "Not Available");
           }
         } catch (error) {
           console.error("Error fetching original item:", error);
         }
       } else {
-        // If not from QR scan, use current user's studentId
-        setStudentId(userData?.studentId || "");
+        setStudentId(userData?.studentId || "Not Available");
       }
     };
 
@@ -93,6 +90,8 @@ export default function ReportSection({
   useEffect(() => {
     if (userData?.studentId) {
       setStudentId(userData.studentId);
+    } else {
+      setStudentId("Not Available");
     }
   }, [userData]);
 
