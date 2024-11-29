@@ -25,16 +25,45 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
   const handleAnswerQuestions = async (process) => {
     try {
+      console.log('Fetching questions for process:', process.id);
       const response = await fetch(`${API_BASE_URL}/api/Item/process/${process.id}/questions`);
-      if (!response.ok) throw new Error('Failed to fetch questions');
-      const data = await response.json();
       
-      setVerificationQuestions(data.questions.$values || data.questions);
-      setAnswers(new Array(data.questions.$values?.length || 0).fill(''));
+      if (!response.ok) {
+        throw new Error(`Failed to fetch questions: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Raw API response:', data);
+
+      // Extract questions from the response structure
+      let questions = [];
+      if (data.data?.$values) {
+        questions = data.data.$values.map(q => q.question).filter(Boolean);
+      }
+
+      console.log('Parsed questions:', questions);
+      
+      if (!questions || questions.length === 0) {
+        toast({
+          title: "No Questions Found",
+          description: "No verification questions are available for this item.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setVerificationQuestions(questions);
+      setAnswers(new Array(questions.length).fill(''));
       setSelectedProcess(process);
       setShowAnswerDialog(true);
+      
     } catch (error) {
       console.error('Error fetching questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch verification questions. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -47,10 +76,13 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       const formattedAnswers = {
         processId: selectedProcess.id,
         answers: verificationQuestions.map((question, index) => ({
-          questionId: question.id,
+          processId: selectedProcess.id,
+          question: question,
           answer: answers[index]
         }))
       };
+
+      console.log('Submitting answers:', formattedAnswers);
 
       const response = await fetch(`${API_BASE_URL}/api/Item/verify`, {
         method: 'POST',
@@ -60,7 +92,12 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         body: JSON.stringify(formattedAnswers)
       });
 
+      if (!response.ok) {
+        throw new Error(`Failed to submit answers: ${response.status} ${response.statusText}`);
+      }
+
       const data = await response.json();
+      console.log('Submit response:', data);
       
       // Close the answer dialog
       setShowAnswerDialog(false);
@@ -69,7 +106,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       setVerificationQuestions([]);
       
       toast({
-        title: "Answers Submitted",
+        title: "Success",
         description: "Your answers have been submitted for review",
         variant: "success",
       });
@@ -78,7 +115,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       console.error('Error submitting answers:', error);
       toast({
         title: "Error",
-        description: "Failed to submit verification answers",
+        description: "Failed to submit verification answers. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -137,7 +174,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
     // Common action buttons layout
     const renderActionButtons = (buttons) => (
-      <div className="flex justify-end gap-2 mt-auto pt-4">
+      <div className="flex flex-col gap-2 mt-auto pt-4">
         {buttons}
       </div>
     );
@@ -240,18 +277,29 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               </div>
             </div>
             {renderActionButtons(
-              <>
+              <div className="grid grid-cols-1 gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  size="sm"
+                  className="w-full"
                   onClick={() => onViewDetails(formatItemForDetails(process))}
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
                   View Details
                 </Button>
                 <Button
+                  variant="default"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => handleAnswerQuestions(process)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Answer Questions
+                </Button>
+                <Button
                   variant="destructive"
-                  className="flex-1"
+                  size="sm"
+                  className="w-full"
                   onClick={() => handleCancelRequest(process.item?.id)}
                   disabled={cancelingItems.has(process.item?.id)}
                 >
@@ -267,7 +315,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                     </>
                   )}
                 </Button>
-              </>
+              </div>
             )}
           </div>
         );
