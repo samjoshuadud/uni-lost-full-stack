@@ -555,9 +555,14 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                       For Approval
                                     </Badge>
                                   </div>
-                                  <p className="text-sm text-muted-foreground">
-                                    Student ID: {process.item?.studentId || process.item?.StudentId || "N/A"}
-                                  </p>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                                      <span className="font-medium">
+                                        {process.item?.studentId?.startsWith('ADMIN') ? 'Reported by:' : 'Student ID:'}
+                                      </span>
+                                      <span>{process.item?.studentId || 'N/A'}</span>
+                                    </div>
+                                  </div>
                                 </div>
                                 <Badge variant="outline" className="ml-2 flex-shrink-0">
                                   {process.item?.category || process.item?.Category}
