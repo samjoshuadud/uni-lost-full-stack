@@ -37,7 +37,13 @@ const LostReportsTab = memo(function LostReportsTab({
   handleViewDetails,
   onUpdateCounts
 }) {
+  const [approvingItems, setApprovingItems] = useState(new Set());
+  const [deletingItems, setDeletingItems] = useState(new Set());
   const [showReportDialog, setShowReportDialog] = useState(false)
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [selectedItemForVerification, setSelectedItemForVerification] = useState(null);
+  const [verificationQuestions, setVerificationQuestions] = useState([{ question: '' }]);
+  const [isSubmittingQuestions, setIsSubmittingQuestions] = useState(false);
 
   const handleReportSubmit = async (data) => {
     try {
@@ -50,6 +56,91 @@ const LostReportsTab = memo(function LostReportsTab({
       console.error('Error submitting report:', error)
     }
   }
+
+  const handleApproveClick = async (itemId) => {
+    try {
+      setApprovingItems(prev => new Set(prev).add(itemId));
+      await onApprove(itemId);
+    } finally {
+      setApprovingItems(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  };
+
+  const handleDeleteClick = async (itemId) => {
+    try {
+      setDeletingItems(prev => new Set(prev).add(itemId));
+      await handleDelete(itemId);
+    } finally {
+      setDeletingItems(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+    }
+  };
+
+  const handleItemInPossession = (process) => {
+    setSelectedItemForVerification({
+      processId: process.id,
+      item: process.item
+    });
+    setShowVerificationDialog(true);
+  };
+
+  const handleAddQuestion = () => {
+    setVerificationQuestions([...verificationQuestions, { question: '' }]);
+  };
+
+  const handleQuestionChange = (index, value) => {
+    const newQuestions = [...verificationQuestions];
+    newQuestions[index].question = value;
+    setVerificationQuestions(newQuestions);
+  };
+
+  const handleSubmitVerificationQuestions = async () => {
+    const questions = verificationQuestions
+      .map(q => q.question.trim())
+      .filter(q => q.length > 0);
+
+    if (questions.length === 0) return;
+
+    try {
+      setIsSubmittingQuestions(true);
+      
+      const response = await fetch(
+        `${API_BASE_URL}/api/Item/process/${selectedItemForVerification.processId}/status`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            status: ProcessStatus.IN_VERIFICATION,
+            message: JSON.stringify(questions)
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to update process status");
+
+      // Reset dialog state
+      setShowVerificationDialog(false);
+      setSelectedItemForVerification(null);
+      setVerificationQuestions([{ question: '' }]);
+
+      // Update counts if needed
+      if (typeof onUpdateCounts === 'function') {
+        onUpdateCounts();
+      }
+
+    } catch (error) {
+      console.error("Error updating process status:", error);
+    } finally {
+      setIsSubmittingQuestions(false);
+    }
+  };
 
   return (
     <div className="relative">
@@ -295,15 +386,26 @@ const LostReportsTab = memo(function LostReportsTab({
                                 variant="default"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => onApprove(process.item?.id)}
+                                onClick={() => handleApproveClick(process.item?.id)}
+                                disabled={approvingItems.has(process.item?.id)}
                               >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Approve Post
+                                {approvingItems.has(process.item?.id) ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Approving...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Approve Post
+                                  </>
+                                )}
                               </Button>
                               <Button
                                 variant="secondary"
                                 size="sm"
                                 className="w-full"
+                                onClick={() => handleItemInPossession(process)}
                               >
                                 <Package className="h-4 w-4 mr-2" />
                                 Item in Possession
@@ -312,10 +414,20 @@ const LostReportsTab = memo(function LostReportsTab({
                                 variant="destructive"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => handleDelete(process.item?.id)}
+                                onClick={() => handleDeleteClick(process.item?.id)}
+                                disabled={deletingItems.has(process.item?.id)}
                               >
-                                <Trash className="h-4 w-4 mr-2" />
-                                Delete
+                                {deletingItems.has(process.item?.id) ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Deleting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Trash className="h-4 w-4 mr-2" />
+                                    Delete
+                                  </>
+                                )}
                               </Button>
                             </div>
                           </div>
@@ -339,6 +451,86 @@ const LostReportsTab = memo(function LostReportsTab({
               adminMode={false}
               activeSection="reports"
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Verification Dialog */}
+        <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Set Verification Questions</DialogTitle>
+              <DialogDescription>
+                Enter questions that will help verify the ownership of{" "}
+                <span className="font-medium">
+                  {selectedItemForVerification?.item?.name}
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {verificationQuestions.map((q, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">
+                      Question {index + 1}
+                    </label>
+                    {index > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newQuestions = verificationQuestions.filter((_, i) => i !== index);
+                          setVerificationQuestions(newQuestions);
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    )}
+                  </div>
+                  <Textarea
+                    placeholder="Enter a verification question..."
+                    value={q.question}
+                    onChange={(e) => handleQuestionChange(index, e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddQuestion}
+                className="w-full"
+              >
+                Add Another Question
+              </Button>
+              <p className="text-sm text-muted-foreground">
+                Add specific questions that only the true owner would know.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowVerificationDialog(false);
+                  setSelectedItemForVerification(null);
+                  setVerificationQuestions([{ question: '' }]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSubmitVerificationQuestions}
+                disabled={isSubmittingQuestions || !verificationQuestions.some(q => q.question.trim())}
+              >
+                {isSubmittingQuestions ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Questions"
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
