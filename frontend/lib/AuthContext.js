@@ -16,6 +16,7 @@ export function AuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState({ title: '', message: '' });
+  const [userData, setUserData] = useState(null);
 
   const showError = (title, message) => {
     setErrorMessage({ title, message });
@@ -169,24 +170,43 @@ export function AuthProvider({ children }) {
         try {
           const response = await makeAuthenticatedRequest('/api/Auth/protected');
           if (!response) {
-            // If the request fails, sign out
             await signOut(auth);
             return;
           }
           
+          // Store all user data including studentId
+          setUserData({
+            isAdmin: response?.user?.isAdmin || false,
+            studentId: response?.user?.studentId,
+            email: response?.user?.email,
+            displayName: response?.user?.displayName,
+            createdAt: response?.user?.createdAt,
+            lastLogin: response?.user?.lastLogin
+          });
+
           if (response?.user?.isAdmin) {
             setIsAdmin(true);
           } else {
             setIsAdmin(false);
           }
+
+          // Log the response and userData for debugging
+          console.log('API Response:', response);
+          console.log('Setting userData:', {
+            isAdmin: response?.user?.isAdmin,
+            studentId: response?.user?.studentId,
+            email: response?.user?.email,
+            displayName: response?.user?.displayName
+          });
+
         } catch (error) {
           console.error('Error checking user role:', error);
           setIsAdmin(false);
-          // Sign out on error
           await signOut(auth);
         }
       } else {
         setIsAdmin(false);
+        setUserData(null);
       }
       setIsLoading(false);
     };
@@ -197,6 +217,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user,
+      userData,
       loading: loading || isLoading,
       error,
       isAdmin,
