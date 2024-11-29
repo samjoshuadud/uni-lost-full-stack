@@ -40,6 +40,24 @@ const styles = `
   }
 `;
 
+// Add this helper function at the top level
+const sortItems = (items, order) => {
+  return [...items].sort((a, b) => {
+    switch (order) {
+      case "newest":
+        return new Date(b.dateReported || b.DateReported) - new Date(a.dateReported || a.DateReported);
+      case "oldest":
+        return new Date(a.dateReported || a.DateReported) - new Date(b.dateReported || b.DateReported);
+      case "a-z":
+        return (a.name || a.Name || '').localeCompare(b.name || b.Name || '');
+      case "z-a":
+        return (b.name || b.Name || '').localeCompare(a.name || a.Name || '');
+      default:
+        return 0;
+    }
+  });
+};
+
 export default function UniLostAndFound() {
   const { user, isAdmin, loading: authLoading, makeAuthenticatedRequest } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
@@ -272,7 +290,7 @@ export default function UniLostAndFound() {
           }));
         
         return <DashboardSection 
-          items={dashboardItems}
+          items={sortItems(dashboardItems, sortOrder)}
           handleViewDetails={(item) => { 
             setSelectedItem(item);
             setShowDetailsDialog(true);
@@ -285,25 +303,28 @@ export default function UniLostAndFound() {
           searchCategory={searchCategory}
         />
       case "lost":
-        const lostItems = items.filter(process => 
-          process.item?.status?.toLowerCase() === "lost" && 
-          process.item?.approved === true &&
-          process.status === "approved"
-        ).map(process => ({
-          id: process.item.id,
-          name: process.item.name,
-          description: process.item.description,
-          category: process.item.category,
-          location: process.item.location,
-          status: process.item.status,
-          imageUrl: process.item.imageUrl,
-          dateReported: process.item.dateReported,
-          additionalDescriptions: process.item.additionalDescriptions?.$values || [],
-          approved: process.item.approved,
-          reporterId: process.item.reporterId
-        }));
+        const lostItems = items
+          .filter(process => 
+            process.item?.status?.toLowerCase() === "lost" && 
+            process.item?.approved === true &&
+            process.status === "approved"
+          )
+          .map(process => ({
+            id: process.item.id,
+            name: process.item.name,
+            description: process.item.description,
+            category: process.item.category,
+            location: process.item.location,
+            status: process.item.status,
+            imageUrl: process.item.imageUrl,
+            dateReported: process.item.dateReported,
+            additionalDescriptions: process.item.additionalDescriptions?.$values || [],
+            approved: process.item.approved,
+            reporterId: process.item.reporterId
+          }));
+
         return <ItemSection 
-          items={lostItems}
+          items={sortItems(lostItems, sortOrder)}
           title="Lost Items" 
           isAdmin={isAdmin}
           handleViewDetails={(item) => { 
@@ -317,25 +338,28 @@ export default function UniLostAndFound() {
           searchCategory={searchCategory}
         />
       case "found":
-        const foundItems = items.filter(process => 
-          process.item?.status?.toLowerCase() === "found" && 
-          process.item?.approved === true &&
-          process.status === "approved"
-        ).map(process => ({
-          id: process.item.id,
-          name: process.item.name,
-          description: process.item.description,
-          category: process.item.category,
-          location: process.item.location,
-          status: process.item.status,
-          imageUrl: process.item.imageUrl,
-          dateReported: process.item.dateReported,
-          additionalDescriptions: process.item.additionalDescriptions?.$values || [],
-          approved: process.item.approved,
-          reporterId: process.item.reporterId
-        }));
+        const foundItems = items
+          .filter(process => 
+            process.item?.status?.toLowerCase() === "found" && 
+            process.item?.approved === true &&
+            process.status === "approved"
+          )
+          .map(process => ({
+            id: process.item.id,
+            name: process.item.name,
+            description: process.item.description,
+            category: process.item.category,
+            location: process.item.location,
+            status: process.item.status,
+            imageUrl: process.item.imageUrl,
+            dateReported: process.item.dateReported,
+            additionalDescriptions: process.item.additionalDescriptions?.$values || [],
+            approved: process.item.approved,
+            reporterId: process.item.reporterId
+          }));
+
         return <ItemSection 
-          items={foundItems}
+          items={sortItems(foundItems, sortOrder)}
           title="Found Items" 
           isAdmin={isAdmin}
           handleViewDetails={handleViewDetails}
@@ -851,6 +875,27 @@ export default function UniLostAndFound() {
     }
   }, [user, authLoading, isAdmin, makeAuthenticatedRequest]);
 
+  // Add sort state
+  const [sortOrder, setSortOrder] = useState("newest");
+
+  // Add sort function
+  const sortItems = (items, order) => {
+    return [...items].sort((a, b) => {
+      switch (order) {
+        case "newest":
+          return new Date(b.dateReported) - new Date(a.dateReported);
+        case "oldest":
+          return new Date(a.dateReported) - new Date(a.dateReported);
+        case "a-z":
+          return a.name.localeCompare(b.name);
+        case "z-a":
+          return b.name.localeCompare(a.name);
+        default:
+          return 0;
+      }
+    });
+  };
+
   // // Loading state
   // if (isLoading) {
   //   return (
@@ -1154,6 +1199,20 @@ export default function UniLostAndFound() {
                   <SelectItem value="Personal Items">Personal Items</SelectItem>
                   <SelectItem value="Documents">Documents</SelectItem>
                   <SelectItem value="Bags">Bags</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={sortOrder}
+                onValueChange={setSortOrder}
+              >
+                <SelectTrigger className="w-[180px] bg-white border-gray-200">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="a-z">A to Z</SelectItem>
+                  <SelectItem value="z-a">Z to A</SelectItem>
                 </SelectContent>
               </Select>
             </div>
