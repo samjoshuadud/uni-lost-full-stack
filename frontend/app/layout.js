@@ -10,6 +10,9 @@ const inter = Inter({
 export const metadata = {
   title: 'UniLostAndFound',
   description: 'University Lost and Found System',
+  icons: {
+    icon: 'logo.ico',
+  },
 }
 
 export default function RootLayout({ children }) {

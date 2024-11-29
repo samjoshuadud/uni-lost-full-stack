@@ -28,6 +28,7 @@ import VerificationFailDialog from "./components/dialogs/VerificationFailDialog"
 import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { authApi, itemApi } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/api-config';
+import Image from "next/image"
 const styles = `
   @keyframes fadeIn {
     from {
@@ -890,9 +891,25 @@ export default function UniLostAndFound() {
       </Dialog>
 
       {/* Header */}
-      <header className="bg-[#0052cc] shadow-md">
+      <header className="bg-[#0052cc] shadow-md border-b border-blue-700">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-yellow-400">UniLostAndFound</h1>
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/logo/logo.png" 
+              alt="UMAK Logo" 
+              width={40} 
+              height={40} 
+              className="rounded-full bg-white p-1 shadow-sm hover:shadow-md transition-shadow duration-300"
+            />
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
+                Lost & Found
+              </h1>
+              <span className="text-xs text-yellow-400/80">
+                University of Makati
+              </span>
+            </div>
+          </div>
           <nav className="flex items-center gap-3">
             {isAdmin ? (
               <>
