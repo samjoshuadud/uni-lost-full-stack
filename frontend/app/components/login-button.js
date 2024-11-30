@@ -18,9 +18,9 @@ export default function LoginButton() {
           {isAdmin && " (Admin)"}
         </span>
         <Button 
-          variant="ghost" 
+          variant="ghost"
           onClick={logout}
-          className="text-white hover:text-yellow-400"
+          className="bg-yellow-400 text-[#0052cc] hover:text-yellow-400"
         >
           Logout
         </Button>
