@@ -16,6 +16,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [selectedProcessId, setSelectedProcessId] = useState(null);
   const [questionsMap, setQuestionsMap] = useState({});
+  const [isMarkingWrong, setIsMarkingWrong] = useState(false);
 
   useEffect(() => {
     const fetchQuestionsForProcess = async (processId) => {
@@ -114,6 +115,44 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
       setCancelingProcessId(null);
       setShowCancelDialog(false);
       setSelectedProcessId(null);
+    }
+  };
+
+  const handleWrongAnswer = async (processId) => {
+    try {
+      setIsMarkingWrong(true);
+      
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/wrong-answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark answers as wrong');
+      }
+
+      const data = await response.json();
+      
+      // Show appropriate toast message
+      if (data.success) {
+        toast({
+          title: "Verification Failed",
+          description: data.message,
+          variant: "destructive",
+        });
+      }
+
+    } catch (error) {
+      console.error('Error marking answers as wrong:', error);
+      toast({
+        title: "Error",
+        description: "Failed to process wrong answers",
+        variant: "destructive",
+      });
+    } finally {
+      setIsMarkingWrong(false);
     }
   };
 
@@ -364,9 +403,20 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                             <Button
                               variant="destructive"
                               className="flex-1"
+                              onClick={() => handleWrongAnswer(process.id)}
+                              disabled={isMarkingWrong}
                             >
-                              <XCircle className="h-4 w-4 mr-2" />
-                              Wrong
+                              {isMarkingWrong ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Processing...
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="h-4 w-4 mr-2" />
+                                  Wrong
+                                </>
+                              )}
                             </Button>
                           </div>
                         </div>
