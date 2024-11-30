@@ -10,8 +10,8 @@ public static class ProcessMessages
         public const string VERIFIED = "verified";
         public const string AWAITING_SURRENDER = "awaiting_surrender";
         public const string VERIFICATION_FAILED = "verification_failed";
-
         public const string AWAITING_REVIEW = "awaiting_review";
+        public const string PENDING_RETRIEVAL = "pending_retrieval";
     }
 
     public static class Messages
@@ -26,5 +26,6 @@ public static class ProcessMessages
         public const string VERIFICATION_FAILED = "Verification failed. Please visit the admin office to claim your item.";
         public const string ADMIN_VERIFICATION_FAILED = "User failed verification after 2 attempts. Manual verification required.";
         public const string AWAITING_ANSWER_REVIEW = "Admin is reviewing your answers. Please wait for confirmation.";
+        public const string PENDING_RETRIEVAL = "Item is ready for retrieval at the admin office";
     }
 } 
