@@ -442,4 +442,51 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { error = "Error handling failed verification" });
         }
     }
+
+    [HttpPost("process/{processId}/wrong-answer")]
+    public async Task<IActionResult> HandleWrongAnswer(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Increment verification attempts
+            process.VerificationAttempts += 1;
+
+            // Check if max attempts reached
+            if (process.VerificationAttempts >= 3)
+            {
+                process.status = ProcessMessages.Status.VERIFICATION_FAILED;
+                process.Message = ProcessMessages.Messages.VERIFICATION_FAILED;
+            }
+            else
+            {
+                process.status = ProcessMessages.Status.IN_VERIFICATION;
+                process.Message = $"Incorrect answers. {3 - process.VerificationAttempts} attempt(s) remaining.";
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = process.Message,
+                Data = new { 
+                    attemptsRemaining = 3 - process.VerificationAttempts,
+                    status = process.status
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling wrong answer: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling verification answer"
+            });
+        }
+    }
 } 
