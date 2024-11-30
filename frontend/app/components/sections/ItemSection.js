@@ -262,6 +262,14 @@ export default function ItemSection({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              {item.status?.toLowerCase() === "found" && item.approved && (
+                                <DropdownMenuItem
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Handed Over
+                                </DropdownMenuItem>
+                              )}
                               {isAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => onUnapprove(item.id)}
