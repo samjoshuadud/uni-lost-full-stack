@@ -107,17 +107,45 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       const data = await response.json();
       console.log('Submit response:', data);
       
-      // Close the answer dialog
-      setShowAnswerDialog(false);
-      setSelectedProcess(null);
-      setAnswers([]);
-      setVerificationQuestions([]);
-      
-      toast({
-        title: "Success",
-        description: "Your answers have been submitted for review",
-        variant: "success",
-      });
+      if (data.success) {
+        // Close the answer dialog
+        setShowAnswerDialog(false);
+        setSelectedProcess(null);
+        setAnswers([]);
+        setVerificationQuestions([]);
+        
+        toast({
+          title: "Success",
+          description: data.message || "Your answers have been submitted for review",
+          variant: "success",
+        });
+      } else {
+        // Handle failed verification
+        if (data.data?.attemptsRemaining > 0) {
+          toast({
+            title: "Verification Failed",
+            description: data.message || `Incorrect answers. ${data.data.attemptsRemaining} attempt(s) remaining.`,
+            variant: "destructive",
+          });
+          // Reset answers but keep the dialog open
+          setAnswers(new Array(verificationQuestions.length).fill(''));
+        } else {
+          // No attempts remaining
+          setShowAnswerDialog(false);
+          setSelectedProcess(null);
+          setAnswers([]);
+          setVerificationQuestions([]);
+          
+          toast({
+            title: "Verification Failed",
+            description: data.message || "No more attempts remaining. Please contact admin.",
+            variant: "destructive",
+          });
+          
+          // Show failed verification dialog
+          setShowFailedDialog(true);
+        }
+      }
 
     } catch (error) {
       console.error('Error submitting answers:', error);
@@ -152,7 +180,16 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   // Filter out null or undefined processes
-  const validProcesses = pendingProcesses.filter(process => process && process.item);
+  const validProcesses = pendingProcesses.filter(process => {
+    console.log("Processing process:", {
+      id: process?.id,
+      hasItem: !!process?.item,
+      status: process?.status,
+      message: process?.message,
+      verificationAttempts: process?.verificationAttempts
+    });
+    return process && process.item;
+  });
 
   const getUniqueStatuses = (processes) => {
     const statuses = processes
@@ -191,6 +228,14 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   const renderProcessCard = (process) => {
+    // Debug logs with correct case
+    console.log("Rendering process:", {
+      id: process.id,
+      status: process.status,
+      message: process.message,
+      verificationAttempts: process.verificationAttempts
+    });
+
     let cardStyle = "";
     let statusBadge = null;
     let messageStyle = "";
@@ -270,6 +315,11 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         break;
 
       case "in_verification":
+        console.log("Rendering in_verification card:", {
+          message: process.message,
+          attempts: process.verificationAttempts
+        });
+        
         cardStyle = "border-l-4 border-l-blue-500";
         statusBadge = (
           <Badge variant="outline" className="bg-blue-100 text-blue-800">
@@ -280,9 +330,23 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         content = (
           <div className="flex flex-col h-full">
             <div className="space-y-4 flex-1">
-              <p className={`text-sm p-4 rounded-lg ${messageStyle}`}>
-                Your item has been matched! Please answer the verification questions to confirm ownership.
-              </p>
+              <div className={`text-sm p-4 rounded-lg ${messageStyle}`}>
+                {console.log("Message display data:", {
+                  verificationAttempts: process.verificationAttempts,
+                  message: process.message,
+                  rawProcess: process
+                })}
+                {process.verificationAttempts > 0 ? (
+                  <>
+                    <p className="font-medium">{process.message || "No message available"}</p>
+                    <p className="mt-1">
+                      Attempts remaining: {3 - process.verificationAttempts}
+                    </p>
+                  </>
+                ) : (
+                  <p>Your item has been matched! Please answer the verification questions to confirm ownership.</p>
+                )}
+              </div>
               <div className="space-y-2">
                 <p className="text-sm">
                   <strong>Category:</strong> {process.item?.category}
@@ -482,6 +546,78 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         break;
 
+      case "verification_failed":
+        cardStyle = "border-l-4 border-l-red-500";
+        statusBadge = (
+          <Badge variant="destructive">
+            Verification Failed
+          </Badge>
+        );
+        messageStyle = "text-red-800 bg-red-50";
+        content = (
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <div className={`p-4 rounded-lg ${messageStyle} flex items-start gap-3`}>
+                <div className="flex-shrink-0 mt-1">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {process.message || ProcessMessages.VERIFICATION_FAILED_FINAL}
+                  </p>
+                  <p className="text-sm text-red-600">
+                    Failed verification after {process.verificationAttempts} attempts
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
+            </div>
+            {renderActionButtons(
+              <>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => onViewDetails(formatItemForDetails(process))}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  View Details
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={() => handleCancelRequest(process.item?.id)}
+                  disabled={cancelingItems.has(process.item?.id)}
+                >
+                  {cancelingItems.has(process.item?.id) ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <Trash className="h-4 w-4 mr-2" />
+                      Delete Request
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        );
+        break;
+
       default:
         return null;
     }
@@ -499,6 +635,25 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         </CardContent>
       </Card>
     );
+  };
+
+  // Add this function to render verification status
+  const renderVerificationStatus = (process) => {
+    if (process.status === ProcessStatus.IN_VERIFICATION) {
+      return (
+        <div className="bg-blue-50 p-4 rounded-lg">
+          <p className="text-sm text-blue-800">
+            {process.Message || "Please answer the verification questions"}
+            {process.VerificationAttempts > 0 && (
+              <span className="block mt-1 font-medium">
+                Attempts remaining: {3 - process.VerificationAttempts}
+              </span>
+            )}
+          </p>
+        </div>
+      );
+    }
+    return null;
   };
 
   return (

@@ -10,6 +10,10 @@ export default function PendingRetrievalTab({
   onHandOver,
   onNoShow
 }) {
+  console.log("Items received:", items);
+  const pendingRetrievalItems = items.filter(process => process.status === "pending_retrieval");
+  console.log("Filtered items:", pendingRetrievalItems);
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -18,16 +22,16 @@ export default function PendingRetrievalTab({
       </h3>
 
       <div className="space-y-4">
-        {items.filter(item => item.Status === "pending_retrieval").map((item) => (
-          <Card key={item.Id} className="overflow-hidden">
+        {pendingRetrievalItems.map((process) => (
+          <Card key={process.id} className="overflow-hidden">
             <CardContent className="p-6">
               <div className="flex gap-6">
                 {/* Image Section */}
                 <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                  {item.ImageUrl ? (
+                  {process.item?.imageUrl ? (
                     <img 
-                      src={item.ImageUrl} 
-                      alt={item.Name} 
+                      src={process.item.imageUrl} 
+                      alt={process.item.name} 
                       className="w-full h-full object-cover"
                     />
                   ) : (
@@ -41,9 +45,9 @@ export default function PendingRetrievalTab({
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="font-bold text-lg">{item.Name}</h3>
+                      <h3 className="font-bold text-lg">{process.item?.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Student ID: {item.StudentId || 'N/A'}
+                        Student ID: {process.item?.studentId || 'N/A'}
                       </p>
                     </div>
                     <Badge variant="outline" className="bg-green-100 text-green-800">
@@ -51,9 +55,9 @@ export default function PendingRetrievalTab({
                     </Badge>
                   </div>
                   <div className="space-y-1.5">
-                    <p className="text-sm"><strong>Location:</strong> {item.Location}</p>
-                    <p className="text-sm"><strong>Category:</strong> {item.Category}</p>
-                    <p className="text-sm"><strong>Description:</strong> {item.Description}</p>
+                    <p className="text-sm"><strong>Location:</strong> {process.item?.location}</p>
+                    <p className="text-sm"><strong>Category:</strong> {process.item?.category}</p>
+                    <p className="text-sm"><strong>Description:</strong> {process.item?.description}</p>
                   </div>
                 </div>
 
@@ -63,7 +67,7 @@ export default function PendingRetrievalTab({
                     variant="default" 
                     size="sm"
                     className="w-full"
-                    onClick={() => onHandOver(item.Id)}
+                    onClick={() => onHandOver(process.item?.id)}
                   >
                     <CheckCircle className="h-4 w-4 mr-2" />
                     Handed Over
@@ -72,7 +76,7 @@ export default function PendingRetrievalTab({
                     variant="destructive" 
                     size="sm"
                     className="w-full"
-                    onClick={() => onNoShow(item.Id)}
+                    onClick={() => onNoShow(process.item?.id)}
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     No Show
@@ -84,7 +88,7 @@ export default function PendingRetrievalTab({
         ))}
 
         {/* Empty State */}
-        {items.filter(item => item.Status === "pending_retrieval").length === 0 && (
+        {pendingRetrievalItems.length === 0 && (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />

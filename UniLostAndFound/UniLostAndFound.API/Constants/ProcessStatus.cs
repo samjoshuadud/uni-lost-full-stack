@@ -10,5 +10,6 @@ namespace UniLostAndFound.API.Constants
         public const string CANCELLED = "cancelled";
         public const string AWAITING_SURRENDER = "awaiting_surrender";
         public const string AWAITING_REVIEW = "awaiting_review";
+        public const string PENDING_RETRIEVAL = "pending_retrieval";
     }
 } 
