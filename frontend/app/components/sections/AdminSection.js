@@ -487,7 +487,7 @@ export default function AdminSection({
     }
   `;
 
-  // Add this function to calculate counts
+  // Update the calculateCounts function
   const calculateCounts = useCallback(() => {
     if (!items) return;
     
@@ -515,9 +515,9 @@ export default function AdminSection({
       process.status === ProcessStatus.VERIFICATION_FAILED
     ).length;
 
+    // Update this count to use pending_retrieval status
     const pickupCount = items.filter(process => 
-      process.status === ProcessStatus.VERIFIED && 
-      !process.item?.approved
+      process.status === "pending_retrieval"  // Changed from VERIFIED to pending_retrieval
     ).length;
 
     const totalProcesses = items.length;
@@ -535,6 +535,14 @@ export default function AdminSection({
   useEffect(() => {
     calculateCounts();
   }, [items, calculateCounts]);
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("Current ready for pickup count:", readyForPickupCount);
+    console.log("Items with pending_retrieval status:", items?.filter(process => 
+      process.status === "pending_retrieval"
+    ));
+  }, [readyForPickupCount, items]);
 
   if (!isAdmin) {
     return (
