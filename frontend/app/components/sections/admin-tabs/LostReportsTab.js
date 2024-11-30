@@ -10,7 +10,6 @@ import {
   Trash,
   ExternalLink,
   Loader2,
-  Plus,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,7 +26,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { API_BASE_URL } from "@/lib/api-config"
-import ReportSection from "../ReportSection"
 
 const LostReportsTab = memo(function LostReportsTab({
   items = [],
@@ -39,23 +37,10 @@ const LostReportsTab = memo(function LostReportsTab({
 }) {
   const [approvingItems, setApprovingItems] = useState(new Set());
   const [deletingItems, setDeletingItems] = useState(new Set());
-  const [showReportDialog, setShowReportDialog] = useState(false)
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [selectedItemForVerification, setSelectedItemForVerification] = useState(null);
   const [verificationQuestions, setVerificationQuestions] = useState([{ question: '' }]);
   const [isSubmittingQuestions, setIsSubmittingQuestions] = useState(false);
-
-  const handleReportSubmit = async (data) => {
-    try {
-      // Handle report submission
-      setShowReportDialog(false)
-      if (typeof onUpdateCounts === 'function') {
-        onUpdateCounts()
-      }
-    } catch (error) {
-      console.error('Error submitting report:', error)
-    }
-  }
 
   const handleApproveClick = async (itemId) => {
     try {
@@ -155,7 +140,7 @@ const LostReportsTab = memo(function LostReportsTab({
 
           {/* Status Cards */}
           {isCountsLoading || !items?.length ? (
-            <div className="grid gap-4 md:grid-cols-3 mt-4">
+            <div className="grid gap-4 md:grid-cols-1 mt-4">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="bg-background hover:bg-muted/50 transition-colors">
                   <CardContent className="p-6">
@@ -171,7 +156,7 @@ const LostReportsTab = memo(function LostReportsTab({
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 mt-4">
+            <div className="grid gap-4 md:grid-cols-1 mt-4">
               <Card className="bg-background hover:bg-muted/50 transition-colors">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-4">
@@ -189,29 +174,6 @@ const LostReportsTab = memo(function LostReportsTab({
                           !process.item?.approved
                         ).length}
                       </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card 
-                className="bg-background hover:bg-muted/50 transition-colors cursor-pointer group"
-                onClick={() => setShowReportDialog(true)}
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 bg-[#0052cc]/10 rounded-full">
-                        <Plus className="h-6 w-6 text-[#0052cc] group-hover:scale-110 transition-transform" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">
-                          Report Lost Item
-                        </p>
-                        <p className="text-sm text-muted-foreground/80 mt-1">
-                          Click to report a lost item
-                        </p>
-                      </div>
                     </div>
                   </div>
                 </CardContent>
@@ -439,20 +401,6 @@ const LostReportsTab = memo(function LostReportsTab({
             </div>
           </div>
         </div>
-
-        {/* Report Dialog */}
-        <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Report Lost Item</DialogTitle>
-            </DialogHeader>
-            <ReportSection 
-              onSubmit={handleReportSubmit}
-              adminMode={false}
-              activeSection="reports"
-            />
-          </DialogContent>
-        </Dialog>
 
         {/* Verification Dialog */}
         <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
