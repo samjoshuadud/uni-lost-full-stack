@@ -149,7 +149,7 @@ export default function ItemDetailSection({
               )}
 
               {/* Basic Details Grid */}
-              <div className="grid grid-cols-2 gap-4 p-4">
+              <div className="grid grid-cols-2 gap-4 p-4 ">
                 <div className="space-y-3">
                   <DetailItem label="Item Name" value={item.name} />
                   <DetailItem label="Category" value={item.category} />
