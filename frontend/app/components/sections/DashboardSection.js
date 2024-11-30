@@ -235,7 +235,7 @@ export default function DashboardSection({
             </Badge>
 
             {/* Card Header */}
-            <div className="bg-gradient-to-r from-[#0052cc] to-[#0065ff] p-4">
+            <div className="p-4" style={{ background: "linear-gradient(to right, #0F3A99 50%, #0A60C8 83%, #0873E0 100%)", }}>
               <div className="mb-2">
                 <h3 className="font-semibold text-lg text-white truncate">{item.name}</h3>
               </div>
@@ -345,7 +345,7 @@ export default function DashboardSection({
                     {isAdmin ? (
                       <>
                         <Button 
-                          className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90 shadow-sm"
+                          className="bg-[#004C99] text-white hover:bg-[#0052cc]/90 shadow-sm"
                           size="sm"
                           onClick={() => handleViewDetails(item)}
                         >
@@ -402,7 +402,7 @@ export default function DashboardSection({
                         {item.status?.toLowerCase() === "lost" ? (
                           <div className="flex gap-2">
                             <Button 
-                              className="bg-[#0052cc] text-white hover:bg-[#0052cc]/90 shadow-sm"
+                              className="bg-[#004C99] text-white hover:bg-[#0052cc]/90 shadow-sm"
                               size="sm"
                               onClick={() => handleViewDetails(item)}
                             >
