@@ -20,7 +20,7 @@ export default function LoginButton() {
         <Button 
           variant="ghost"
           onClick={logout}
-          className="bg-yellow-400 text-[#0052cc] hover:text-yellow-400"
+          className="bg-yellow-400 text-[#0052cc] hover:text-004C99 font-bold"
         >
           Logout
         </Button>
@@ -33,7 +33,7 @@ export default function LoginButton() {
       <Button 
         variant="secondary" 
         onClick={() => setShowModal(true)} 
-        className="bg-yellow-400 text-[#0052cc] hover:bg-yellow-400/90"
+        className="bg-yellow-400 text-[#0052cc] hover:bg-yellow-400/90 font-bold"
       >
         Sign in with Google
       </Button>
