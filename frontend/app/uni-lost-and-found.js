@@ -369,13 +369,6 @@ export default function UniLostAndFound() {
           searchQuery={searchQuery}
           searchCategory={searchCategory}
         />
-      case "history":
-        return <ItemSection 
-          items={filteredItems.filter(item => item.Status === "handed_over")} 
-          onSeeMore={setSelectedItem} 
-          title="Handed Over Items" 
-          // add search functionality here 
-        />
       case "report":
         return <ReportSection onSubmit={handleReportSubmit} />
       case "admin":
@@ -1190,18 +1183,7 @@ export default function UniLostAndFound() {
                 >
                   Found Items
                 </Button>
-                <Button
-                  variant={activeSection === "history" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                    ${activeSection === "history" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-[#004C99] font-bold"
-                    }
-                  `}
-                  onClick={() => setActiveSection("history")}
-                >
-                  History
-                </Button>
+                
               </div>
             </div>
           </div>

@@ -1,0 +1,153 @@
+University Lost and Found System - Project Overview
+==============================================
+
+Environment:
+- OS: Arch Linux
+- Frontend: Next.js
+- Backend: .NET Core Web API
+- Database: MySQL
+- Authentication: Firebase
+
+System Architecture
+------------------
+
+1. Frontend (Next.js):
+   - Components-based architecture using React
+   - Major Sections:
+     * Dashboard - Main item display and search
+     * Admin - Item approvals and verifications
+     * Item - Lost/found item management
+     * PendingProcess - Request tracking
+     * Profile - User management
+   - Features:
+     * Real-time updates
+     * QR code generation/scanning
+     * Form validation
+     * Loading states
+     * Error handling
+     * Responsive design
+
+2. Backend (.NET Core):
+   - Clean Architecture:
+     * Controllers (Auth, Item)
+     * Services (Item, User, Admin)
+     * Repositories (Base, Item, PendingProcess)
+     * Models (Item, User, PendingProcess)
+   - Features:
+     * JWT Authentication
+     * File upload handling
+     * Entity Framework Core with MySQL
+     * Background services
+     * Logging system
+
+Database Schema
+--------------
+1. Users
+   - Firebase Auth sync
+   - Student information
+   - Timestamps
+
+2. Items
+   - Basic info (name, description, category)
+   - Status tracking
+   - Image handling
+   - Approval system
+   - Reporter tracking
+
+3. AdditionalDescriptions
+   - Extended item details
+   - Title and description
+   - Linked to items
+
+4. PendingProcesses
+   - Request tracking
+   - Status management
+   - Message handling
+   - User and item relations
+
+5. UserAccess
+   - Admin settings
+   - Access control
+   - Domain restrictions
+
+Key Features
+-----------
+1. Item Management:
+   - Lost item reporting
+   - Found item reporting
+   - Image upload
+   - Category system
+   - Location tracking
+   - Approval workflow
+
+2. User System:
+   - Firebase authentication
+   - Role-based access
+   - Profile management
+   - Student ID verification
+
+3. Process Management:
+   - Request tracking
+   - Status updates
+   - Notifications
+   - Admin verification
+
+4. Admin Features:
+   - Item approval
+   - User management
+   - Access control
+   - System monitoring
+
+5. QR Code System:
+   - Generation for items
+   - Scanner integration
+   - Data payload handling
+   - Form pre-fill
+
+Recent Improvements
+------------------
+1. PendingProcess fixes:
+   - Circular reference handling
+   - Real-time updates
+   - Status management
+   - Request cancellation
+
+2. Data Structure:
+   - JSON serialization
+   - Reference handling
+   - Error logging
+   - Case sensitivity
+
+3. UI/UX:
+   - Loading states
+   - Error messages
+   - Form validation
+   - Layout improvements
+
+4. Backend:
+   - Logging system
+   - Error handling
+   - Database optimization
+   - Service architecture
+
+Development Notes
+---------------
+1. Always handle circular references in JSON
+2. Implement proper error logging
+3. Use proper database relationships
+4. Handle file uploads carefully
+5. Maintain real-time updates
+6. Follow clean architecture principles
+7. Keep UI/UX responsive and intuitive
+
+Next Steps
+---------
+1. Admin Review System enhancement
+2. QR scanner improvements
+3. Form validation refinement
+4. Image handling optimization
+5. Error handling improvements
+6. Performance optimization
+7. Testing coverage increase
+
+This overview provides essential information for understanding the project structure, features, and development priorities. Use it as a reference when working on new features or fixes.

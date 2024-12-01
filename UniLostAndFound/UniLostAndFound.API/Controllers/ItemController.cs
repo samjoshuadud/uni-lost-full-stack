@@ -442,4 +442,171 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { error = "Error handling failed verification" });
         }
     }
+
+    [HttpPost("process/{processId}/wrong-answer")]
+    public async Task<IActionResult> HandleWrongAnswer(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Increment verification attempts
+            process.VerificationAttempts += 1;
+
+            // Check if max attempts reached
+            if (process.VerificationAttempts >= 3)
+            {
+                process.status = ProcessMessages.Status.VERIFICATION_FAILED;
+                process.Message = ProcessMessages.Messages.VERIFICATION_FAILED;
+            }
+            else
+            {
+                process.status = ProcessMessages.Status.IN_VERIFICATION;
+                process.Message = $"Incorrect answers. {3 - process.VerificationAttempts} attempt(s) remaining.";
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = process.Message,
+                Data = new { 
+                    attemptsRemaining = 3 - process.VerificationAttempts,
+                    status = process.status
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling wrong answer: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling verification answer"
+            });
+        }
+    }
+
+    [HttpPost("process/{processId}/correct-answer")]
+    public async Task<IActionResult> HandleCorrectAnswer(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Update process status and message
+            process.status = Constants.ProcessMessages.Status.PENDING_RETRIEVAL;
+            process.Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
+
+            // Clear verification questions since they're no longer needed
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL,
+                Data = new { 
+                    status = process.status,
+                    message = process.Message
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling correct answer: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling verification answer"
+            });
+        }
+    }
+
+    [HttpPut("process/{processId}/hand-over")]
+    public async Task<IActionResult> HandleHandOver(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Update process status
+            process.status = ProcessMessages.Status.HANDED_OVER;
+            process.Message = ProcessMessages.Messages.HANDED_OVER;
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = ProcessMessages.Messages.HANDED_OVER,
+                Data = new { 
+                    status = process.status,
+                    message = process.Message
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling hand over: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling hand over"
+            });
+        }
+    }
+
+    [HttpPut("process/{processId}/no-show")]
+    public async Task<IActionResult> HandleNoShow(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Update process status
+            process.status = ProcessMessages.Status.NO_SHOW;
+            process.Message = ProcessMessages.Messages.NO_SHOW;
+
+            // Update item status back to pending approval
+            if (process.Item != null)
+            {
+                // Keep the original status (lost/found) but mark as not approved
+                process.Item.Status = process.Item.Status; // Keeps original lost/found status
+                process.Item.Approved = false;
+                await _itemService.UpdateItemAsync(process.Item);
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = ProcessMessages.Messages.NO_SHOW,
+                Data = new { 
+                    status = process.status,
+                    message = process.Message
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling no-show: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling no-show"
+            });
+        }
+    }
 } 
