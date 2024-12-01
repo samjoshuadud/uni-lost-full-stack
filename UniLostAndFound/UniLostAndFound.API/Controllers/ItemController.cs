@@ -535,4 +535,92 @@ public class ItemController : ControllerBase
             });
         }
     }
+
+    [HttpPut("process/{processId}/hand-over")]
+    public async Task<IActionResult> HandleHandOver(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Update process status
+            process.status = ProcessMessages.Status.HANDED_OVER;
+            process.Message = ProcessMessages.Messages.HANDED_OVER;
+
+            // Update item status
+            if (process.Item != null)
+            {
+                process.Item.Status = ProcessMessages.Status.HANDED_OVER;
+                await _itemService.UpdateItemAsync(process.Item);
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = ProcessMessages.Messages.HANDED_OVER,
+                Data = new { 
+                    status = process.status,
+                    message = process.Message
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling hand over: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling hand over"
+            });
+        }
+    }
+
+    [HttpPut("process/{processId}/no-show")]
+    public async Task<IActionResult> HandleNoShow(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Update process status
+            process.status = ProcessMessages.Status.NO_SHOW;
+            process.Message = ProcessMessages.Messages.NO_SHOW;
+
+            // Update item status back to pending approval
+            if (process.Item != null)
+            {
+                // Keep the original status (lost/found) but mark as not approved
+                process.Item.Status = process.Item.Status; // Keeps original lost/found status
+                process.Item.Approved = false;
+                await _itemService.UpdateItemAsync(process.Item);
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = ProcessMessages.Messages.NO_SHOW,
+                Data = new { 
+                    status = process.status,
+                    message = process.Message
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling no-show: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Error handling no-show"
+            });
+        }
+    }
 } 
