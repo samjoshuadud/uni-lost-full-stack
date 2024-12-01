@@ -30,6 +30,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showFailedDialog, setShowFailedDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   const handleAnswerQuestions = async (process) => {
     try {
@@ -812,6 +813,20 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     return null;
   };
 
+  // Add filter functions
+  const filterProcesses = (processes) => {
+    return processes.filter(process => {
+      // Status filter
+      const matchesStatus = statusFilter === "all" || process.status === statusFilter;
+      
+      // Type filter
+      const itemType = process.item?.status?.toLowerCase() || "";
+      const matchesType = typeFilter === "all" || itemType === typeFilter;
+
+      return matchesStatus && matchesType;
+    });
+  };
+
   return (
     <div className="min-h-screen bg-[#f8f9fa] p-6">
       <div className="max-w-full mx-auto space-y-6">
@@ -822,23 +837,43 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
               <p className="text-gray-600 mt-1">Track the status of your reported items</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
-              <Select
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getUniqueStatuses(validProcesses).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {formatStatus(status)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-4">
+              {/* Type Filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <Select
+                  value={typeFilter}
+                  onValueChange={setTypeFilter}
+                >
+                  <SelectTrigger className="w-[150px]">
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="lost">Lost Items</SelectItem>
+                    <SelectItem value="found">Found Items</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Status Filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-gray-500" />
+                <Select
+                  value={statusFilter}
+                  onValueChange={setStatusFilter}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getUniqueStatuses(validProcesses).map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {formatStatus(status)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
@@ -860,8 +895,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               </Card>
             </div>
           ) : (
-            validProcesses
-              .filter(process => statusFilter === "all" || process.status === statusFilter)
+            filterProcesses(validProcesses)
               .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
               .map(renderProcessCard)
           )}
