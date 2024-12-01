@@ -197,6 +197,65 @@ export default function ReportSection({
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Handle QR code scan submission differently
+      if (isScannedData && initialData?.processId) {
+        // First update the item details
+        const formData = new FormData();
+        formData.append("Name", name);
+        formData.append("Description", description);
+        formData.append("Location", location);
+        formData.append("Category", category);
+        formData.append("StudentId", studentId);
+        
+        // Add additional descriptions as a JSON array
+        if (additionalDescriptions && additionalDescriptions.length > 0) {
+          const additionalDescriptionsJson = JSON.stringify(additionalDescriptions.map(desc => ({
+            Title: desc.title,
+            Description: desc.description
+          })));
+          formData.append("AdditionalDescriptions", additionalDescriptionsJson);
+        } else {
+          formData.append("AdditionalDescriptions", JSON.stringify([]));
+        }
+
+        // Add image if selected
+        if (selectedImage) {
+          formData.append("Image", selectedImage);
+        }
+
+        // Update item details
+        const itemUpdateResponse = await makeAuthenticatedRequest(`/api/Item/update/${initialData.id}`, {
+          method: "PUT",
+          body: formData,
+        });
+
+        if (!itemUpdateResponse) {
+          throw new Error("Failed to update item details");
+        }
+
+        // Then update the process status
+        const processUpdateResponse = await makeAuthenticatedRequest(`/api/Item/process/${initialData.processId}/status`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            Status: ProcessStatus.PENDING_APPROVAL,
+            Message: ProcessMessages.WAITING_APPROVAL
+          }),
+        });
+
+        if (!processUpdateResponse) {
+          throw new Error("Failed to update process status");
+        }
+
+        setShowConfirmDialog(false);
+        if (onSubmit) {
+          onSubmit({ ...itemUpdateResponse, processId: initialData.processId });
+        }
+        return;
+      }
+
       // Prepare form data
       const formData = new FormData();
       formData.append("Name", name);
