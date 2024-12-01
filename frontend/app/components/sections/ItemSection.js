@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { ItemCategories } from '@/lib/constants'
+import { API_BASE_URL } from "@/lib/api-config"
 
 export default function ItemSection({ 
   items = [], 
@@ -262,6 +263,53 @@ export default function ItemSection({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              {item.status?.toLowerCase() === "found" && item.approved && (
+                                <DropdownMenuItem
+                                  onClick={async () => {
+                                    try {
+                                      // First get all processes to find the correct processId
+                                      const processResponse = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+                                      const processData = await processResponse.json();
+                                      
+                                      // Find the process that matches our item
+                                      const process = processData.$values?.find(p => {
+                                        const processItemId = p.itemId || p.ItemId;
+                                        return processItemId === item.id;
+                                      });
+
+                                      if (!process) {
+                                        console.error('No process found for item:', item.id);
+                                        return;
+                                      }
+
+                                      const processId = process.id || process.Id;
+
+                                      // Call the hand-over endpoint
+                                      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/hand-over`, {
+                                        method: 'PUT',
+                                        headers: {
+                                          'Content-Type': 'application/json',
+                                        }
+                                      });
+
+                                      if (!response.ok) {
+                                        throw new Error('Failed to mark item as handed over');
+                                      }
+
+                                      // Update local state to remove the item
+                                      setLocalItems(prevItems => prevItems.filter(i => i.id !== item.id));
+
+                                    } catch (error) {
+                                      console.error('Error marking item as handed over:', error);
+                                      // You might want to show an error message to the user here
+                                    }
+                                  }}
+                                  className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2" />
+                                  Handed Over
+                                </DropdownMenuItem>
+                              )}
                               {isAdmin && (
                                 <DropdownMenuItem
                                   onClick={() => onUnapprove(item.id)}

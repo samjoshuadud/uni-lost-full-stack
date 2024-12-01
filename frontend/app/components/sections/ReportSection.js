@@ -203,8 +203,14 @@ export default function ReportSection({
       formData.append("Description", description);
       formData.append("Location", location);
       formData.append("Category", category);
-      formData.append("StudentId", userData?.studentId || "");
-      formData.append("ReporterId", user.uid);
+      formData.append("StudentId", studentId);
+      
+      // If this is a scanned item, use the original reporter's ID
+      if (isScannedData && originalItem?.reporterId) {
+        formData.append("ReporterId", originalItem.reporterId);
+      } else {
+        formData.append("ReporterId", user.uid);
+      }
       
       // Set the status and process status based on who's reporting
       if (activeSection === "reports") {

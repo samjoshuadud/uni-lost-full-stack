@@ -13,7 +13,8 @@ import {
   QrCode,
   Plus,
   Camera,
-  Upload
+  Upload,
+  Inbox
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import ReportSection from "../ReportSection"
@@ -408,7 +409,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
           <h4 className="font-medium text-lg">New Found Items</h4>
           <div className="h-[600px] overflow-y-auto pr-4">
             <div className="grid gap-4">
-              {isCountsLoading || !items?.length ? (
+              {isCountsLoading ? (
                 // Skeleton loading state for items
                 <>
                   {[1, 2, 3].map((i) => (
@@ -441,28 +442,29 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     </Card>
                   ))}
                 </>
-              ) : allItems
-                .filter(process => {
-                  
-                  // Check each condition separately and log the result
-                  const isPendingApproval = process.status === "pending_approval";
-                  const isFoundItem = process.item?.status?.toLowerCase() === "found";
-                  const isNotApproved = !process.item?.approved;
-                  return isPendingApproval && isFoundItem && isNotApproved;
-                })
-                .length === 0 ? (
-                <Card>
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                    <p className="font-medium">No new found items to review</p>
-                    <p className="text-sm">New found item reports will appear here</p>
+              ) : !items || items.filter(process => 
+                  process.status === ProcessStatus.PENDING_APPROVAL && 
+                  process.item?.status?.toLowerCase() === "found" && 
+                  !process.item?.approved
+                ).length === 0 ? (
+                <Card className="border border-dashed">
+                  <CardContent className="p-8 text-center">
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="p-3 bg-primary/10 rounded-full">
+                        <Inbox className="h-10 w-10 text-muted-foreground" />
+                      </div>
+                      <h3 className="font-semibold text-lg">No Found Items</h3>
+                      <p className="text-muted-foreground text-sm max-w-sm">
+                        There are currently no found items waiting for approval. New items will appear here.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               ) : (
                 // Items mapping
-                allItems
+                items
                   .filter(process => 
-                    process.status === "pending_approval" && 
+                    process.status === ProcessStatus.PENDING_APPROVAL && 
                     !process.item?.approved && 
                     process.item?.status?.toLowerCase() === "found"
                   )

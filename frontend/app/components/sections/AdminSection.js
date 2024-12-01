@@ -42,19 +42,21 @@ import {
   Activity,
   TrendingUp,
   AlertTriangle,
+  History,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import StatisticsSection from "./admin-tabs/StatisticsSection";
 import LostReportsTab from "./admin-tabs/LostReportsTab";
 import FoundItemsTab from "./admin-tabs/FoundItemsTab";
 import VerificationsTab from "./admin-tabs/VerificationsTab";
-import PendingProcessesTab from "./admin-tabs/PendingProcessesTab";
 import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab";
 import { itemApi } from "@/lib/api-client";
 import { ProcessStatus, ProcessMessages } from '@/lib/constants';
 import UserManagementTab from "./admin-tabs/UserManagementTab";
 import { debounce } from "lodash";
 import { API_BASE_URL } from '@/lib/api-config';
+import HistoryTab from "./admin-tabs/HistoryTab";
+
 export default function AdminSection({
   items = [],
   surrenderedItems = [],
@@ -106,6 +108,7 @@ export default function AdminSection({
   const [failedVerificationCount, setFailedVerificationCount] = useState(0);
   const [allProcessesCount, setAllProcessesCount] = useState(0);
   const [readyForPickupCount, setReadyForPickupCount] = useState(0);
+  const [historyCount, setHistoryCount] = useState(0);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -487,7 +490,7 @@ export default function AdminSection({
     }
   `;
 
-  // Add this function to calculate counts
+  // Update the calculateCounts function
   const calculateCounts = useCallback(() => {
     if (!items) return;
     
@@ -516,8 +519,13 @@ export default function AdminSection({
     ).length;
 
     const pickupCount = items.filter(process => 
-      process.status === ProcessStatus.VERIFIED && 
-      !process.item?.approved
+      process.status === ProcessStatus.PENDING_RETRIEVAL
+    ).length;
+
+    // Add history count calculation
+    const historyItemsCount = items.filter(process => 
+      process.status === ProcessStatus.HANDED_OVER || 
+      process.status === ProcessStatus.NO_SHOW
     ).length;
 
     const totalProcesses = items.length;
@@ -529,12 +537,21 @@ export default function AdminSection({
     setFailedVerificationCount(failedCount);
     setReadyForPickupCount(pickupCount);
     setAllProcessesCount(totalProcesses);
+    setHistoryCount(historyItemsCount);
   }, [items]);
 
   // Add useEffect to update counts
   useEffect(() => {
     calculateCounts();
   }, [items, calculateCounts]);
+
+  // Add debug logging
+  useEffect(() => {
+    console.log("Current ready for pickup count:", readyForPickupCount);
+    console.log("Items with pending_retrieval status:", items?.filter(process => 
+      process.status === "pending_retrieval"
+    ));
+  }, [readyForPickupCount, items]);
 
   if (!isAdmin) {
     return (
@@ -626,20 +643,6 @@ export default function AdminSection({
                   )}
                 </TabsTrigger>
 
-                {/* All Processes Tab */}
-                <TabsTrigger 
-                  value="pending"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  All Processes
-                  {allProcessesCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-gray-400 text-white">
-                      {allProcessesCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-
                 {/* Retrieval Tab */}
                 <TabsTrigger 
                   value="retrieval"
@@ -650,6 +653,20 @@ export default function AdminSection({
                   {readyForPickupCount > 0 && (
                     <Badge variant="secondary" className="ml-1 bg-green-400 text-white">
                       {readyForPickupCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+
+                {/* History Tab */}
+                <TabsTrigger 
+                  value="history"
+                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  History
+                  {historyCount > 0 && (
+                    <Badge variant="secondary" className="ml-1 bg-gray-400 text-white">
+                      {historyCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -701,14 +718,6 @@ export default function AdminSection({
                 />
               </TabsContent>
 
-              <TabsContent value="pending">
-                <PendingProcessesTab
-                  pendingProcesses={pendingProcesses}
-                  onViewDetails={handleViewDetails}
-                  isCountsLoading={isCountsLoading}
-                />
-              </TabsContent>
-
               <TabsContent value="retrieval">
                 <PendingRetrievalTab
                   items={allItems}
@@ -718,7 +727,11 @@ export default function AdminSection({
                 />
               </TabsContent>
 
-            
+              <TabsContent value="history">
+                <HistoryTab 
+                  handleViewDetails={handleViewDetails}
+                />
+              </TabsContent>
             </Tabs>
           </CardContent>
         </Card>
