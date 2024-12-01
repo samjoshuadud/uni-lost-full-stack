@@ -140,14 +140,30 @@ Development Notes
 6. Follow clean architecture principles
 7. Keep UI/UX responsive and intuitive
 
-Next Steps
----------
-1. Admin Review System enhancement
-2. QR scanner improvements
-3. Form validation refinement
-4. Image handling optimization
-5. Error handling improvements
-6. Performance optimization
-7. Testing coverage increase
+Future Implementations
+--------------------
+1. Email Notifications System
+   - Using Firebase Cloud Functions
+   - Trigger points:
+     * Item approval/rejection
+     * Verification start
+     * Verification success/failure
+     * Ready for retrieval
+     * Item handed over
+   - Implementation options:
+     a. Firebase Cloud Functions + nodemailer
+        * Custom email templates
+        * Free tier: 125K invocations/month
+     b. Firebase Extensions "Trigger Email"
+        * Quick setup option
+        * Uses SendGrid backend
+
+2. Admin Review System enhancement
+3. QR scanner improvements
+4. Form validation refinement
+5. Image handling optimization
+6. Error handling improvements
+7. Performance optimization
+8. Testing coverage increase
 
 This overview provides essential information for understanding the project structure, features, and development priorities. Use it as a reference when working on new features or fixes.
