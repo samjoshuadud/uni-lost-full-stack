@@ -618,6 +618,162 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         break;
 
+      case ProcessStatus.PENDING_RETRIEVAL:
+        cardStyle = "border-l-4 border-l-orange-500";
+        statusBadge = (
+          <Badge variant="outline" className="bg-orange-100 text-orange-800">
+            Pending Retrieval
+          </Badge>
+        );
+        messageStyle = "text-orange-800 bg-orange-50";
+        content = (
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <div className={`p-4 rounded-lg ${messageStyle} flex items-start gap-3`}>
+                <div className="flex-shrink-0 mt-1">
+                  <Package className="h-5 w-5 text-orange-500" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {ProcessMessages.PENDING_RETRIEVAL}
+                  </p>
+                  <p className="text-sm text-orange-600">
+                    Ready for pickup since {new Date(process.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
+            </div>
+            {renderActionButtons(
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onViewDetails(formatItemForDetails(process))}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Details
+              </Button>
+            )}
+          </div>
+        );
+        break;
+
+      case ProcessStatus.HANDED_OVER:
+        cardStyle = "border-l-4 border-l-blue-500";
+        statusBadge = (
+          <Badge variant="outline" className="bg-blue-100 text-blue-800">
+            Handed Over
+          </Badge>
+        );
+        messageStyle = "text-blue-800 bg-blue-50";
+        content = (
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <div className={`p-4 rounded-lg ${messageStyle} flex items-start gap-3`}>
+                <div className="flex-shrink-0 mt-1">
+                  <CheckCircle className="h-5 w-5 text-blue-500" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    Item has been successfully handed over
+                  </p>
+                  <p className="text-sm text-blue-600">
+                    Completed on {new Date(process.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
+            </div>
+            {renderActionButtons(
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onViewDetails(formatItemForDetails(process))}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Details
+              </Button>
+            )}
+          </div>
+        );
+        break;
+
+      case ProcessStatus.NO_SHOW:
+        cardStyle = "border-l-4 border-l-red-500";
+        statusBadge = (
+          <Badge variant="outline" className="bg-red-100 text-red-800">
+            No Show
+          </Badge>
+        );
+        messageStyle = "text-red-800 bg-red-50";
+        content = (
+          <div className="flex flex-col h-full">
+            <div className="space-y-4 flex-1">
+              <div className={`p-4 rounded-lg ${messageStyle} flex items-start gap-3`}>
+                <div className="flex-shrink-0 mt-1">
+                  <XCircle className="h-5 w-5 text-red-500" />
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">
+                    {ProcessMessages.NO_SHOW}
+                  </p>
+                  <p className="text-sm text-red-600">
+                    Marked as no-show on {new Date(process.updatedAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-sm">
+                  <strong>Category:</strong> {process.item?.category}
+                </p>
+                <p className="text-sm">
+                  <strong>Location:</strong> {process.item?.location}
+                </p>
+                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    +{process.item.additionalDescriptions.$values.length} additional details
+                  </p>
+                )}
+              </div>
+            </div>
+            {renderActionButtons(
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onViewDetails(formatItemForDetails(process))}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Details
+              </Button>
+            )}
+          </div>
+        );
+        break;
+
       default:
         return null;
     }
