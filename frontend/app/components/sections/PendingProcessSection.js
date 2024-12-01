@@ -784,7 +784,18 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         <CardContent className="p-6 h-full">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">{process.item?.name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-lg truncate">
+                  {process.item?.name || process.item?.Name}
+                </h3>
+                <Badge variant="outline" className={`${
+                  process.item?.status?.toLowerCase() === "lost" 
+                    ? "bg-red-100 text-red-800" 
+                    : "bg-green-100 text-green-800"
+                }`}>
+                  {process.item?.status?.toLowerCase() === "lost" ? "Lost" : "Found"}
+                </Badge>
+              </div>
               {statusBadge}
             </div>
             {content}
