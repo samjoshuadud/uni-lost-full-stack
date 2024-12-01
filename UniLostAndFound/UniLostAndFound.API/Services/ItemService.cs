@@ -252,4 +252,20 @@ public class ItemService
 
         await _context.SaveChangesAsync();
     }
+
+    public async Task<Item> UpdateItemAsync(Item item)
+    {
+        try
+        {
+            item.UpdatedAt = DateTime.UtcNow;
+            _context.Items.Update(item);
+            await _context.SaveChangesAsync();
+            return item;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error updating item: {ex.Message}");
+            throw;
+        }
+    }
 } 
