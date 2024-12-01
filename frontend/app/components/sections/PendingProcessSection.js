@@ -586,34 +586,14 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               </div>
             </div>
             {renderActionButtons(
-              <>
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => onViewDetails(formatItemForDetails(process))}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  View Details
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="flex-1"
-                  onClick={() => handleCancelRequest(process.item?.id)}
-                  disabled={cancelingItems.has(process.item?.id)}
-                >
-                  {cancelingItems.has(process.item?.id) ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Canceling...
-                    </>
-                  ) : (
-                    <>
-                      <Trash className="h-4 w-4 mr-2" />
-                      Delete Request
-                    </>
-                  )}
-                </Button>
-              </>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => onViewDetails(formatItemForDetails(process))}
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                View Details
+              </Button>
             )}
           </div>
         );

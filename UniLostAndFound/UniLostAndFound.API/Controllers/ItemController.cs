@@ -503,13 +503,6 @@ public class ItemController : ControllerBase
             process.status = Constants.ProcessMessages.Status.PENDING_RETRIEVAL;
             process.Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
 
-            // Update the item status as well
-            if (process.Item != null)
-            {
-                process.Item.Status = Constants.ProcessMessages.Status.PENDING_RETRIEVAL;
-                await _processService.UpdateProcessAsync(process);
-            }
-
             // Clear verification questions since they're no longer needed
             await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
@@ -548,13 +541,6 @@ public class ItemController : ControllerBase
             // Update process status
             process.status = ProcessMessages.Status.HANDED_OVER;
             process.Message = ProcessMessages.Messages.HANDED_OVER;
-
-            // Update item status
-            if (process.Item != null)
-            {
-                process.Item.Status = ProcessMessages.Status.HANDED_OVER;
-                await _itemService.UpdateItemAsync(process.Item);
-            }
 
             await _processService.UpdateProcessAsync(process);
 
