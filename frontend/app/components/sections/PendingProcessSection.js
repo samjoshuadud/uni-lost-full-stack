@@ -822,7 +822,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     <div className="min-h-screen bg-[#f8f9fa] p-6">
       <div className="max-w-full mx-auto space-y-6">
         {/* Header */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_10px_15px_rgba(0,0,0,0.1)]">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>

@@ -990,8 +990,8 @@ export default function UniLostAndFound() {
                   variant="ghost"
                   className={`text-white transition-colors relative
                     ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40" : 
-                      "hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40 " : 
+                      "hover:text-[#004C99] hover:font-bold"
                     }
                   `}
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
@@ -1005,8 +1005,8 @@ export default function UniLostAndFound() {
                   variant="ghost"
                   className={`text-white transition-colors relative
                     ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                      "hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                      "hover:text-[#004C99] hover:font-bold"
                     }
                   `}
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
@@ -1017,8 +1017,8 @@ export default function UniLostAndFound() {
                   variant="ghost"
                   className={`text-white transition-colors relative
                     ${activeSection === "report" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                      "hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                      "hover:text-[#004C99] hover:font-bold"
                     }
                   `}
                   onClick={() => { 
@@ -1035,8 +1035,8 @@ export default function UniLostAndFound() {
                       variant="ghost"
                       className={`text-white transition-colors relative
                         ${activeSection === "pending_process" ? 
-                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                          "hover:text-yellow-400"
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                          "hover:text-[#004C99] hover:font-bold"
                         }
                       `}
                       onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
@@ -1052,8 +1052,8 @@ export default function UniLostAndFound() {
                       variant="ghost"
                       className={`text-white transition-colors relative
                         ${activeSection === "profile" ? 
-                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                          "hover:text-yellow-400"
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                          "hover:text-[#004C99] hover:font-bold"
                         }
                       `}
                       onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
@@ -1074,7 +1074,7 @@ export default function UniLostAndFound() {
         {/* Admin Cards */}
         {user && isAdmin && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <Card className="bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1104,7 +1104,7 @@ export default function UniLostAndFound() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1142,16 +1142,17 @@ export default function UniLostAndFound() {
         )}
 
         {/* Navigation Tabs */}
-        {!isAdmin && user && (
-          <div className="mb-10">
-            <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-1">
+        {!isAdmin && user && 
+          !["profile", "report", "pending_process"].includes(activeSection) && (
+          <div className="mb-6">
+            <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
               <div className="flex space-x-1">
                 <Button
                   variant={activeSection === "dashboard" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[25px]
+                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500" : 
-                      "text-white hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("dashboard")}
@@ -1160,10 +1161,10 @@ export default function UniLostAndFound() {
                 </Button>
                 <Button
                   variant={activeSection === "lost" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[25px]
+                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "lost" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500" : 
-                      "text-white hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("lost")}
@@ -1172,16 +1173,17 @@ export default function UniLostAndFound() {
                 </Button>
                 <Button
                   variant={activeSection === "found" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[25px]
+                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "found" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500" : 
-                      "text-white hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("found")}
                 >
                   Found Items
                 </Button>
+                
               </div>
             </div>
           </div>
@@ -1189,7 +1191,7 @@ export default function UniLostAndFound() {
 
         {/* Search Section */}
         {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
-          <div className="flex gap-4 mb-8">
+          <div className="flex gap-4 mb-4 pb-10 mt-10">
             {/* Search Input */}
             <div className="flex-1 bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
               <div className="relative flex items-center">
@@ -1210,7 +1212,7 @@ export default function UniLostAndFound() {
                 value={searchCategory}
                 onValueChange={setSearchCategory}
               >
-                <SelectTrigger className="w-[180px] border-0 focus:ring-0 rounded-full h-12 bg-transparent">
+                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1230,7 +1232,7 @@ export default function UniLostAndFound() {
                 value={sortOrder}
                 onValueChange={setSortOrder}
               >
-                <SelectTrigger className="w-[180px] border-0 focus:ring-0 rounded-full h-12 bg-transparent">
+                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>

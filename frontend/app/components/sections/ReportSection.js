@@ -371,7 +371,7 @@ export default function ReportSection({
         </div>
 
         {/* Main Form */}
-        <Card className="border-0 shadow-sm">
+        <Card className="border-0 shadow-[0_10px_15px_rgba(0,0,0,0.1)]">
           <CardContent className="p-6 space-y-6">
             <form onSubmit={handlePreSubmit} className="space-y-6">
               {/* Two Column Layout */}
