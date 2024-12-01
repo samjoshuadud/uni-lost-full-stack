@@ -118,7 +118,7 @@ export default function ItemSection({
           <Card 
             key={item.id}
             id={`item-${item.id}`}
-            className="bg-white overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group"
+            className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group"
           >
             {/* Status Badge - Moved outside header for better visibility */}
             <Badge 

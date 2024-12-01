@@ -997,8 +997,8 @@ export default function UniLostAndFound() {
                   variant="ghost"
                   className={`text-white transition-colors relative
                     ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40" : 
-                      "hover:text-yellow-400"
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40 " : 
+                      "hover:text-[#004C99] hover:font-bold"
                     }
                   `}
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
@@ -1013,7 +1013,7 @@ export default function UniLostAndFound() {
                   className={`text-white transition-colors relative
                     ${activeSection === "dashboard" ? 
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                      "hover:text-yellow-400"
+                      "hover:text-[#004C99] hover:font-bold"
                     }
                   `}
                   onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
@@ -1025,7 +1025,7 @@ export default function UniLostAndFound() {
                   className={`text-white transition-colors relative
                     ${activeSection === "report" ? 
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                      "hover:text-yellow-400"
+                      "hover:text-[#004C99] hover:font-bold"
                     }
                   `}
                   onClick={() => { 
@@ -1043,7 +1043,7 @@ export default function UniLostAndFound() {
                       className={`text-white transition-colors relative
                         ${activeSection === "pending_process" ? 
                           "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                          "hover:text-yellow-400"
+                          "hover:text-[#004C99] hover:font-bold"
                         }
                       `}
                       onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
@@ -1060,7 +1060,7 @@ export default function UniLostAndFound() {
                       className={`text-white transition-colors relative
                         ${activeSection === "profile" ? 
                           "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                          "hover:text-yellow-400"
+                          "hover:text-[#004C99] hover:font-bold"
                         }
                       `}
                       onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
@@ -1081,7 +1081,7 @@ export default function UniLostAndFound() {
         {/* Admin Cards */}
         {user && isAdmin && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <Card className="bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1111,7 +1111,7 @@ export default function UniLostAndFound() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white shadow-sm border border-gray-200">
+            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -1159,7 +1159,7 @@ export default function UniLostAndFound() {
                   className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "dashboard" ? 
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-yellow-400 font-bold"
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("dashboard")}
@@ -1171,7 +1171,7 @@ export default function UniLostAndFound() {
                   className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "lost" ? 
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-yellow-400 font-bold"
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("lost")}
@@ -1183,7 +1183,7 @@ export default function UniLostAndFound() {
                   className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "found" ? 
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-yellow-400 font-bold"
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("found")}
@@ -1195,7 +1195,7 @@ export default function UniLostAndFound() {
                   className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
                     ${activeSection === "history" ? 
                       "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-yellow-400 font-bold"
+                      "text-white hover:text-[#004C99] font-bold"
                     }
                   `}
                   onClick={() => setActiveSection("history")}
