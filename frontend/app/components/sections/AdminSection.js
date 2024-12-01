@@ -570,7 +570,7 @@ export default function AdminSection({
     <div className="min-h-screen bg-[#f8f9fa] p-6">
       <div className="max-w-full mx-auto space-y-6">
         {/* Admin Dashboard Title */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
+        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-[#0052cc]">Admin Dashboard</h2>
@@ -588,28 +588,28 @@ export default function AdminSection({
         </div>
 
         {/* Main Content Card */}
-        <Card className="border-0 shadow-sm bg-white relative">
+        <Card className="border-0 shadow-sm bg-white relative drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
           <CardContent className="p-6">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="w-full grid grid-cols-6 bg-gray-50 p-1 rounded-lg mb-6">
+              <TabsList className="w-full grid grid-cols-6 gap-2 bg-[#2E3F65] p-1 rounded-[10px] mb-6 h-12">
                 {/* Overview Tab */}
                 <TabsTrigger 
                   value="statistics"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
                 >
                   <BarChart className="h-4 w-4" />
-                  Overview
+                  <span>Overview</span>
                 </TabsTrigger>
 
                 {/* Lost Items Tab */}
                 <TabsTrigger 
                   value="reports"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
                 >
                   <ClipboardList className="h-4 w-4" />
-                  Lost Items
+                  <span>Lost Items</span>
                   {pendingLostApprovalCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-yellow-400 text-[#0052cc]">
+                    <Badge variant="secondary" className="ml-1 bg-red-400 text-white">
                       {pendingLostApprovalCount}
                     </Badge>
                   )}
@@ -618,12 +618,12 @@ export default function AdminSection({
                 {/* Found Items Tab */}
                 <TabsTrigger 
                   value="found"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
                 >
                   <Package className="h-4 w-4" />
-                  Found Items
+                  <span>Found Items</span>
                   {pendingFoundApprovalCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-yellow-400 text-[#0052cc]">
+                    <Badge variant="secondary" className="ml-1 bg-red-400 text-white">
                       {pendingFoundApprovalCount}
                     </Badge>
                   )}
@@ -632,10 +632,10 @@ export default function AdminSection({
                 {/* Verifications Tab */}
                 <TabsTrigger 
                   value="verifications"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
                 >
                   <Activity className="h-4 w-4" />
-                  Verifications
+                  <span>Verifications</span>
                   {(inVerificationCount + awaitingReviewCount + failedVerificationCount) > 0 && (
                     <Badge variant="secondary" className="ml-1 bg-blue-400 text-white">
                       {inVerificationCount + awaitingReviewCount + failedVerificationCount}
@@ -646,10 +646,10 @@ export default function AdminSection({
                 {/* Retrieval Tab */}
                 <TabsTrigger 
                   value="retrieval"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
                 >
                   <PieChart className="h-4 w-4" />
-                  Ready for Pickup
+                  <span>Ready for Pickup</span>
                   {readyForPickupCount > 0 && (
                     <Badge variant="secondary" className="ml-1 bg-green-400 text-white">
                       {readyForPickupCount}
@@ -660,10 +660,10 @@ export default function AdminSection({
                 {/* History Tab */}
                 <TabsTrigger 
                   value="history"
-                  className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white flex items-center gap-2"
+                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
                 >
                   <History className="h-4 w-4" />
-                  History
+                  <span>History</span>
                   {historyCount > 0 && (
                     <Badge variant="secondary" className="ml-1 bg-gray-400 text-white">
                       {historyCount}

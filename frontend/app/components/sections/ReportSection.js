@@ -203,14 +203,8 @@ export default function ReportSection({
       formData.append("Description", description);
       formData.append("Location", location);
       formData.append("Category", category);
-      formData.append("StudentId", studentId);
-      
-      // If this is a scanned item, use the original reporter's ID
-      if (isScannedData && originalItem?.reporterId) {
-        formData.append("ReporterId", originalItem.reporterId);
-      } else {
-        formData.append("ReporterId", user.uid);
-      }
+      formData.append("StudentId", userData?.studentId || "");
+      formData.append("ReporterId", user.uid);
       
       // Set the status and process status based on who's reporting
       if (activeSection === "reports") {
@@ -757,6 +751,19 @@ export default function ReportSection({
             <DialogTitle>Item QR Code</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center gap-4 p-4">
+            {/* Add the reminder section here */}
+            <div className="w-full p-3 bg-[#FFF7E6] border-l-4 border-[#FFB020] rounded">
+              <div className="flex gap-2">
+                <AlertTriangle className="h-5 w-5 text-[#FFB020] flex-shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-[#B27B16] mb-1 text-sm">Important Reminder</h4>
+                  <p className="text-[#B27B16] text-xs leading-relaxed">
+                    Please surrender this found item to the University of Makati Lost and Found office and present this QR code. Failure to surrender the item within 3 days will result in the automatic cancellation of your report. This helps us maintain the integrity of our lost and found system.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div 
               ref={qrCodeRef}
               className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
