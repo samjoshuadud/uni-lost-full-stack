@@ -609,4 +609,110 @@ public class ItemController : ControllerBase
             });
         }
     }
+
+    [HttpPost("process/found")]
+    public async Task<ActionResult<ApiResponse<string>>> CreateFoundItemProcess([FromBody] QRCodeProcessDto dto)
+    {
+        try
+        {
+            var process = new PendingProcess
+            {
+                Id = Guid.NewGuid().ToString(),
+                ItemId = dto.ItemId,
+                UserId = dto.UserId,
+                status = ProcessMessages.Status.AWAITING_SURRENDER,
+                Message = ProcessMessages.Messages.SURRENDER_REQUIRED,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            var processId = await _processService.CreateProcessAsync(process);
+
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "Found item process created successfully",
+                Data = processId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error creating found item process: {ex.Message}");
+            return StatusCode(500, new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Failed to create found item process"
+            });
+        }
+    }
+
+    [HttpPost("process/scan")]
+    public async Task<ActionResult<ApiResponse<object>>> HandleQRCodeScan([FromBody] QRCodeScanDto dto)
+    {
+        try
+        {
+            // Validate QR code type
+            if (dto.Type != "found_item_surrender")
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Invalid QR code type"
+                });
+            }
+
+            // Get the process
+            var process = await _processService.GetProcessByIdAsync(dto.ProcessId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Process not found"
+                });
+            }
+
+            // Validate process status
+            if (process.status != ProcessMessages.Status.AWAITING_SURRENDER && 
+                process.status != "approved")
+            {
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = $"Invalid process status. Expected {ProcessMessages.Status.AWAITING_SURRENDER} or approved, got {process.status}"
+                });
+            }
+
+            // Update process status
+            process.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            process.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
+            process.UpdatedAt = DateTime.UtcNow;
+
+            // Update item approval status directly
+            await _itemService.UpdateApprovalStatusAsync(process.ItemId, false);
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = ProcessMessages.Messages.PENDING_RETRIEVAL,
+                Data = new
+                {
+                    processId = process.Id,
+                    status = process.status,
+                    message = process.Message
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error processing QR code: {ex.Message}");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Failed to process QR code"
+            });
+        }
+    }
 } 
