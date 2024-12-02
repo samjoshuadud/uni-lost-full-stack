@@ -43,6 +43,7 @@ import {
   TrendingUp,
   AlertTriangle,
   History,
+  QrCode,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import StatisticsSection from "./admin-tabs/StatisticsSection";
@@ -56,6 +57,8 @@ import UserManagementTab from "./admin-tabs/UserManagementTab";
 import { debounce } from "lodash";
 import { API_BASE_URL } from '@/lib/api-config';
 import HistoryTab from "./admin-tabs/HistoryTab";
+import { QRScannerDialog } from "../dialogs/QRScannerDialog";
+import { toast } from "react-hot-toast";
 
 export default function AdminSection({
   items = [],
@@ -109,6 +112,7 @@ export default function AdminSection({
   const [allProcessesCount, setAllProcessesCount] = useState(0);
   const [readyForPickupCount, setReadyForPickupCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
+  const [showQRScanner, setShowQRScanner] = useState(false);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -553,6 +557,10 @@ export default function AdminSection({
     ));
   }, [readyForPickupCount, items]);
 
+  const handleScanComplete = (data) => {
+    toast.success("QR code scanned successfully");
+  };
+
   if (!isAdmin) {
     return (
       <Card>
@@ -576,14 +584,24 @@ export default function AdminSection({
               <h2 className="text-xl font-semibold text-[#0052cc]">Admin Dashboard</h2>
               <p className="text-gray-600 mt-1">Manage and monitor all the lost and found items in the system</p>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={() => setShowAdminDialog(true)}
-              className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
-            >
-              <Users className="h-4 w-4" />
-              Manage Users
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowQRScanner(true)}
+                className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                <QrCode className="h-4 w-4" />
+                Scan QR Code
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowAdminDialog(true)}
+                className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+              >
+                <Users className="h-4 w-4" />
+                Manage Users
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -773,7 +791,11 @@ export default function AdminSection({
         </DialogContent>
       </Dialog>
 
-      {/* ... existing dialogs ... */}
+      <QRScannerDialog
+        open={showQRScanner}
+        onOpenChange={setShowQRScanner}
+        onScanComplete={handleScanComplete}
+      />
     </div>
   );
 }
