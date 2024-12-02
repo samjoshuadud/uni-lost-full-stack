@@ -15,6 +15,10 @@ import { MoreVertical } from "lucide-react"
 import { API_BASE_URL } from '@/lib/api-config'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Filter } from "lucide-react"
+import { QRCodeDialog } from "../dialogs/QRCodeDialog"
+import { toast } from "react-hot-toast"
+import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
+
 export default function DashboardSection({ 
   items = [], 
   handleViewDetails,
@@ -25,7 +29,7 @@ export default function DashboardSection({
   searchQuery = "",
   searchCategory = "all"
 }) {
-  const { userData } = useAuth();
+  const { userData, user } = useAuth();
   const [localItems, setLocalItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,6 +37,10 @@ export default function DashboardSection({
   const [deletingItemId, setDeletingItemId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [showQRDialog, setShowQRDialog] = useState(false);
+  const [currentQRData, setCurrentQRData] = useState(null);
+  const [generatingQRForItem, setGeneratingQRForItem] = useState(null);
+  const [showAuthDialog, setShowAuthDialog] = useState(false);
 
   // Update useEffect to handle loading state better
   useEffect(() => {
@@ -92,6 +100,13 @@ export default function DashboardSection({
       setLocalItems(filteredItems);
     }
   }, [items, searchQuery, searchCategory, isInitialLoad]);
+
+  const handleQRDialogChange = (open) => {
+    setShowQRDialog(open);
+    if (!open) {
+      setCurrentQRData(null);
+    }
+  };
 
   // Add loading skeleton UI
   if (isLoading) {
@@ -188,6 +203,51 @@ export default function DashboardSection({
     } catch (error) {
       console.error('Error unapproving item:', error);
     }
+  };
+
+  const handleFoundThis = async (item) => {
+    try {
+      setGeneratingQRForItem(item.id);
+      
+      // Get the existing process for this item
+      const processResponse = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+      const processData = await processResponse.json();
+      
+      // Find the process that matches our item
+      const process = processData.$values?.find(p => {
+        const processItemId = p.itemId || p.ItemId;
+        return processItemId === item.id;
+      });
+
+      if (!process) {
+        throw new Error('No process found for this item');
+      }
+
+      const processId = process.id || process.Id;
+
+      // Generate QR code data with the existing process ID
+      const qrData = {
+        p: processId,
+        t: 'surrender'
+      };
+
+      setCurrentQRData(qrData);
+      setShowQRDialog(true);
+      
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      toast.error(error.message || "Failed to generate QR code. Please try again.");
+    } finally {
+      setGeneratingQRForItem(null);
+    }
+  };
+
+  const handleFoundThisClick = (item) => {
+    if (!user) {
+      setShowAuthDialog(true);
+      return;
+    }
+    handleFoundThis(item);
   };
 
   if (error) {
@@ -460,9 +520,20 @@ export default function DashboardSection({
                               variant="outline"
                               size="sm"
                               className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                              onClick={() => handleFoundThisClick(item)}
+                              disabled={generatingQRForItem === item.id}
                             >
-                              <Package className="h-4 w-4 mr-2" />
-                              I Found This
+                              {generatingQRForItem === item.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Generating QR...
+                                </>
+                              ) : (
+                                <>
+                                  <Package className="h-4 w-4 mr-2" />
+                                  I Found This
+                                </>
+                              )}
                             </Button>
                           </div>
                         ) : (
@@ -507,6 +578,28 @@ export default function DashboardSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {showQRDialog && currentQRData && (
+        <QRCodeDialog
+          open={showQRDialog}
+          onOpenChange={handleQRDialogChange}
+          qrData={currentQRData}
+          title="Found Item QR Code"
+          description="Please take a screenshot of this QR code and present it to the Lost & Found office when surrendering the item. The office will scan this code to verify the item."
+          instructions={[
+            "1. Take a screenshot or save this QR code",
+            "2. Bring the found item to the Lost & Found office",
+            "3. Present this QR code when surrendering the item",
+            "4. Office staff will verify the item matches the description"
+          ]}
+        />
+      )}
+
+      {/* Add Auth Dialog */}
+      <AuthRequiredDialog 
+        open={showAuthDialog} 
+        onOpenChange={setShowAuthDialog}
+      />
     </div>
   );
 } 

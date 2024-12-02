@@ -4,6 +4,8 @@ frontend/node_modules/
 frontend/.pnp
 frontend/.pnp.js
 
+UniLostAndFound/UniLostAndFound.API/appsettings.json
+frontend/lib/api-config.js
 
 project.txt
 tree.txt
