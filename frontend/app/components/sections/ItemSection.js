@@ -435,9 +435,10 @@ export default function ItemSection({
                             variant="outline"
                             size="sm"
                             className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                            disabled={userId === item.reporterId}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            This Is Mine
+                            {userId === item.reporterId ? "You reported this item" : "This is mine"}
                           </Button>
                         )}
                       </>
