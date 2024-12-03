@@ -14,6 +14,7 @@ import { useAuth } from "@/lib/AuthContext"
 import { QRCodeDialog } from "../dialogs/QRCodeDialog"
 import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import { toast } from "react-hot-toast"
+import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
 
 export default function ItemSection({ 
   items = [], 
@@ -36,6 +37,8 @@ export default function ItemSection({
   const [currentQRData, setCurrentQRData] = useState(null);
   const [generatingQRForItem, setGeneratingQRForItem] = useState(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
+  const [showClaimDialog, setShowClaimDialog] = useState(false);
+  const [selectedClaimItem, setSelectedClaimItem] = useState(null);
 
   useEffect(() => {
     setIsLoading(true);
@@ -124,6 +127,22 @@ export default function ItemSection({
       return;
     }
     handleFoundThis(item);
+  };
+
+  const handleClaimClick = (item) => {
+    if (!user) {
+      setShowAuthDialog(true);
+      return;
+    }
+    setSelectedClaimItem(item);
+    setShowClaimDialog(true);
+  };
+
+  const handleClaimSubmit = async (answers) => {
+    console.log('Claim answers:', answers);
+    // TODO: Implement claim submission
+    setShowClaimDialog(false);
+    setSelectedClaimItem(null);
   };
 
   if (isLoading) {
@@ -435,6 +454,7 @@ export default function ItemSection({
                             variant="outline"
                             size="sm"
                             className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                            onClick={() => handleClaimClick(item)}
                             disabled={userId === item.reporterId}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
@@ -494,6 +514,17 @@ export default function ItemSection({
       <AuthRequiredDialog 
         open={showAuthDialog} 
         onOpenChange={setShowAuthDialog}
+      />
+
+      {/* Claim Verification Dialog */}
+      <ClaimVerificationDialog
+        isOpen={showClaimDialog}
+        onClose={() => {
+          setShowClaimDialog(false);
+          setSelectedClaimItem(null);
+        }}
+        item={selectedClaimItem}
+        onSubmit={handleClaimSubmit}
       />
     </div>
   );
