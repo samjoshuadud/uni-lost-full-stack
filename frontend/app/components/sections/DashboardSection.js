@@ -19,6 +19,7 @@ import { QRCodeDialog } from "../dialogs/QRCodeDialog"
 import { toast } from "react-hot-toast"
 import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 
+
 export default function DashboardSection({ 
   items = [], 
   handleViewDetails,
@@ -542,9 +543,10 @@ export default function DashboardSection({
                             variant="outline"
                             size="sm"
                             className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                            disabled={userId === item.reporterId}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            This Is Mine
+                            {userId === item.reporterId ? "You reported this item" : "This is mine"}
                           </Button>
                         )}
                       </>
