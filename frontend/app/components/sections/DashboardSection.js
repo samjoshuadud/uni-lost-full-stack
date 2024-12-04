@@ -51,8 +51,8 @@ export default function DashboardSection({
   useEffect(() => {
     const fetchProcesses = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-            const data = await response.json();
+            const data = await itemApi.getAllPending(); 
+            
             setProcesses(data.$values || []);
         } catch (error) {
             console.error('Error fetching processes:', error);

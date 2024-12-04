@@ -764,4 +764,49 @@ public class ItemController : ControllerBase
             });
         }
     }
+
+    [HttpPost("process/{processId}/cancel-claim")]
+    public async Task<ActionResult<ApiResponse<string>>> CancelClaimRequest(string processId)
+    {
+        try
+        {
+            // Get the process
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "Process not found"
+                });
+            }
+
+            // Delete verification questions
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+
+            // Update process status
+            process.status = ProcessMessages.Status.APPROVED;
+            process.Message = ProcessMessages.Messages.ITEM_APPROVED;
+            process.RequestorUserId = null;  // Clear requestor ID
+            process.UpdatedAt = DateTime.UtcNow;
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "Claim request cancelled successfully",
+                Data = processId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error canceling claim request: {ex.Message}");
+            return StatusCode(500, new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Failed to cancel claim request"
+            });
+        }
+    }
 } 

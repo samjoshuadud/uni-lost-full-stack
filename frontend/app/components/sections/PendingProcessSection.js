@@ -3,8 +3,8 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter } from "lucide-react"
-import { useState } from "react"
+import { X, Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter, Info } from "lucide-react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import FailedVerificationDialog from "../dialogs/FailedVerificationDialog";
@@ -19,8 +19,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAuth } from "@/lib/AuthContext";
+import { itemApi } from "@/lib/api-client"
+
+// Add this helper function
+const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+};
 
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
+  const { user } = useAuth();
+  const [localProcesses, setLocalProcesses] = useState(pendingProcesses);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [cancelingItems, setCancelingItems] = useState(new Set());
   const [showAnswerDialog, setShowAnswerDialog] = useState(false);
   const [selectedProcess, setSelectedProcess] = useState(null);
@@ -31,6 +50,11 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [showFailedDialog, setShowFailedDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+
+  // Update localProcesses when pendingProcesses changes
+  useEffect(() => {
+    setLocalProcesses(pendingProcesses);
+  }, [pendingProcesses]);
 
   const handleAnswerQuestions = async (process) => {
     try {
@@ -187,9 +211,20 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       hasItem: !!process?.item,
       status: process?.status,
       message: process?.message,
-      verificationAttempts: process?.verificationAttempts
+      verificationAttempts: process?.verificationAttempts,
+      userId: process?.userId,
+      requestorUserId: process?.requestorUserId,
+      currentUserId: user?.uid,
+      reporterId: process?.item?.reporterId
     });
-    return process && process.item;
+
+    return process && 
+           process.item && 
+           process.status !== "awaiting_surrender" && (
+               process.userId === user?.uid || // User's reported items
+               (process.requestorUserId === user?.uid && process.status === "claim_request") || // User's claim requests
+               (process.item.reporterId === user?.uid && process.status === "claim_request") // Claims on user's items
+           );
   });
 
   const getUniqueStatuses = (processes) => {
@@ -229,13 +264,11 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   const renderProcessCard = (process) => {
-    // Debug logs with correct case
-    console.log("Rendering process:", {
-      id: process.id,
-      status: process.status,
-      message: process.message,
-      verificationAttempts: process.verificationAttempts
-    });
+    // Add debug logs
+    console.log('Process:', process);
+    console.log('Current user:', user?.uid);
+    console.log('Process status:', process.status);
+    console.log('RequestorUserId:', process.requestorUserId);
 
     let cardStyle = "";
     let statusBadge = null;
@@ -244,13 +277,186 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
     // Common action buttons layout
     const renderActionButtons = (buttons) => (
-      <div className="flex flex-col gap-2 mt-auto pt-4">
+      <div className="flex gap-2 mt-auto pt-4">
         {buttons}
       </div>
     );
 
-    switch (process.status) {
-      case "pending_approval":
+    switch (process.status?.toLowerCase()) {
+      case ProcessStatus.CLAIM_REQUEST:
+        console.log('Matching requestor?', process.requestorUserId === user?.uid);
+        cardStyle = "border-l-4 border-l-blue-500";
+        statusBadge = (
+          <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
+            Claim Request Pending
+          </Badge>
+        );
+        
+        // Show different views for requestor and reporter
+        if (process.requestorUserId === user?.uid) {
+          // Requestor view (person who made the claim)
+          return (
+            <div key={process.id} className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle}`}>
+              <div className="p-4 flex flex-col h-full">
+                {/* Status Badge */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-2">
+                    {statusBadge}
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {formatDate(process.createdAt)}
+                  </span>
+                </div>
+
+                {/* Item Details */}
+                <div className="space-y-4 flex-grow">
+                  <div className="flex gap-4">
+                    {/* Item Image */}
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      {process.item?.imageUrl ? (
+                        <img
+                          src={process.item.imageUrl}
+                          alt={process.item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Item Info */}
+                    <div className="flex-grow">
+                      <h3 className="font-medium text-gray-900">
+                        {process.item?.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {process.item?.location}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Category: {process.item?.category}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status Message */}
+                  <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+                    <Info className="h-4 w-4 inline-block mr-2 text-blue-500" />
+                    Your claim request is being reviewed. Please wait for admin verification.
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    key="view-post"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => onViewPost(process.item)}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Post
+                  </Button>
+                  <Button
+                    key="cancel-claim"
+                    variant="destructive"
+                    className="flex-1"
+                    onClick={() => handleCancelClaimRequest(process.id)}
+                    disabled={cancelingItems.has(process.id)}
+                  >
+                    {cancelingItems.has(process.id) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Canceling...
+                      </>
+                    ) : (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Cancel Claim
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        } else if (process.item.reporterId === user?.uid) {
+          // Reporter view (person who reported the item)
+          return (
+            <div key={process.id} className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle}`}>
+              <div className="p-4 flex flex-col h-full">
+                {/* Status Badge */}
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                      New Claim Request
+                    </Badge>
+                  </div>
+                  <span className="text-sm text-gray-500">
+                    {formatDate(process.createdAt)}
+                  </span>
+                </div>
+
+                {/* Item Details */}
+                <div className="space-y-4 flex-grow">
+                  <div className="flex gap-4">
+                    {/* Item Image */}
+                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                      {process.item?.imageUrl ? (
+                        <img
+                          src={process.item.imageUrl}
+                          alt={process.item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="h-8 w-8 text-gray-400" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Item Info */}
+                    <div className="flex-grow">
+                      <h3 className="font-medium text-gray-900">
+                        {process.item?.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {process.item?.location}
+                      </p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Category: {process.item?.category}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Status Message */}
+                  <div className="text-sm text-gray-600 bg-yellow-50 p-3 rounded-lg">
+                    <Info className="h-4 w-4 inline-block mr-2 text-yellow-500" />
+                    Someone has claimed this item. Admin will verify their claim.
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex mt-4">
+                  <Button
+                    key="view-post"
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => onViewPost(process.item)}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    View Post
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+        break;
+
+      case ProcessStatus.PENDING_APPROVAL:
         cardStyle = "border-l-4 border-l-yellow-500";
         statusBadge = (
           <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
@@ -284,6 +490,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             {renderActionButtons(
               <>
                 <Button
+                  key="view-details"
                   variant="outline"
                   className="flex-1"
                   onClick={() => onViewDetails(formatItemForDetails(process))}
@@ -292,6 +499,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   View Details
                 </Button>
                 <Button
+                  key="cancel-request"
                   variant="destructive"
                   className="flex-1"
                   onClick={() => handleCancelRequest(process.item?.id)}
@@ -315,7 +523,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         break;
 
-      case "in_verification":
+      case ProcessStatus.IN_VERIFICATION:
         console.log("Rendering in_verification card:", {
           message: process.message,
           attempts: process.verificationAttempts
@@ -368,6 +576,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             {renderActionButtons(
               <div className="grid grid-cols-1 gap-2">
                 <Button
+                  key="view-details"
                   variant="outline"
                   size="sm"
                   className="w-full"
@@ -377,6 +586,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   View Details
                 </Button>
                 <Button
+                  key="answer-questions"
                   variant="default"
                   size="sm"
                   className="w-full"
@@ -386,6 +596,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   Answer Questions
                 </Button>
                 <Button
+                  key="cancel-request"
                   variant="destructive"
                   size="sm"
                   className="w-full"
@@ -410,7 +621,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         break;
 
-      case "approved":
+      case ProcessStatus.APPROVED:
         cardStyle = "border-l-4 border-l-green-500";
         statusBadge = (
           <Badge variant="outline" className="bg-green-100 text-green-800">
@@ -444,6 +655,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             {renderActionButtons(
               <>
                 <Button
+                  key="view-post"
                   variant="outline"
                   className="flex-1"
                   onClick={() => onViewPost(process.item)}
@@ -452,6 +664,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   View Post
                 </Button>
                 <Button
+                  key="cancel-request"
                   variant="destructive"
                   className="flex-1"
                   onClick={() => handleCancelRequest(process.item?.id)}
@@ -516,6 +729,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             {renderActionButtons(
               <>
                 <Button
+                  key="view-details"
                   variant="outline"
                   className="flex-1"
                   onClick={() => onViewDetails(formatItemForDetails(process))}
@@ -524,6 +738,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   View Details
                 </Button>
                 <Button
+                  key="cancel-request"
                   variant="destructive"
                   className="flex-1"
                   onClick={() => handleCancelRequest(process.item?.id)}
@@ -547,7 +762,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         );
         break;
 
-      case "verification_failed":
+      case ProcessStatus.VERIFICATION_FAILED:
         cardStyle = "border-l-4 border-l-red-500";
         statusBadge = (
           <Badge variant="destructive">
@@ -587,6 +802,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             </div>
             {renderActionButtons(
               <Button
+                key="view-details"
                 variant="outline"
                 className="flex-1"
                 onClick={() => onViewDetails(formatItemForDetails(process))}
@@ -639,6 +855,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             </div>
             {renderActionButtons(
               <Button
+                key="view-details"
                 variant="outline"
                 className="flex-1"
                 onClick={() => onViewDetails(formatItemForDetails(process))}
@@ -691,6 +908,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             </div>
             {renderActionButtons(
               <Button
+                key="view-details"
                 variant="outline"
                 className="flex-1"
                 onClick={() => onViewDetails(formatItemForDetails(process))}
@@ -743,6 +961,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
             </div>
             {renderActionButtons(
               <Button
+                key="view-details"
                 variant="outline"
                 className="flex-1"
                 onClick={() => onViewDetails(formatItemForDetails(process))}
@@ -816,6 +1035,56 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
       return matchesStatus && matchesType;
     });
+  };
+
+  // Add this function to handle claim request cancellation
+  const handleCancelClaimRequest = async (processId) => {
+    try {
+        // Set loading state first
+        setCancelingItems(prev => new Set([...prev, processId]));
+
+        // Call the API
+        const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/cancel-claim`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to cancel claim request');
+        }
+
+        // Update local state
+        setLocalProcesses(prevProcesses => 
+            prevProcesses.filter(p => p.id !== processId)
+        );
+
+        // Trigger parent component refresh by calling fetchUserPendingProcesses
+        if (typeof window !== 'undefined') {
+            const event = new CustomEvent('refreshPendingProcesses');
+            window.dispatchEvent(event);
+        }
+
+        toast({
+            title: "Success",
+            description: "Claim request cancelled successfully",
+            variant: "success",
+        });
+    } catch (error) {
+        console.error('Error canceling claim request:', error);
+        toast({
+            title: "Error",
+            description: "Failed to cancel claim request",
+            variant: "destructive",
+        });
+    } finally {
+        setCancelingItems(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(processId);
+            return newSet;
+        });
+    }
   };
 
   return (

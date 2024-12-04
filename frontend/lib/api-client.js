@@ -26,12 +26,8 @@ export const authApi = {
 
 // Item API calls
 export const itemApi = {
-    getAllPending: async (token) => {
-        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.items.pending.all}`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
+    getAllPending: async () => {
+        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.items.pending.all}`);
         return response.json();
     },
 
@@ -108,6 +104,13 @@ export const itemApi = {
             body: JSON.stringify(claimData)
         });
         return response.json();
+    },
+
+    cancelClaimRequest: async (processId) => {
+        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.items.process.cancelClaim(processId)}`, {
+            method: 'DELETE'
+        });
+        return response.ok;
     }
 }; 
 
