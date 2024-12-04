@@ -547,29 +547,35 @@ namespace UniLostAndFound.API.Services
                 var email = new MimeMessage();
                 email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
                 email.To.Add(MailboxAddress.Parse(userEmail));
-                email.Subject = "Item Ready for Pickup - Verification Successful";
+                email.Subject = "Your Lost Item Has Been Found and Ready for Pickup!";
 
                 var builder = new BodyBuilder
                 {
                     HtmlBody = $@"
-                        <h2>Verification Successful - Item Ready for Pickup</h2>
+                        <h2>Your Lost Item Has Been Found!</h2>
                         <p>Dear Student,</p>
-                        <p>Great news! Your ownership of item ""{itemName}"" has been verified successfully.</p>
-                        <p>Next Steps:</p>
-                        <ul>
-                            <li>Visit the Lost & Found office during business hours</li>
-                            <li>Bring your student ID for verification</li>
-                            <li>The item will be handed over to you after identity verification</li>
-                        </ul>
+                        <p>Great news! Your lost item ""{itemName}"" has been turned in to the Lost & Found office.</p>
+                        
+                        <div style='background-color: #ECFDF5; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0; color: #065F46;'>Next Steps:</h3>
+                            <ul style='color: #065F46; margin-bottom: 0;'>
+                                <li>Visit the Lost & Found office during business hours</li>
+                                <li>Bring your student ID for verification</li>
+                                <li>The item will be handed over after identity verification</li>
+                                <li>Please collect your item within 7 days</li>
+                            </ul>
+                        </div>
+
                         <div style='margin: 20px 0;'>
                             <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
                                 <p style='margin: 0; color: #495057;'>
                                     <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
                                     <strong>Location:</strong> Student Services Building, Room 101<br>
-                                    <strong>Important:</strong> Please collect your item within 7 days
+                                    <strong>Important:</strong> Please bring your student ID
                                 </p>
                             </div>
                         </div>
+
                         <div style='margin: 20px 0;'>
                             <a href='http://localhost:3000' 
                                style='background-color: #0066cc; 
@@ -578,10 +584,10 @@ namespace UniLostAndFound.API.Services
                                       text-decoration: none; 
                                       border-radius: 5px;
                                       display: inline-block;'>
-                                View Status
+                                Track Status
                             </a>
                         </div>
-                        <p>If you have any questions, please contact the Lost & Found office.</p>
+
                         <p>Thank you for using UNI Lost and Found System.</p>
                     "
                 };
@@ -596,11 +602,11 @@ namespace UniLostAndFound.API.Services
                 await smtp.SendAsync(email);
                 await smtp.DisconnectAsync(true);
 
-                _logger.LogInformation($"Ready for pickup email sent to {userEmail}");
+                _logger.LogInformation($"Item ready for pickup notification sent to {userEmail}");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Failed to send ready for pickup email: {ex.Message}");
+                _logger.LogError($"Failed to send item ready for pickup notification: {ex.Message}");
                 throw;
             }
         }

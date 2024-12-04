@@ -895,7 +895,6 @@ public class ItemController : ControllerBase
                 });
             }
 
-            // Get the process
             var process = await _processService.GetProcessByIdAsync(dto.ProcessId);
             if (process == null)
             {
@@ -906,26 +905,49 @@ public class ItemController : ControllerBase
                 });
             }
 
-            // Validate process status
-            if (process.status != ProcessMessages.Status.AWAITING_SURRENDER && 
-                process.status != "approved")
+            // Check if already in pending_retrieval
+            if (process.status == ProcessMessages.Status.PENDING_RETRIEVAL)
             {
-                return BadRequest(new ApiResponse<object>
+                return Ok(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = $"Invalid process status. Expected {ProcessMessages.Status.AWAITING_SURRENDER} or approved, got {process.status}"
+                    Message = "Item is already in pending_retrieval status",
+                    Data = new
+                    {
+                        processId = process.Id,
+                        status = process.status,
+                        message = process.Message
+                    }
                 });
             }
+
+            // Get the item and reporter details for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var reporter = await _userService.GetUserByIdAsync(item?.ReporterId);
 
             // Update process status
             process.status = ProcessMessages.Status.PENDING_RETRIEVAL;
             process.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
             process.UpdatedAt = DateTime.UtcNow;
 
-            // Update item approval status directly
-            await _itemService.UpdateApprovalStatusAsync(process.ItemId, false);
-
             await _processService.UpdateProcessAsync(process);
+
+            // Send email to the reporter if we have their details
+            if (reporter != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendReadyForPickupEmailAsync(
+                        reporter.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send item ready for pickup email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
 
             return Ok(new ApiResponse<object>
             {
