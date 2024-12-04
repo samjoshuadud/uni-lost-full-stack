@@ -312,27 +312,96 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the process and its questions
+            _logger.LogInformation($"Starting verification for process: {processId}");
+            
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
+            {
+                _logger.LogWarning($"Process not found: {processId}");
                 return NotFound("Process not found");
+            }
 
-            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
-            if (!questions.Any())
-                return BadRequest("No verification questions found for this process");
+            _logger.LogInformation($"Found process. ItemId: {process.ItemId}, UserId: {process.UserId}");
 
-            // For now, we'll just update the status to verified
-            // In a real application, you would compare the answers with stored correct answers
-            process.status = "verified";
-            process.Message = "Verification completed successfully";
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
+            _logger.LogInformation($"Item found: {item != null}, User found: {user != null}");
+
+            // Send email to notify user their answers are being reviewed
+            if (user != null && item != null)
+            {
+                try
+                {
+                    _logger.LogInformation($"Attempting to send email to {user.Email}");
+                    await _emailService.SendAnswersSubmittedEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                    _logger.LogInformation("Email sent successfully");
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send answers submitted email: {emailEx.Message}");
+                    _logger.LogError($"Stack trace: {emailEx.StackTrace}");
+                }
+            }
+
+            // Compare answers and determine success
+            bool isVerified = true; // Your verification logic here
+            
+            if (isVerified)
+            {
+                process.status = "verified";
+                process.Message = "Verification completed successfully";
+                
+                // Send success email
+                if (user != null && item != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationSuccessEmailAsync(
+                            user.Email,
+                            item.Name
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send verification success email: {emailEx.Message}");
+                    }
+                }
+            }
+            else
+            {
+                process.status = "verification_failed";
+                process.Message = "Verification failed";
+                
+                // Send failure email
+                if (user != null && item != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationFailedEmailAsync(
+                            user.Email,
+                            item.Name
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send verification failed email: {emailEx.Message}");
+                    }
+                }
+            }
             
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new { message = "Verification completed successfully" });
+            return Ok(new { success = isVerified, message = process.Message });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error verifying answers: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return StatusCode(500, new { message = "Error verifying answers", error = ex.Message });
         }
     }
