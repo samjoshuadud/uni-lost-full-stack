@@ -80,6 +80,11 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.PendingProcesses)
                 .HasForeignKey(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(e => e.RequestorUser)
+                .WithMany()
+                .HasForeignKey(e => e.RequestorUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<VerificationQuestion>(entity =>

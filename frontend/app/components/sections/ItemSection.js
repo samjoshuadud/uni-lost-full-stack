@@ -15,6 +15,7 @@ import { QRCodeDialog } from "../dialogs/QRCodeDialog"
 import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import { toast } from "react-hot-toast"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
+import { itemApi } from "@/lib/api-client"
 
 export default function ItemSection({ 
   items = [], 
@@ -138,11 +139,35 @@ export default function ItemSection({
     setShowClaimDialog(true);
   };
 
-  const handleClaimSubmit = async (answers) => {
-    console.log('Claim answers:', answers);
-    // TODO: Implement claim submission
-    setShowClaimDialog(false);
-    setSelectedClaimItem(null);
+  const handleClaimSubmit = async (answers, additionalInfo) => {
+    try {
+        if (!user || !user.uid) {
+            toast.error("You must be logged in to claim an item");
+            return;
+        }
+
+        const claimData = {
+            itemId: selectedClaimItem.id,
+            questions: answers,
+            additionalInfo: additionalInfo,
+            requestorUserId: user.uid  // Using uid from Firebase auth
+        };
+        
+        console.log('Submitting claim data:', claimData);  // Debug log
+        
+        const response = await itemApi.submitClaim(claimData);
+
+        if (response.success) {
+            toast.success("Your claim has been submitted for review");
+            setShowClaimDialog(false);
+            setSelectedClaimItem(null);
+        } else {
+            toast.error(response.message || "Failed to submit claim");
+        }
+    } catch (error) {
+        console.error('Error submitting claim:', error);
+        toast.error("Failed to submit claim. Please try again.");
+    }
   };
 
   if (isLoading) {

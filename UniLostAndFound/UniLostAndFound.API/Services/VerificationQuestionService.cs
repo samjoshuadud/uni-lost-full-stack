@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using UniLostAndFound.API.Data;
 using UniLostAndFound.API.Models;
+using UniLostAndFound.API.DTOs;
 
 namespace UniLostAndFound.API.Services;
 
@@ -74,6 +75,44 @@ public class VerificationQuestionService : IVerificationQuestionService
         catch (Exception ex)
         {
             _logger.LogError($"Error deleting verification questions: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task CreateQuestionsWithAnswersAsync(string processId, List<ClaimQuestionAnswerDto> questionsAndAnswers, string? additionalInfo = null)
+    {
+        try
+        {
+            var verificationQuestions = questionsAndAnswers.Select(qa => new VerificationQuestion
+            {
+                Id = Guid.NewGuid().ToString(),
+                ProcessId = processId,
+                Question = qa.Question,
+                Answer = qa.Answer,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }).ToList();
+
+            // Add additional info as a separate question if provided
+            if (!string.IsNullOrEmpty(additionalInfo))
+            {
+                verificationQuestions.Add(new VerificationQuestion
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ProcessId = processId,
+                    Question = "Additional Information",
+                    Answer = additionalInfo,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                });
+            }
+
+            await _context.VerificationQuestions.AddRangeAsync(verificationQuestions);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error creating verification questions and answers: {ex.Message}");
             throw;
         }
     }
