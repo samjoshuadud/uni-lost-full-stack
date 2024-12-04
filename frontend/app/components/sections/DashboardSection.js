@@ -29,7 +29,8 @@ export default function DashboardSection({
   onDelete,
   onUnapprove,
   searchQuery = "",
-  searchCategory = "all"
+  searchCategory = "all",
+  claimStatus = "all"
 }) {
   const { userData, user } = useAuth();
   const [localItems, setLocalItems] = useState([]);
@@ -74,6 +75,12 @@ export default function DashboardSection({
         const matchesCategory = searchCategory === "all" || 
             item.category?.toLowerCase() === searchCategory.toLowerCase();
 
+        // Claim status filter
+        const process = processes.find(p => p.itemId === item.id);
+        const matchesClaimStatus = claimStatus === "all" || 
+            (claimStatus === "none" && !process?.requestorUserId) ||
+            (claimStatus === "pending" && process?.requestorUserId);
+
         // Search terms - only filter if there's a search query
         if (searchQuery.trim()) {
             const searchTerms = searchQuery.toLowerCase().trim();
@@ -83,11 +90,11 @@ export default function DashboardSection({
                 item.description?.toLowerCase().includes(searchTerms) ||
                 item.category?.toLowerCase().includes(searchTerms);
 
-            return matchesCategory && matchesSearch;
+            return matchesCategory && matchesSearch && matchesClaimStatus;
         }
 
-        // If no search query, just filter by category
-        return matchesCategory;
+        // If no search query, just filter by category and claim status
+        return matchesCategory && matchesClaimStatus;
     }).map(item => ({
         ...item,
         process: processes.find(p => p.itemId === item.id)
@@ -95,7 +102,7 @@ export default function DashboardSection({
     
     setLocalItems(filteredItems);
     setIsLoading(false);
-  }, [items, searchQuery, searchCategory, processes]); // Include processes in dependencies
+  }, [items, searchQuery, searchCategory, processes, claimStatus]); // Add claimStatus to dependencies
 
   const handleQRDialogChange = (open) => {
     setShowQRDialog(open);
