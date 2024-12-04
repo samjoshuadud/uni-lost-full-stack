@@ -21,6 +21,10 @@ import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
 import { itemApi } from "@/lib/api-client"
 
+const staggerDelay = (index) => ({
+  animationDelay: `${index * 0.1}s`
+});
+
 export default function DashboardSection({ 
   items = [], 
   handleViewDetails,
@@ -116,7 +120,15 @@ export default function DashboardSection({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="overflow-hidden">
+          <Card 
+            key={i} 
+            className="bg-white overflow-hidden shadow-sm border border-gray-200 animate-shimmer"
+            style={{
+              animationDelay: `${i * 0.05}s`,
+              animationFillMode: 'both',
+              opacity: 0
+            }}
+          >
             <CardContent className="p-4">
               <div className="w-full h-48 mb-4">
                 <Skeleton className="w-full h-full rounded-lg" />
@@ -329,11 +341,16 @@ export default function DashboardSection({
     <div className="space-y-6">
       {/* Grid of Items */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {localItems.map((item) => (
+        {localItems.map((item, index) => (
           <Card 
-            key={item.id} 
+            key={item.id}
             id={`item-${item.id}`}
-            className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group"
+            className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group animate-slideUp"
+            style={{
+              animationDelay: `${index * 0.05}s`,
+              animationFillMode: 'both',
+              opacity: 0
+            }}
           >
             {/* Status Badge - Moved outside header for better visibility */}
             <Badge 

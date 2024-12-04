@@ -35,6 +35,14 @@ const formatDate = (dateString) => {
     });
 };
 
+// Add this function at the top of the component, after the state declarations
+const canDelete = (process) => {
+  return process.status !== ProcessStatus.HANDED_OVER && 
+         (process.userId === user?.uid || // User's reported items
+          process.requestorUserId === user?.uid || // User's claim requests
+          process.item?.reporterId === user?.uid); // Claims on user's items
+};
+
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
   const { user } = useAuth();
   const [localProcesses, setLocalProcesses] = useState(pendingProcesses);
@@ -1160,7 +1168,163 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
           ) : (
             filterProcesses(validProcesses)
               .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-              .map(renderProcessCard)
+              .map((process, index) => (
+                <Card 
+                  key={process.id} 
+                  className={`overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] 
+                    hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-300 
+                    animate-slideUp border-l-4 ${
+                      process.status === ProcessStatus.PENDING_APPROVAL ? "border-l-yellow-500" :
+                      process.status === ProcessStatus.IN_VERIFICATION ? "border-l-blue-500" :
+                      process.status === ProcessStatus.APPROVED ? "border-l-green-500" :
+                      process.status === ProcessStatus.VERIFICATION_FAILED ? "border-l-red-500" :
+                      process.status === ProcessStatus.PENDING_RETRIEVAL ? "border-l-orange-500" :
+                      process.status === ProcessStatus.HANDED_OVER ? "border-l-indigo-500" :
+                      "border-l-gray-500"
+                    }`}
+                  style={{
+                    animationDelay: `${index * 0.1}s`,
+                    animationFillMode: 'both',
+                    opacity: 0
+                  }}
+                >
+                  <CardContent className="p-6">
+                    {/* Status Header */}
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${
+                          process.status === ProcessStatus.PENDING_APPROVAL ? "bg-yellow-100" :
+                          process.status === ProcessStatus.IN_VERIFICATION ? "bg-blue-100" :
+                          process.status === ProcessStatus.APPROVED ? "bg-green-100" :
+                          process.status === ProcessStatus.VERIFICATION_FAILED ? "bg-red-100" :
+                          process.status === ProcessStatus.PENDING_RETRIEVAL ? "bg-orange-100" :
+                          process.status === ProcessStatus.HANDED_OVER ? "bg-indigo-100" :
+                          "bg-gray-100"
+                        }`}>
+                          {/* Status Icon */}
+                          {process.status === ProcessStatus.PENDING_APPROVAL && <Clock className="h-5 w-5 text-yellow-600" />}
+                          {process.status === ProcessStatus.IN_VERIFICATION && <Eye className="h-5 w-5 text-blue-600" />}
+                          {process.status === ProcessStatus.APPROVED && <CheckCircle className="h-5 w-5 text-green-600" />}
+                          {process.status === ProcessStatus.VERIFICATION_FAILED && <XCircle className="h-5 w-5 text-red-600" />}
+                          {process.status === ProcessStatus.PENDING_RETRIEVAL && <Package className="h-5 w-5 text-orange-600" />}
+                          {process.status === ProcessStatus.HANDED_OVER && <CheckCircle className="h-5 w-5 text-indigo-600" />}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{formatStatus(process.status)}</h3>
+                          <p className="text-sm text-gray-500">
+                            {formatDate(process.updatedAt)}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className={`
+                        ${process.item?.status?.toLowerCase() === "lost" 
+                          ? "bg-red-50 text-red-700 border-red-200" 
+                          : "bg-green-50 text-green-700 border-green-200"
+                        } capitalize font-medium`}
+                      >
+                        {process.item?.status}
+                      </Badge>
+                    </div>
+
+                    {/* Content Grid */}
+                    <div className="grid md:grid-cols-[auto,1fr] gap-4">
+                      {/* Item Image */}
+                      <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 group">
+                        {process.item?.imageUrl ? (
+                          <img
+                            src={process.item.imageUrl}
+                            alt={process.item.name}
+                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="h-8 w-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Item Details */}
+                      <div className="space-y-3">
+                        <div>
+                          <h4 className="font-medium text-lg text-gray-900">
+                            {process.item?.name}
+                          </h4>
+                          <div className="grid grid-cols-2 gap-2 mt-2">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Category:</span> {process.item?.category}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Location:</span> {process.item?.location}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status Message */}
+                        {process.message && (
+                          <div className={`p-3 rounded-lg ${
+                            process.status === ProcessStatus.VERIFICATION_FAILED 
+                              ? "bg-red-50/50 text-red-700 border border-red-100"
+                              : "bg-blue-50/50 text-blue-700 border border-blue-100"
+                          }`}>
+                            <p className="text-sm">{process.message}</p>
+                            {process.verificationAttempts > 0 && (
+                              <p className="text-sm mt-1 font-medium">
+                                Attempts remaining: {3 - process.verificationAttempts}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 pt-3 border-t border-gray-100">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => onViewDetails(formatItemForDetails(process))}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            View Details
+                          </Button>
+                          
+                          {process.status === ProcessStatus.IN_VERIFICATION && (
+                            <Button
+                              size="sm"
+                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                              onClick={() => handleAnswerQuestions(process)}
+                            >
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Answer Questions
+                            </Button>
+                          )}
+                          
+                          {process.status !== ProcessStatus.HANDED_OVER && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="flex-1"
+                              onClick={() => handleCancelRequest(process.item?.id)}
+                              disabled={cancelingItems.has(process.item?.id)}
+                            >
+                              {cancelingItems.has(process.item?.id) ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Canceling...
+                                </>
+                              ) : (
+                                <>
+                                  <Trash className="h-4 w-4 mr-2" />
+                                  Cancel Request
+                                </>
+                              )}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
           )}
         </div>
 
