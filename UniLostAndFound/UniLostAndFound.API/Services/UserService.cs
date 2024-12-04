@@ -216,4 +216,18 @@ public class UserService
             return false;
         }
     }
+
+    public async Task<User> GetUserByIdAsync(string userId)
+    {
+        try
+        {
+            _logger.LogInformation($"Getting user by ID: {userId}");
+            return await _context.Users.FirstOrDefaultAsync(u => u.Id == userId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting user by ID {userId}: {ex.Message}");
+            throw;
+        }
+    }
 } 
