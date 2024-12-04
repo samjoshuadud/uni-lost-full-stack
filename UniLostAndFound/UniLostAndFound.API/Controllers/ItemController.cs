@@ -5,6 +5,9 @@ using UniLostAndFound.API.Services;
 using System.Text.Json;
 using UniLostAndFound.API.Constants;
 using System.Security.Claims;
+using MailKit.Security;
+using MailKit.Net.Smtp;
+using MimeKit;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -18,6 +21,7 @@ public class ItemController : ControllerBase
     private readonly VerificationQuestionService _verificationQuestionService;
     private readonly AdminService _adminService;
     private readonly UserService _userService;
+    private readonly IEmailService _emailService;
 
     public ItemController(
         ItemService itemService,
@@ -25,7 +29,8 @@ public class ItemController : ControllerBase
         ILogger<ItemController> logger,
         VerificationQuestionService verificationQuestionService,
         AdminService adminService,
-        UserService userService)
+        UserService userService,
+        IEmailService emailService)
     {
         _itemService = itemService;
         _processService = processService;
@@ -33,6 +38,7 @@ public class ItemController : ControllerBase
         _verificationQuestionService = verificationQuestionService;
         _adminService = adminService;
         _userService = userService;
+        _emailService = emailService;
     }
 
     [HttpPost]
@@ -76,6 +82,30 @@ public class ItemController : ControllerBase
             // Get the created process ID from the service
             var process = await _processService.GetProcessByItemIdAsync(itemId);
             var processId = process?.Id;
+
+            // Get the user to send email
+            var user = await _userService.GetUserByIdAsync(createDto.ReporterId);
+            if (user != null)
+            {
+                _logger.LogInformation($"Attempting to send email. User: {user.Email}, Item: {createDto.Name}, Process: {process.Id}");
+                try
+                {
+                    await _emailService.SendItemReportedEmailAsync(
+                        user.Email,
+                        createDto.Name,
+                        process.Id
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Email send failed: {emailEx.Message}");
+                    // Continue with item creation even if email fails
+                }
+            }
+            else
+            {
+                _logger.LogWarning($"No user found for ReporterId: {createDto.ReporterId}");
+            }
 
             return Ok(new { itemId, processId });
         }
@@ -177,7 +207,43 @@ public class ItemController : ControllerBase
         try
         {
             await _itemService.UpdateApprovalStatusAsync(id, dto.Approved);
-            return Ok();
+
+            if (dto.Approved)
+            {
+                // Get the item and process details
+                var item = await _itemService.GetItemAsync(id);
+                var process = await _processService.GetProcessByItemIdAsync(id);
+                
+                if (item != null && process != null)
+                {
+                    // Get the reporter's details
+                    var reporter = await _userService.GetUserByIdAsync(item.ReporterId);
+                    if (reporter != null)
+                    {
+                        try
+                        {
+                            await _emailService.SendItemApprovedEmailAsync(
+                                reporter.Email,
+                                item.Name,
+                                item.Id,
+                                process.Id
+                            );
+                        }
+                        catch (Exception emailEx)
+                        {
+                            _logger.LogError($"Failed to send approval email: {emailEx.Message}");
+                            // Continue even if email fails
+                        }
+                    }
+                }
+            }
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Message = dto.Approved ? "Item approved successfully" : "Item approval removed",
+                Data = true
+            });
         }
         catch (Exception ex)
         {

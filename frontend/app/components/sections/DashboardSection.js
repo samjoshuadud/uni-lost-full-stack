@@ -47,6 +47,53 @@ export default function DashboardSection({
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
   const [processes, setProcesses] = useState([]);
 
+  // Move the highlight effect here, before other useEffects
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const highlightId = urlParams.get('highlight');
+      const shouldDelay = urlParams.get('delay') === 'true';
+
+      if (highlightId) {
+        const delay = shouldDelay ? 8000 : 100;
+
+        setTimeout(() => {
+          const findAndHighlightItem = () => {
+            const itemElement = document.getElementById(highlightId);
+            if (itemElement) {
+              itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              itemElement.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+              itemElement.style.boxShadow = '0 0 0 3px rgb(0, 82, 204), 0 8px 20px -4px rgba(0, 82, 204, 0.3)';
+              itemElement.style.transform = 'scale(1.02)';
+              itemElement.style.zIndex = '50';
+              
+              const pulseAnimation = itemElement.animate([
+                { boxShadow: '0 0 0 3px rgba(0, 82, 204, 0.8), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' },
+                { boxShadow: '0 0 0 6px rgba(0, 82, 204, 0.2), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' },
+                { boxShadow: '0 0 0 3px rgba(0, 82, 204, 0.8), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' }
+              ], {
+                duration: 1500,
+                iterations: 2
+              });
+              
+              setTimeout(() => {
+                itemElement.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                itemElement.style.boxShadow = '';
+                itemElement.style.transform = '';
+                itemElement.style.zIndex = '';
+              }, 3000);
+            } else {
+              setTimeout(findAndHighlightItem, 100);
+            }
+          };
+
+          findAndHighlightItem();
+        }, delay);
+      }
+    }
+  }, []);  // Empty dependency array
+
   // Separate useEffect for fetching processes
   useEffect(() => {
     const fetchProcesses = async () => {
