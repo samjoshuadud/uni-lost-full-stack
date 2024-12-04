@@ -271,10 +271,29 @@ public class ItemController : ControllerBase
                 
                 // Set the standard message from constants
                 process.Message = "Item is being verified";
+
+                // Get the item and user details for email
+                var item = await _itemService.GetItemAsync(process.ItemId);
+                var user = await _userService.GetUserByIdAsync(process.UserId);
+
+                if (item != null && user != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationStartedEmailAsync(
+                            user.Email,
+                            item.Name
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send verification email: {emailEx.Message}");
+                        // Continue even if email fails
+                    }
+                }
             }
             else 
             {
-                // For other statuses, use the provided message
                 process.Message = dto.Message;
             }
 
