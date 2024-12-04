@@ -149,7 +149,59 @@ namespace UniLostAndFound.API.Services
 
         public async Task SendVerificationStartedEmailAsync(string userEmail, string itemName)
         {
-            throw new NotImplementedException("This email notification will be implemented later");
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Verification Questions Ready - Action Required";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Verification Questions Ready</h2>
+                        <p>Dear Student,</p>
+                        <p>Good news! Your item ""{itemName}"" has been matched with a found item.</p>
+                        <p>To verify your ownership:</p>
+                        <ul>
+                            <li>Go to your Pending Processes in the dashboard</li>
+                            <li>Find this item and click 'Answer Questions'</li>
+                            <li>Answer the verification questions carefully</li>
+                            <li>You will have 3 attempts to answer correctly</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                Go to Dashboard
+                            </a>
+                        </div>
+                        <p>Please respond promptly to complete the verification process.</p>
+                        <p>Thank you for using UNI Lost and Found System.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Verification started notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send verification notification: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task SendVerificationSuccessEmailAsync(string userEmail, string itemName)
