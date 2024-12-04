@@ -6,6 +6,8 @@ using MailKit.Security;
 using System;
 using System.Threading.Tasks;
 using UniLostAndFound.API.Models;
+using System.Drawing;
+using System.IO;
 
 namespace UniLostAndFound.API.Services
 {
@@ -624,6 +626,157 @@ namespace UniLostAndFound.API.Services
             catch (Exception ex)
             {
                 _logger.LogError($"Failed to send no-show notification: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task SendFoundItemReportedEmailAsync(string userEmail, string itemName, string processId, string qrCodeBase64)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Found Item Report - Action Required";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Found Item Report Submitted</h2>
+                        <p>Dear Student,</p>
+                        <p>Thank you for reporting a found item ""{itemName}"".</p>
+                        <p>Process ID: {processId}</p>
+                        <p>Current Status: Awaiting Item Surrender</p>
+                        
+                        <h3>Important Next Steps:</h3>
+                        <ol>
+                            <li>Visit the Lost & Found office during business hours</li>
+                            <li>Show this Process ID to the admin: <strong>{processId}</strong></li>
+                            <li>Surrender the found item to the admin</li>
+                            <li>Note: If the item is not surrendered within three days, the report will be disregarded</li>
+                        </ol>
+
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
+                                    <strong>Location:</strong> Student Services Building, Room 101<br>
+                                    <strong>Important:</strong> Please surrender the item within 2 business days
+                                </p>
+                            </div>
+                        </div>
+
+                        <p>What Happens Next?</p>
+                        <ul>
+                            <li>After surrendering the item, our admin team will review and approve your report</li>
+                            <li>Once approved, the item will be listed in our system</li>
+                            <li>The original owner can then search for and claim their item</li>
+                            <li>If no one claims the item within 90 days, you may have the option to claim it</li>
+                        </ul>
+
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                Track Status
+                            </a>
+                        </div>
+
+                        <p>Thank you for your honesty and helping maintain our Lost & Found system.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Found item report email sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send found item report email: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task SendFoundItemApprovedEmailAsync(string userEmail, string itemName, string itemId, string processId)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Found Item Report Approved";
+
+                var viewItemUrl = $"http://localhost:3000?highlight=item-{itemId}&delay=true";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Found Item Report Approved</h2>
+                        <p>Dear Student,</p>
+                        <p>Your found item report for ""{itemName}"" has been approved by our admin team.</p>
+                        <p>Process ID: {processId}</p>
+                        <p>Current Status: Approved</p>
+                        
+                        <div style='margin: 20px 0;'>
+                            <a href='{viewItemUrl}' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Item Details
+                            </a>
+                        </div>
+
+                        <p>What's Next?</p>
+                        <ul>
+                            <li>The item is now visible to potential owners</li>
+                            <li>You will be notified if someone claims ownership</li>
+                            <li>The claimant will need to verify ownership through our verification process</li>
+                            <li>You can track the status of this item in your dashboard</li>
+                        </ul>
+
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Note:</strong> The item will be held for 90 days. If no one claims it within this period, 
+                                    you may have the option to claim it yourself.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p>Thank you for helping maintain our Lost & Found system.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Found item approval notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send found item approval notification: {ex.Message}");
                 throw;
             }
         }

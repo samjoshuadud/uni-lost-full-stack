@@ -8,6 +8,9 @@ using System.Security.Claims;
 using MailKit.Security;
 using MailKit.Net.Smtp;
 using MimeKit;
+using QRCoder;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -90,11 +93,24 @@ public class ItemController : ControllerBase
                 _logger.LogInformation($"Attempting to send email. User: {user.Email}, Item: {createDto.Name}, Process: {process.Id}");
                 try
                 {
-                    await _emailService.SendItemReportedEmailAsync(
-                        user.Email,
-                        createDto.Name,
-                        process.Id
-                    );
+                    if (createDto.Status == ItemStatus.FOUND)
+                    {
+                        await _emailService.SendFoundItemReportedEmailAsync(
+                            user.Email,
+                            createDto.Name,
+                            process.Id,
+                            ""  // Empty string since we're not using QR code anymore
+                        );
+                    }
+                    else
+                    {
+                        // Send regular lost item email
+                        await _emailService.SendItemReportedEmailAsync(
+                            user.Email,
+                            createDto.Name,
+                            process.Id
+                        );
+                    }
                 }
                 catch (Exception emailEx)
                 {
@@ -222,12 +238,25 @@ public class ItemController : ControllerBase
                     {
                         try
                         {
-                            await _emailService.SendItemApprovedEmailAsync(
-                                reporter.Email,
-                                item.Name,
-                                item.Id,
-                                process.Id
-                            );
+                            // Send different emails based on item type
+                            if (item.Status == ItemStatus.FOUND)
+                            {
+                                await _emailService.SendFoundItemApprovedEmailAsync(
+                                    reporter.Email,
+                                    item.Name,
+                                    item.Id,
+                                    process.Id
+                                );
+                            }
+                            else
+                            {
+                                await _emailService.SendItemApprovedEmailAsync(
+                                    reporter.Email,
+                                    item.Name,
+                                    item.Id,
+                                    process.Id
+                                );
+                            }
                         }
                         catch (Exception emailEx)
                         {
@@ -238,16 +267,11 @@ public class ItemController : ControllerBase
                 }
             }
 
-            return Ok(new ApiResponse<bool>
-            {
-                Success = true,
-                Message = dto.Approved ? "Item approved successfully" : "Item approval removed",
-                Data = true
-            });
+            return Ok(new { message = "Item approved successfully" });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ex.Message);
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 
