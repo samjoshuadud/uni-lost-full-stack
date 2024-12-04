@@ -84,6 +84,7 @@ export default function UniLostAndFound() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [pendingProcessCount, setPendingProcessCount] = useState(0);
+  const [totalPendingCount, setTotalPendingCount] = useState(0);
   const [isProcessCountLoading, setIsProcessCountLoading] = useState(true);
 
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -919,6 +920,11 @@ export default function UniLostAndFound() {
                     )
                 ).length;
 
+                // Calculate total pending count (all statuses except AWAITING_SURRENDER and APPROVED)
+                const newTotalCount = data.$values.filter(process => 
+                    process.status !== ProcessStatus.AWAITING_SURRENDER && 
+                    process.status !== ProcessStatus.APPROVED
+                ).length;
 
                 setPendingProcessCount(prevCount => {
                     if (prevCount !== newCount) {
@@ -926,10 +932,13 @@ export default function UniLostAndFound() {
                     }
                     return prevCount;
                 });
+
+                setTotalPendingCount(newTotalCount);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
             setPendingProcessCount(0);
+            setTotalPendingCount(0);
             setIsLoading(false);
         } finally {
             setIsProcessCountLoading(false);
@@ -944,6 +953,7 @@ export default function UniLostAndFound() {
         return () => clearInterval(interval);
     } else {
         setPendingProcessCount(0);
+        setTotalPendingCount(0);
         setIsLoading(false);
         setIsProcessCountLoading(false);
     }
@@ -1143,7 +1153,7 @@ export default function UniLostAndFound() {
                         <Loader2 className="h-4 w-4 inline animate-spin mr-2" />
                       ) : (
                         <>
-                          <span className="font-medium text-[#0052cc]">{pendingProcessCount}</span> items need attention
+                          <span className="font-medium text-[#0052cc]">{totalPendingCount}</span> items need attention
                         </>
                       )}
                     </p>

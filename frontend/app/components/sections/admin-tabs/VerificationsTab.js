@@ -6,10 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, Package, Trash, ExternalLink, Loader2, Activity, RotateCcw, Clock, CheckCircle, XCircle, MessageSquare } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useEffect } from "react"
-import { ProcessStatus } from "@/lib/constants"
+import { ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { toast } from "react-hot-toast"
 import { API_BASE_URL } from "@/lib/api-config"
+import { useAuth } from "@/lib/AuthContext"
 export default function VerificationsTab({ processes = [] }) {
   const [activeSubTab, setActiveSubTab] = useState("in_progress");
   const [cancelingProcessId, setCancelingProcessId] = useState(null);
@@ -19,6 +20,8 @@ export default function VerificationsTab({ processes = [] }) {
   const [isMarkingWrong, setIsMarkingWrong] = useState(false);
   const [isMarkingCorrect, setIsMarkingCorrect] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState({});
+  const { makeAuthenticatedRequest } = useAuth();
 
   // Filter processes based on status
   const verificationProcesses = processes.filter(p => p.status === ProcessStatus.IN_VERIFICATION);
@@ -28,39 +31,83 @@ export default function VerificationsTab({ processes = [] }) {
   useEffect(() => {
     const fetchQuestionsForProcess = async (processId) => {
       try {
+        console.log('Fetching questions for process:', processId); // Debug log
+
         const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/questions`);
-        if (!response.ok) {
-          console.error('Failed to fetch questions for process:', processId);
-          return;
-        }
         const data = await response.json();
         
-        if (data && data.success && data.data && data.data.$values) {
-          setQuestionsMap(prev => ({
-            ...prev,
-            [processId]: data.data.$values.map(q => ({
-              question: q.question,
-              answer: q.answer,
-              id: q.id
-            }))
-          }));
+        console.log('Questions API response:', data); // Debug log
+        
+        if (data && data.success && data.data) {
+          // Handle both array and $values structure
+          const questions = Array.isArray(data.data) ? data.data : 
+                           (data.data.$values || []);
+          
+          console.log('Processed questions:', questions); // Debug log
+
+          setQuestionsMap(prev => {
+            const updated = {
+              ...prev,
+              [processId]: questions
+            };
+            console.log('Updated questions map:', updated); // Debug log
+            return updated;
+          });
         }
       } catch (error) {
         console.error(`Error fetching questions for process ${processId}:`, error);
       }
     };
 
-    const processesToFetch = processes.filter(p => 
-      p.status === ProcessStatus.IN_VERIFICATION || 
-      p.status === ProcessStatus.AWAITING_REVIEW
-    );
-    
-    processesToFetch.forEach(process => {
-      if (!questionsMap[process.id]) {
-        fetchQuestionsForProcess(process.id);
+    // Fetch questions for all relevant processes
+    const fetchQuestionsForAllProcesses = async () => {
+      console.log('Processes to fetch questions for:', processes); // Debug log
+      
+      const relevantProcesses = processes.filter(p => 
+        p.status === ProcessStatus.IN_VERIFICATION || 
+        p.status === ProcessStatus.AWAITING_REVIEW ||
+        p.status === ProcessStatus.CLAIM_REQUEST
+      );
+
+      console.log('Relevant processes:', relevantProcesses); // Debug log
+
+      for (const process of relevantProcesses) {
+        if (!questionsMap[process.id]) {
+          await fetchQuestionsForProcess(process.id);
+        }
       }
-    });
-  }, [processes]);
+    };
+
+    fetchQuestionsForAllProcesses();
+  }, [processes]); // Remove questionsMap from dependencies to prevent infinite loop
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await makeAuthenticatedRequest('/api/Auth/users');
+        if (response) {
+          // Create a map of email to user details
+          const userMap = {};
+          // Check if response is an array or has a special structure
+          const userArray = Array.isArray(response) ? response : 
+                           (response.$values || []);
+          
+          userArray.forEach(user => {
+            // Map both email and id as keys for easier lookup
+            userMap[user.email] = user;
+            userMap[user.id] = user;
+          });
+          
+          console.log('Fetched users:', userMap); // Debug log
+          setUsers(userMap);
+        }
+      } catch (error) {
+        console.error('Error fetching users:', error);
+      }
+    };
+
+    fetchUsers();
+  }, [makeAuthenticatedRequest]);
 
   const formatItemForDetails = (process) => {
     const additionalDescs = process.item?.additionalDescriptions?.$values || 
@@ -213,11 +260,75 @@ export default function VerificationsTab({ processes = [] }) {
   };
 
   const handleApproveVerification = async (processId) => {
-    // ... existing code ...
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/approve-claim`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to approve claim');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Claim approved successfully",
+          variant: "success",
+        });
+        // Trigger refresh of processes
+        window.dispatchEvent(new Event('refreshPendingProcesses'));
+      }
+    } catch (error) {
+      console.error('Error approving claim:', error);
+      toast({
+        title: "Error",
+        description: "Failed to approve claim",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleRejectVerification = async (processId) => {
-    // ... existing code ...
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/reject-claim`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to reject claim');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        toast({
+          title: "Claim Rejected",
+          description: "The claim has been rejected successfully",
+          variant: "success",
+        });
+        // Trigger refresh of processes
+        window.dispatchEvent(new Event('refreshPendingProcesses'));
+      }
+    } catch (error) {
+      console.error('Error rejecting claim:', error);
+      toast({
+        title: "Error",
+        description: "Failed to reject claim",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const renderVerificationCard = (process) => {
@@ -225,14 +336,31 @@ export default function VerificationsTab({ processes = [] }) {
   };
 
   const renderClaimRequestCard = (process) => {
+    // Get user details from the users map
+    console.log('Process:', process); // Debug log
+    console.log('Users map:', users); // Debug log
+    
+    const reporterUser = users[process.item?.reporterId] || 
+                        users[process.item?.ReporterId] || {};
+    const claimantUser = users[process.requestorUserId] || 
+                        users[process.RequestorUserId] || {};
+
+    console.log('Reporter user:', reporterUser); // Debug log
+    console.log('Claimant user:', claimantUser); // Debug log
+
+    // Debug logs
+    console.log('Rendering claim request for process:', process.id);
+    console.log('Current questions map:', questionsMap);
+    console.log('Questions for this process:', questionsMap[process.id]);
+
     return (
-      <Card key={process.id} className="border-l-4 border-l-blue-500">
+      <Card key={process.id} className="border-l-4 border-l-purple-500">
         <CardContent className="p-6">
           <div className="flex flex-col space-y-4">
             {/* Header with Status and Date */}
             <div className="flex justify-between items-start">
-              <Badge variant="secondary" className="bg-blue-100 text-blue-700 border-blue-200">
-                Claim Request
+              <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
+                {ProcessMessages.CLAIM_REQUEST}
               </Badge>
               <span className="text-sm text-gray-500">
                 {formatDate(process.createdAt)}
@@ -265,24 +393,54 @@ export default function VerificationsTab({ processes = [] }) {
             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
               <div>
                 <h4 className="font-medium text-sm text-gray-700 mb-2">Original Reporter</h4>
-                <p className="text-sm text-gray-600">ID: {process.item?.reporterId}</p>
-                <p className="text-sm text-gray-600">Student ID: {process.item?.studentId}</p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Student ID:</span> {reporterUser.studentId || 'N/A'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Name:</span> {reporterUser.displayName || 'N/A'}
+                </p>
               </div>
               <div>
                 <h4 className="font-medium text-sm text-gray-700 mb-2">Claimant</h4>
-                <p className="text-sm text-gray-600">ID: {process.requestorUserId}</p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Student ID:</span> {claimantUser.studentId || 'N/A'}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Name:</span> {claimantUser.displayName || 'N/A'}
+                </p>
               </div>
             </div>
 
             {/* Verification Questions and Answers */}
             <div className="space-y-3">
-              <h4 className="font-medium text-gray-700">Verification Questions</h4>
-              {process.verificationQuestions?.map((question, index) => (
-                <div key={index} className="bg-white border rounded-lg p-3">
-                  <p className="text-sm font-medium text-gray-700">Q{index + 1}: {question.question}</p>
-                  <p className="text-sm text-gray-600 mt-1">A: {question.answer || 'No answer yet'}</p>
+              <h4 className="font-medium text-gray-700">Verification Questions & Answers</h4>
+              {questionsMap[process.id] ? (
+                questionsMap[process.id].length > 0 ? (
+                  questionsMap[process.id].map((qa, index) => (
+                    <div key={index} className="bg-white border rounded-lg p-4 space-y-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-700">
+                            Q{index + 1}: {qa.question || qa.Question}
+                          </p>
+                          <p className="text-sm text-gray-600 mt-1 pl-4">
+                            <span className="font-medium">Answer:</span> {qa.answer || qa.Answer || 'No answer provided'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center p-4 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-500">No questions available</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center p-4 bg-gray-50 rounded-lg">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto mb-2 text-gray-400" />
+                  <p className="text-sm text-gray-500">Loading questions and answers...</p>
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Additional Info */}
@@ -297,11 +455,15 @@ export default function VerificationsTab({ processes = [] }) {
             <div className="flex gap-2 pt-2">
               <Button
                 variant="outline"
-                className="flex-1"
+                className="flex-1 border-green-500 hover:bg-green-50 text-green-600"
                 onClick={() => handleApproveVerification(process.id)}
                 disabled={loading}
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
+                {loading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
                 Approve Claim
               </Button>
               <Button
@@ -310,7 +472,11 @@ export default function VerificationsTab({ processes = [] }) {
                 onClick={() => handleRejectVerification(process.id)}
                 disabled={loading}
               >
-                <XCircle className="h-4 w-4 mr-2" />
+                {loading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4 mr-2" />
+                )}
                 Reject Claim
               </Button>
             </div>
@@ -697,105 +863,17 @@ export default function VerificationsTab({ processes = [] }) {
         </TabsContent>
 
         <TabsContent value="claims" className="space-y-4">
-            {claimRequestProcesses.length === 0 ? (
-                <Card>
-                    <CardContent className="p-8 text-center">
-                        <p className="text-muted-foreground">No claim requests pending</p>
-                    </CardContent>
-                </Card>
-            ) : (
-                claimRequestProcesses.map((process) => (
-                    <Card key={process.id} className="border-l-4 border-l-purple-500">
-                        <CardContent className="p-6">
-                            <div className="flex flex-col space-y-4">
-                                {/* Header with Status and Date */}
-                                <div className="flex justify-between items-start">
-                                    <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
-                                        Claim Request
-                                    </Badge>
-                                    <span className="text-sm text-gray-500">
-                                        {formatDate(process.createdAt)}
-                                    </span>
-                                </div>
-
-                                {/* Item Details */}
-                                <div className="flex gap-4">
-                                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                                        {process.item?.imageUrl ? (
-                                            <img
-                                                src={process.item.imageUrl}
-                                                alt={process.item.name}
-                                                className="w-full h-full object-cover"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center">
-                                                <Package className="h-8 w-8 text-gray-400" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div>
-                                        <h3 className="font-medium text-lg">{process.item?.name}</h3>
-                                        <p className="text-sm text-gray-500">Location: {process.item?.location}</p>
-                                        <p className="text-sm text-gray-500">Category: {process.item?.category}</p>
-                                    </div>
-                                </div>
-
-                                {/* User Details */}
-                                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
-                                    <div>
-                                        <h4 className="font-medium text-sm text-gray-700 mb-2">Original Reporter</h4>
-                                        <p className="text-sm text-gray-600">ID: {process.item?.reporterId}</p>
-                                        <p className="text-sm text-gray-600">Student ID: {process.item?.studentId}</p>
-                                    </div>
-                                    <div>
-                                        <h4 className="font-medium text-sm text-gray-700 mb-2">Claimant</h4>
-                                        <p className="text-sm text-gray-600">ID: {process.requestorUserId}</p>
-                                    </div>
-                                </div>
-
-                                {/* Verification Questions and Answers */}
-                                <div className="space-y-3">
-                                    <h4 className="font-medium text-gray-700">Verification Questions</h4>
-                                    {process.verificationQuestions?.map((question, index) => (
-                                        <div key={index} className="bg-white border rounded-lg p-3">
-                                            <p className="text-sm font-medium text-gray-700">Q{index + 1}: {question.question}</p>
-                                            <p className="text-sm text-gray-600 mt-1">A: {question.answer || 'No answer yet'}</p>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Additional Info */}
-                                {process.additionalInfo && (
-                                    <div className="bg-purple-50 p-4 rounded-lg">
-                                        <h4 className="font-medium text-gray-700 mb-2">Additional Information</h4>
-                                        <p className="text-sm text-gray-600">{process.additionalInfo}</p>
-                                    </div>
-                                )}
-
-                                {/* Action Buttons */}
-                                <div className="flex gap-2 pt-2">
-                                    <Button
-                                        variant="outline"
-                                        className="flex-1"
-                                        disabled={true}
-                                    >
-                                        <CheckCircle className="h-4 w-4 mr-2" />
-                                        Approve Claim
-                                    </Button>
-                                    <Button
-                                        variant="destructive"
-                                        className="flex-1"
-                                        disabled={true}
-                                    >
-                                        <XCircle className="h-4 w-4 mr-2" />
-                                        Reject Claim
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))
-            )}
+          {claimRequestProcesses.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium">No pending claim requests</p>
+                <p className="text-sm mt-2">When users submit claims for lost items, they will appear here</p>
+              </CardContent>
+            </Card>
+          ) : (
+            claimRequestProcesses.map((process) => renderClaimRequestCard(process))
+          )}
         </TabsContent>
       </Tabs>
 

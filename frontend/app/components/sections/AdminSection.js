@@ -113,6 +113,7 @@ export default function AdminSection({
   const [readyForPickupCount, setReadyForPickupCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
   const [showQRScanner, setShowQRScanner] = useState(false);
+  const [claimCount, setClaimCount] = useState(0);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -498,18 +499,7 @@ export default function AdminSection({
   const calculateCounts = useCallback(() => {
     if (!items) return;
     
-    const pendingLostCount = items.filter(process => 
-      process.status === ProcessStatus.PENDING_APPROVAL && 
-      process.item?.status?.toLowerCase() === "lost" && 
-      !process.item?.approved
-    ).length;
-
-    const pendingFoundCount = items.filter(process => 
-      process.status === ProcessStatus.PENDING_APPROVAL && 
-      process.item?.status?.toLowerCase() === "found" && 
-      !process.item?.approved
-    ).length;
-
+    // Count verification processes
     const verificationCount = items.filter(process => 
       process.status === ProcessStatus.IN_VERIFICATION
     ).length;
@@ -522,26 +512,17 @@ export default function AdminSection({
       process.status === ProcessStatus.VERIFICATION_FAILED
     ).length;
 
-    const pickupCount = items.filter(process => 
-      process.status === ProcessStatus.PENDING_RETRIEVAL
+    const claimCount = items.filter(process => 
+      process.status === ProcessStatus.CLAIM_REQUEST
     ).length;
 
-    // Add history count calculation
-    const historyItemsCount = items.filter(process => 
-      process.status === ProcessStatus.HANDED_OVER || 
-      process.status === ProcessStatus.NO_SHOW
-    ).length;
-
-    const totalProcesses = items.length;
-
-    setPendingLostApprovalCount(pendingLostCount);
-    setPendingFoundApprovalCount(pendingFoundCount);
+    // Update all verification-related states
     setInVerificationCount(verificationCount);
     setAwaitingReviewCount(awaitingCount);
     setFailedVerificationCount(failedCount);
-    setReadyForPickupCount(pickupCount);
-    setAllProcessesCount(totalProcesses);
-    setHistoryCount(historyItemsCount);
+    setClaimCount(claimCount);
+
+    // Rest of your counting logic...
   }, [items]);
 
   // Add useEffect to update counts
@@ -654,9 +635,9 @@ export default function AdminSection({
                 >
                   <Activity className="h-4 w-4" />
                   <span>Verifications</span>
-                  {(inVerificationCount + awaitingReviewCount + failedVerificationCount) > 0 && (
+                  {(inVerificationCount + awaitingReviewCount + failedVerificationCount + claimCount) > 0 && (
                     <Badge variant="secondary" className="ml-1 bg-blue-400 text-white">
-                      {inVerificationCount + awaitingReviewCount + failedVerificationCount}
+                      {inVerificationCount + awaitingReviewCount + failedVerificationCount + claimCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -729,7 +710,7 @@ export default function AdminSection({
 
               <TabsContent value="verifications">
                 <VerificationsTab
-                  items={pendingProcesses}
+                  processes={pendingProcesses}
                   isCountsLoading={isCountsLoading}
                   onDelete={handleDelete}
                   handleViewDetails={handleViewDetails}
