@@ -117,13 +117,14 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
       console.log('Submitting answers:', formattedAnswers);
 
-      const response = await fetch(`${API_BASE_URL}/api/Item/verify`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formattedAnswers)
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/Item/process/${selectedProcess.id}/verify`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formattedAnswers)
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to submit answers: ${response.status} ${response.statusText}`);
@@ -574,7 +575,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               </div>
             </div>
             {renderActionButtons(
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 w-full">
                 <Button
                   key="view-details"
                   variant="outline"

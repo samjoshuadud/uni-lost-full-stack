@@ -8,4 +8,5 @@ public interface IEmailService
     Task SendClaimApprovedEmailAsync(string userEmail, string itemName);
     Task SendClaimRejectedEmailAsync(string userEmail, string itemName);
     Task SendReadyForPickupEmailAsync(string userEmail, string itemName);
+    Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName);
 } 

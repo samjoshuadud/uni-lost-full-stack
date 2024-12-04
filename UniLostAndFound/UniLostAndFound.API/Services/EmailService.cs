@@ -206,12 +206,114 @@ namespace UniLostAndFound.API.Services
 
         public async Task SendVerificationSuccessEmailAsync(string userEmail, string itemName)
         {
-            throw new NotImplementedException("This email notification will be implemented later");
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Verification Successful - Item Ready for Pickup";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Verification Successful!</h2>
+                        <p>Dear Student,</p>
+                        <p>Great news! Your ownership of the item ""{itemName}"" has been verified successfully.</p>
+                        <p>Next Steps:</p>
+                        <ul>
+                            <li>Visit the Lost & Found office during business hours</li>
+                            <li>Bring your student ID</li>
+                            <li>The item will be handed over after identity verification</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Status
+                            </a>
+                        </div>
+                        <p>Please collect your item within 7 days.</p>
+                        <p>Thank you for using UNI Lost and Found System.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Verification success email sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send verification success email: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task SendVerificationFailedEmailAsync(string userEmail, string itemName)
         {
-            throw new NotImplementedException("This email notification will be implemented later");
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Verification Failed - Action Required";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Verification Attempt Failed</h2>
+                        <p>Dear Student,</p>
+                        <p>Your verification attempt for item ""{itemName}"" was unsuccessful.</p>
+                        <p>What This Means:</p>
+                        <ul>
+                            <li>Your answers did not match the item details</li>
+                            <li>You can try again if you have remaining attempts</li>
+                            <li>Please provide more accurate information about the item</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                Try Again
+                            </a>
+                        </div>
+                        <p>If you believe this is an error, please contact the Lost & Found office.</p>
+                        <p>Thank you for your understanding.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Verification failed email sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send verification failed email: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task SendClaimApprovedEmailAsync(string userEmail, string itemName)
@@ -227,6 +329,63 @@ namespace UniLostAndFound.API.Services
         public async Task SendReadyForPickupEmailAsync(string userEmail, string itemName)
         {
             throw new NotImplementedException("This email notification will be implemented later");
+        }
+
+        public async Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Verification Answers Submitted - Under Review";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Answers Submitted Successfully</h2>
+                        <p>Dear Student,</p>
+                        <p>Your verification answers for item ""{itemName}"" have been submitted successfully.</p>
+                        <p>What's Next?</p>
+                        <ul>
+                            <li>Our admin team will review your answers</li>
+                            <li>You will receive another email with the verification result</li>
+                            <li>If your answers are correct, you'll be able to collect your item</li>
+                            <li>If incorrect, you may have additional attempts to verify ownership</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Status
+                            </a>
+                        </div>
+                        <p>Please wait for the verification result. This usually takes 1-2 business days.</p>
+                        <p>Thank you for your patience.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Answers submitted notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send answers submitted notification: {ex.Message}");
+                throw;
+            }
         }
     }
 } 
