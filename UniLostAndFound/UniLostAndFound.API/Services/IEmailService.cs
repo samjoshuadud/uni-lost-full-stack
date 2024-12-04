@@ -4,9 +4,12 @@ public interface IEmailService
     Task SendItemApprovedEmailAsync(string userEmail, string itemName, string itemId, string processId);
     Task SendVerificationStartedEmailAsync(string userEmail, string itemName);
     Task SendVerificationSuccessEmailAsync(string userEmail, string itemName);
-    Task SendVerificationFailedEmailAsync(string userEmail, string itemName);
+    Task SendVerificationFailedEmailAsync(string userEmail, string itemName, int attemptsRemaining);
     Task SendClaimApprovedEmailAsync(string userEmail, string itemName);
     Task SendClaimRejectedEmailAsync(string userEmail, string itemName);
     Task SendReadyForPickupEmailAsync(string userEmail, string itemName);
     Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName);
+    Task SendVerificationMaxAttemptsEmailAsync(string userEmail, string itemName);
+    Task SendItemHandedOverEmailAsync(string userEmail, string itemName);
+    Task SendNoShowEmailAsync(string userEmail, string itemName);
 } 

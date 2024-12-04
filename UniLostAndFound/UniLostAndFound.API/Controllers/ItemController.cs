@@ -377,14 +377,18 @@ public class ItemController : ControllerBase
                 process.status = "verification_failed";
                 process.Message = "Verification failed";
                 
-                // Send failure email
+                // Send failure email with remaining attempts
                 if (user != null && item != null)
                 {
                     try
                     {
+                        // Calculate remaining attempts (assuming max is 3)
+                        int remainingAttempts = 3 - (process.VerificationAttempts + 1);
+                        
                         await _emailService.SendVerificationFailedEmailAsync(
                             user.Email,
-                            item.Name
+                            item.Name,
+                            remainingAttempts  // Add the remaining attempts parameter
                         );
                     }
                     catch (Exception emailEx)
@@ -609,6 +613,10 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Increment verification attempts
             process.VerificationAttempts += 1;
 
@@ -617,33 +625,53 @@ public class ItemController : ControllerBase
             {
                 process.status = ProcessMessages.Status.VERIFICATION_FAILED;
                 process.Message = ProcessMessages.Messages.VERIFICATION_FAILED;
+                
+                // Send max attempts reached email
+                if (user != null && item != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationMaxAttemptsEmailAsync(
+                            user.Email,
+                            item.Name
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send max attempts email: {emailEx.Message}");
+                    }
+                }
             }
             else
             {
                 process.status = ProcessMessages.Status.IN_VERIFICATION;
                 process.Message = $"Incorrect answers. {3 - process.VerificationAttempts} attempt(s) remaining.";
+                
+                // Send regular verification failed email
+                if (user != null && item != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationFailedEmailAsync(
+                            user.Email,
+                            item.Name,
+                            3 - process.VerificationAttempts
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send verification failed email: {emailEx.Message}");
+                    }
+                }
             }
 
             await _processService.UpdateProcessAsync(process);
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = process.Message,
-                Data = new { 
-                    attemptsRemaining = 3 - process.VerificationAttempts,
-                    status = process.status
-                }
-            });
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling wrong answer: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling verification answer"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -656,33 +684,41 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Update process status and message
-            process.status = Constants.ProcessMessages.Status.PENDING_RETRIEVAL;
-            process.Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
+            process.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            process.Message = ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
 
             // Clear verification questions since they're no longer needed
             await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
-            await _processService.UpdateProcessAsync(process);
-
-            return Ok(new ApiResponse<object>
+            // Send success email notification
+            if (user != null && item != null)
             {
-                Success = true,
-                Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL,
-                Data = new { 
-                    status = process.status,
-                    message = process.Message
+                try
+                {
+                    await _emailService.SendReadyForPickupEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
                 }
-            });
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send pickup notification email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
+            await _processService.UpdateProcessAsync(process);
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling correct answer: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling verification answer"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -695,30 +731,39 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Update process status
             process.status = ProcessMessages.Status.HANDED_OVER;
             process.Message = ProcessMessages.Messages.HANDED_OVER;
 
+            // Send email notification
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendItemHandedOverEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send hand over email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = ProcessMessages.Messages.HANDED_OVER,
-                Data = new { 
-                    status = process.status,
-                    message = process.Message
-                }
-            });
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling hand over: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling hand over"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -731,6 +776,10 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Update process status
             process.status = ProcessMessages.Status.NO_SHOW;
             process.Message = ProcessMessages.Messages.NO_SHOW;
@@ -738,32 +787,36 @@ public class ItemController : ControllerBase
             // Update item status back to pending approval
             if (process.Item != null)
             {
-                // Keep the original status (lost/found) but mark as not approved
                 process.Item.Status = process.Item.Status; // Keeps original lost/found status
                 process.Item.Approved = false;
                 await _itemService.UpdateItemAsync(process.Item);
             }
 
+            // Send email notification
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendNoShowEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send no-show email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = ProcessMessages.Messages.NO_SHOW,
-                Data = new { 
-                    status = process.status,
-                    message = process.Message
-                }
-            });
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling no-show: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling no-show"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
