@@ -10,7 +10,7 @@ import { ProcessStatus } from "@/lib/constants"
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from "@/components/ui/alert-dialog"
 import { toast } from "react-hot-toast"
 import { API_BASE_URL } from "@/lib/api-config"
-export default function VerificationsTab({ items = [], onDelete, handleViewDetails, isCountsLoading }) {
+export default function VerificationsTab({ processes = [] }) {
   const [activeSubTab, setActiveSubTab] = useState("in_progress");
   const [cancelingProcessId, setCancelingProcessId] = useState(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -19,6 +19,11 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
   const [isMarkingWrong, setIsMarkingWrong] = useState(false);
   const [isMarkingCorrect, setIsMarkingCorrect] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Filter processes based on status
+  const verificationProcesses = processes.filter(p => p.status === ProcessStatus.IN_VERIFICATION);
+  const answerReviewProcesses = processes.filter(p => p.status === ProcessStatus.AWAITING_REVIEW);
+  const claimRequestProcesses = processes.filter(p => p.status === ProcessStatus.CLAIM_REQUEST);
 
   useEffect(() => {
     const fetchQuestionsForProcess = async (processId) => {
@@ -45,7 +50,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
       }
     };
 
-    const processesToFetch = items.filter(p => 
+    const processesToFetch = processes.filter(p => 
       p.status === ProcessStatus.IN_VERIFICATION || 
       p.status === ProcessStatus.AWAITING_REVIEW
     );
@@ -55,7 +60,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
         fetchQuestionsForProcess(process.id);
       }
     });
-  }, [items]);
+  }, [processes]);
 
   const formatItemForDetails = (process) => {
     const additionalDescs = process.item?.additionalDescriptions?.$values || 
@@ -323,30 +328,42 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
       </h3>
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className="w-full grid grid-cols-3 bg-muted p-1 rounded-lg mb-6">
+        <TabsList className="w-full flex justify-between bg-muted p-1 rounded-lg mb-6">
           <TabsTrigger 
             value="in_progress"
-            className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             In Progress
           </TabsTrigger>
           <TabsTrigger 
             value="awaiting_review"
-            className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             Under Review
           </TabsTrigger>
           <TabsTrigger 
             value="failed"
-            className="data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             Failed
+          </TabsTrigger>
+          <TabsTrigger 
+          value="claims" 
+          className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+          
+          >
+            Claim Requests
+            {claimRequestProcesses.length > 0 && (
+                <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">
+                    {claimRequestProcesses.length}
+                </Badge>
+            )}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="in_progress">
           <div className="space-y-4">
-            {items.filter(process => process.status === "in_verification").length === 0 ? (
+            {verificationProcesses.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -354,8 +371,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                 </CardContent>
               </Card>
             ) : (
-              items
-                .filter(process => process.status === "in_verification")
+              verificationProcesses
                 .map((process) => (
                   <Card 
                     key={process.id}
@@ -456,7 +472,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
 
         <TabsContent value="awaiting_review">
           <div className="space-y-4">
-            {items.filter(process => process.status === ProcessStatus.AWAITING_REVIEW).length === 0 ? (
+            {answerReviewProcesses.length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -464,8 +480,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                 </CardContent>
               </Card>
             ) : (
-              items
-                .filter(process => process.status === ProcessStatus.AWAITING_REVIEW)
+              answerReviewProcesses
                 .map((process) => (
                   <Card key={process.id} className="border-l-4 border-l-indigo-500">
                     <CardContent className="p-6">
@@ -600,7 +615,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
 
         <TabsContent value="failed">
           <div className="space-y-4">
-            {items.filter(process => process.status === "verification_failed").length === 0 ? (
+            {processes.filter(process => process.status === "verification_failed").length === 0 ? (
               <Card>
                 <CardContent className="p-8 text-center text-muted-foreground">
                   <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -608,7 +623,7 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                 </CardContent>
               </Card>
             ) : (
-              items
+              processes
                 .filter(process => process.status === "verification_failed")
                 .map((process) => (
                   <Card key={process.id} className="border-l-4 border-l-red-500">
@@ -679,6 +694,108 @@ export default function VerificationsTab({ items = [], onDelete, handleViewDetai
                 ))
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="claims" className="space-y-4">
+            {claimRequestProcesses.length === 0 ? (
+                <Card>
+                    <CardContent className="p-8 text-center">
+                        <p className="text-muted-foreground">No claim requests pending</p>
+                    </CardContent>
+                </Card>
+            ) : (
+                claimRequestProcesses.map((process) => (
+                    <Card key={process.id} className="border-l-4 border-l-purple-500">
+                        <CardContent className="p-6">
+                            <div className="flex flex-col space-y-4">
+                                {/* Header with Status and Date */}
+                                <div className="flex justify-between items-start">
+                                    <Badge variant="secondary" className="bg-purple-100 text-purple-700 border-purple-200">
+                                        Claim Request
+                                    </Badge>
+                                    <span className="text-sm text-gray-500">
+                                        {formatDate(process.createdAt)}
+                                    </span>
+                                </div>
+
+                                {/* Item Details */}
+                                <div className="flex gap-4">
+                                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
+                                        {process.item?.imageUrl ? (
+                                            <img
+                                                src={process.item.imageUrl}
+                                                alt={process.item.name}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Package className="h-8 w-8 text-gray-400" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div>
+                                        <h3 className="font-medium text-lg">{process.item?.name}</h3>
+                                        <p className="text-sm text-gray-500">Location: {process.item?.location}</p>
+                                        <p className="text-sm text-gray-500">Category: {process.item?.category}</p>
+                                    </div>
+                                </div>
+
+                                {/* User Details */}
+                                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
+                                    <div>
+                                        <h4 className="font-medium text-sm text-gray-700 mb-2">Original Reporter</h4>
+                                        <p className="text-sm text-gray-600">ID: {process.item?.reporterId}</p>
+                                        <p className="text-sm text-gray-600">Student ID: {process.item?.studentId}</p>
+                                    </div>
+                                    <div>
+                                        <h4 className="font-medium text-sm text-gray-700 mb-2">Claimant</h4>
+                                        <p className="text-sm text-gray-600">ID: {process.requestorUserId}</p>
+                                    </div>
+                                </div>
+
+                                {/* Verification Questions and Answers */}
+                                <div className="space-y-3">
+                                    <h4 className="font-medium text-gray-700">Verification Questions</h4>
+                                    {process.verificationQuestions?.map((question, index) => (
+                                        <div key={index} className="bg-white border rounded-lg p-3">
+                                            <p className="text-sm font-medium text-gray-700">Q{index + 1}: {question.question}</p>
+                                            <p className="text-sm text-gray-600 mt-1">A: {question.answer || 'No answer yet'}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Additional Info */}
+                                {process.additionalInfo && (
+                                    <div className="bg-purple-50 p-4 rounded-lg">
+                                        <h4 className="font-medium text-gray-700 mb-2">Additional Information</h4>
+                                        <p className="text-sm text-gray-600">{process.additionalInfo}</p>
+                                    </div>
+                                )}
+
+                                {/* Action Buttons */}
+                                <div className="flex gap-2 pt-2">
+                                    <Button
+                                        variant="outline"
+                                        className="flex-1"
+                                        disabled={true}
+                                    >
+                                        <CheckCircle className="h-4 w-4 mr-2" />
+                                        Approve Claim
+                                    </Button>
+                                    <Button
+                                        variant="destructive"
+                                        className="flex-1"
+                                        disabled={true}
+                                    >
+                                        <XCircle className="h-4 w-4 mr-2" />
+                                        Reject Claim
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))
+            )}
         </TabsContent>
       </Tabs>
 
