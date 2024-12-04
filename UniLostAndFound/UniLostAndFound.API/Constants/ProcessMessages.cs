@@ -33,5 +33,6 @@ public static class ProcessMessages
         public const string HANDED_OVER = "Item has been successfully handed over";
         public const string NO_SHOW = "User did not show up for item retrieval";
         public const string CLAIM_REQUEST = "Claim request submitted with verification answers";
+        public const string CLAIM_REJECTED = "Claim request rejected. Please contact admin if you believe this is a mistake.";
     }
 } 

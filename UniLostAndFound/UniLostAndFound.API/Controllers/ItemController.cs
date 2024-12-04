@@ -893,4 +893,63 @@ public class ItemController : ControllerBase
             });
         }
     }
+
+    [HttpPost("process/{processId}/reject-claim")]
+    public async Task<ActionResult<ApiResponse<bool>>> RejectClaimRequest(string processId)
+    {
+        try
+        {
+            // Get the process
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Process not found"
+                });
+            }
+
+            // Store requestor info for future email notification
+            string requestorUserId = process.RequestorUserId;
+            
+            // Update process status
+            process.status = ProcessMessages.Status.APPROVED;  // Reset to original approved state
+            process.Message = ProcessMessages.Messages.CLAIM_REJECTED;
+            process.RequestorUserId = null;  // Clear claim request
+            await _processService.UpdateProcessAsync(process);
+
+            // Delete verification questions
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+
+            // TODO: Email Integration
+            // Send email notification to requestor about rejected claim
+            // - Get user email from requestorUserId
+            // - Use email service to send rejection notification
+            // - Include item details and contact information for admin
+            // Example:
+            // await _emailService.SendClaimRejectionEmail(
+            //     requestorUserId,
+            //     process.ItemId,
+            //     "Your claim request has been rejected. Please contact admin for more information."
+            // );
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Claim request rejected successfully",
+                Data = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error rejecting claim: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to reject claim"
+            });
+        }
+    }
 } 
