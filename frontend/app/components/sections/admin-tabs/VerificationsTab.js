@@ -11,7 +11,10 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { toast } from "react-hot-toast"
 import { API_BASE_URL } from "@/lib/api-config"
 import { useAuth } from "@/lib/AuthContext"
-export default function VerificationsTab({ processes = [] }) {
+export default function VerificationsTab({ 
+  processes = [], 
+  handleViewDetails 
+}) {
   const [activeSubTab, setActiveSubTab] = useState("in_progress");
   const [cancelingProcessId, setCancelingProcessId] = useState(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
