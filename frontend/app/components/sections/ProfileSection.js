@@ -127,7 +127,7 @@ export default function ProfileSection() {
   };
 
   return (
-    <div className="min-h-[80vh] w-[80%] mx-auto rounded-3xl bg-gradient-to-br from-blue-50 to-yellow-50 p-12 shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
+    <div className="min-h-[80vh] w-[80%] mx-auto rounded-3xl bg-gradient-to-br from-blue-100 to-yellow-100 p-12 shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
       <div className="max-w-3xl mx-auto space-y-6 mt-10">
         {/* Profile Info Section */}
         <div className="flex items-start gap-8">
