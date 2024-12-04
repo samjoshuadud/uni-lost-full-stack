@@ -17,19 +17,22 @@ public class ItemController : ControllerBase
     private readonly ILogger<ItemController> _logger;
     private readonly VerificationQuestionService _verificationQuestionService;
     private readonly AdminService _adminService;
+    private readonly UserService _userService;
 
     public ItemController(
         ItemService itemService,
         PendingProcessService processService,
         ILogger<ItemController> logger,
         VerificationQuestionService verificationQuestionService,
-        AdminService adminService)
+        AdminService adminService,
+        UserService userService)
     {
         _itemService = itemService;
         _processService = processService;
         _logger = logger;
         _verificationQuestionService = verificationQuestionService;
         _adminService = adminService;
+        _userService = userService;
     }
 
     [HttpPost]
@@ -806,6 +809,87 @@ public class ItemController : ControllerBase
             {
                 Success = false,
                 Message = "Failed to cancel claim request"
+            });
+        }
+    }
+
+    [HttpPost("process/{processId}/approve-claim")]
+    public async Task<ActionResult<ApiResponse<bool>>> ApproveClaimRequest(string processId)
+    {
+        try
+        {
+            // Get the process
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Process not found"
+                });
+            }
+
+            // Get the item
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            if (item == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Item not found"
+                });
+            }
+
+            // Get the requestor's user details to get their student ID
+            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
+            if (requestor == null)
+            {
+                return NotFound(new ApiResponse<bool>
+                {
+                    Success = false,
+                    Message = "Requestor user not found"
+                });
+            }
+
+            _logger.LogInformation($"Updating item ownership. Old ReporterId: {item.ReporterId}, New ReporterId: {process.RequestorUserId}");
+            _logger.LogInformation($"Updating student ID. Old StudentId: {item.StudentId}, New StudentId: {requestor.StudentId}");
+
+            // Update item with both ReporterId and StudentId
+            item.ReporterId = process.RequestorUserId; // Change owner to claimant
+            item.StudentId = requestor.StudentId;      // Update student ID to claimant's
+            item.Approved = false;                     // Set to false for pending retrieval
+            
+            await _itemService.UpdateItemAsync(item);
+
+            // Double-check the update
+            var updatedItem = await _itemService.GetItemAsync(process.ItemId);
+            _logger.LogInformation($"Item after update - ReporterId: {updatedItem.ReporterId}, StudentId: {updatedItem.StudentId}");
+
+            // Update process
+            process.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            process.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
+            process.UserId = process.RequestorUserId;  // Set UserId to the requestor's ID
+            process.RequestorUserId = null;            // Clear requestor
+            await _processService.UpdateProcessAsync(process);
+
+            // Delete verification questions
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Message = $"Claim approved successfully. Item ownership transferred to {process.RequestorUserId}",
+                Data = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error approving claim: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to approve claim"
             });
         }
     }
