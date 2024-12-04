@@ -260,26 +260,26 @@ namespace UniLostAndFound.API.Services
             }
         }
 
-        public async Task SendVerificationFailedEmailAsync(string userEmail, string itemName)
+        public async Task SendVerificationFailedEmailAsync(string userEmail, string itemName, int attemptsRemaining)
         {
             try
             {
                 var email = new MimeMessage();
                 email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
                 email.To.Add(MailboxAddress.Parse(userEmail));
-                email.Subject = "Verification Failed - Action Required";
+                email.Subject = "Verification Failed - Item Not Verified";
 
                 var builder = new BodyBuilder
                 {
                     HtmlBody = $@"
-                        <h2>Verification Attempt Failed</h2>
+                        <h2>Verification Result: Not Verified</h2>
                         <p>Dear Student,</p>
-                        <p>Your verification attempt for item ""{itemName}"" was unsuccessful.</p>
+                        <p>We regret to inform you that your verification answers for item ""{itemName}"" were incorrect.</p>
                         <p>What This Means:</p>
                         <ul>
                             <li>Your answers did not match the item details</li>
-                            <li>You can try again if you have remaining attempts</li>
-                            <li>Please provide more accurate information about the item</li>
+                            <li>You have {attemptsRemaining} attempt(s) remaining</li>
+                            <li>Please review your answers carefully before trying again</li>
                         </ul>
                         <div style='margin: 20px 0;'>
                             <a href='http://localhost:3000' 
@@ -292,7 +292,7 @@ namespace UniLostAndFound.API.Services
                                 Try Again
                             </a>
                         </div>
-                        <p>If you believe this is an error, please contact the Lost & Found office.</p>
+                        <p>If you need assistance, please contact the Lost & Found office.</p>
                         <p>Thank you for your understanding.</p>
                     "
                 };
@@ -316,6 +316,63 @@ namespace UniLostAndFound.API.Services
             }
         }
 
+        public async Task SendVerificationMaxAttemptsEmailAsync(string userEmail, string itemName)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Verification Failed - Maximum Attempts Reached";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Maximum Verification Attempts Reached</h2>
+                        <p>Dear Student,</p>
+                        <p>We regret to inform you that you have reached the maximum number of verification attempts for item ""{itemName}"".</p>
+                        <p>What This Means:</p>
+                        <ul>
+                            <li>You have used all 3 verification attempts</li>
+                            <li>The verification process has been locked</li>
+                            <li>The item cannot be released at this time</li>
+                        </ul>
+                        <p>Next Steps:</p>
+                        <ul>
+                            <li>Please visit the Lost & Found office in person</li>
+                            <li>Bring your student ID and any proof of ownership</li>
+                            <li>Our staff will assist you with manual verification</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <p style='color: #666; font-size: 14px;'>
+                                Office Hours: Monday-Friday, 9:00 AM - 5:00 PM<br>
+                                Location: Student Services Building, Room 101
+                            </p>
+                        </div>
+                        <p>We apologize for any inconvenience. Our staff will be happy to assist you in person.</p>
+                        <p>Thank you for your understanding.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Max attempts reached email sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send max attempts email: {ex.Message}");
+                throw;
+            }
+        }
+
         public async Task SendClaimApprovedEmailAsync(string userEmail, string itemName)
         {
             throw new NotImplementedException("This email notification will be implemented later");
@@ -328,7 +385,67 @@ namespace UniLostAndFound.API.Services
 
         public async Task SendReadyForPickupEmailAsync(string userEmail, string itemName)
         {
-            throw new NotImplementedException("This email notification will be implemented later");
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Item Ready for Pickup - Verification Successful";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Verification Successful - Item Ready for Pickup</h2>
+                        <p>Dear Student,</p>
+                        <p>Great news! Your ownership of item ""{itemName}"" has been verified successfully.</p>
+                        <p>Next Steps:</p>
+                        <ul>
+                            <li>Visit the Lost & Found office during business hours</li>
+                            <li>Bring your student ID for verification</li>
+                            <li>The item will be handed over to you after identity verification</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
+                                    <strong>Location:</strong> Student Services Building, Room 101<br>
+                                    <strong>Important:</strong> Please collect your item within 7 days
+                                </p>
+                            </div>
+                        </div>
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Status
+                            </a>
+                        </div>
+                        <p>If you have any questions, please contact the Lost & Found office.</p>
+                        <p>Thank you for using UNI Lost and Found System.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Ready for pickup email sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send ready for pickup email: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName)
@@ -384,6 +501,129 @@ namespace UniLostAndFound.API.Services
             catch (Exception ex)
             {
                 _logger.LogError($"Failed to send answers submitted notification: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task SendItemHandedOverEmailAsync(string userEmail, string itemName)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Item Successfully Handed Over";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Item Successfully Handed Over</h2>
+                        <p>Dear Student,</p>
+                        <p>This email confirms that your item ""{itemName}"" has been successfully handed over to you.</p>
+                        <p>Details:</p>
+                        <ul>
+                            <li>Item: {itemName}</li>
+                            <li>Status: Handed Over</li>
+                            <li>Date: {DateTime.Now.ToString("MMMM dd, yyyy HH:mm")}</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Note:</strong> Please keep this email as your receipt of collection.
+                                </p>
+                            </div>
+                        </div>
+                        <p>If you have any questions or concerns, please contact the Lost & Found office.</p>
+                        <p>Thank you for using UNI Lost and Found System.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Hand over confirmation email sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send hand over confirmation email: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task SendNoShowEmailAsync(string userEmail, string itemName)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Item Collection Missed - Action Required";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Item Collection Missed</h2>
+                        <p>Dear Student,</p>
+                        <p>We noticed that you haven't collected your item ""{itemName}"" within the specified timeframe.</p>
+                        <p>What This Means:</p>
+                        <ul>
+                            <li>Your item has been marked as 'No Show'</li>
+                            <li>The item will need to be re-verified</li>
+                            <li>You'll need to contact the Lost & Found office</li>
+                        </ul>
+                        <p>Next Steps:</p>
+                        <ul>
+                            <li>Visit the Lost & Found office during business hours</li>
+                            <li>Bring your student ID and proof of ownership</li>
+                            <li>Our staff will help you reclaim your item</li>
+                        </ul>
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
+                                    <strong>Location:</strong> Student Services Building, Room 101<br>
+                                    <strong>Important:</strong> Please respond within 7 days to avoid item disposal
+                                </p>
+                            </div>
+                        </div>
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Status
+                            </a>
+                        </div>
+                        <p>If you have any questions or need assistance, please contact the Lost & Found office.</p>
+                        <p>Thank you for your understanding.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"No-show notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send no-show notification: {ex.Message}");
                 throw;
             }
         }
