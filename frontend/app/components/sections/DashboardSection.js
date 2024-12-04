@@ -19,7 +19,7 @@ import { QRCodeDialog } from "../dialogs/QRCodeDialog"
 import { toast } from "react-hot-toast"
 import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
-
+import { itemApi } from "@/lib/api-client"
 
 export default function DashboardSection({ 
   items = [], 
@@ -45,65 +45,57 @@ export default function DashboardSection({
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
+  const [processes, setProcesses] = useState([]);
 
-  // Update useEffect to handle loading state better
+  // Separate useEffect for fetching processes
   useEffect(() => {
-    if (isInitialLoad) {
-      setIsLoading(true);
-      // Filter items based on search criteria
-      const filteredItems = items.filter(item => {
-        // Category filter
-        const matchesCategory = searchCategory === "all" || 
-          item.category?.toLowerCase() === searchCategory.toLowerCase();
-
-        // Search terms - only filter if there's a search query
-        if (searchQuery.trim()) {
-          const searchTerms = searchQuery.toLowerCase().trim();
-          const matchesSearch = 
-            item.name?.toLowerCase().includes(searchTerms) ||
-            item.location?.toLowerCase().includes(searchTerms) ||
-            item.description?.toLowerCase().includes(searchTerms) ||
-            item.category?.toLowerCase().includes(searchTerms);
-
-          return matchesCategory && matchesSearch;
+    const fetchProcesses = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+            const data = await response.json();
+            setProcesses(data.$values || []);
+        } catch (error) {
+            console.error('Error fetching processes:', error);
         }
+    };
 
-        // If no search query, just filter by category
-        return matchesCategory;
-      });
-
-      setLocalItems(filteredItems);
-      const timer = setTimeout(() => {
-        setIsLoading(false);
-        setIsInitialLoad(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    } else {
-      // Filter items based on search criteria
-      const filteredItems = items.filter(item => {
-        // Category filter
-        const matchesCategory = searchCategory === "all" || 
-          item.category?.toLowerCase() === searchCategory.toLowerCase();
-
-        // Search terms - only filter if there's a search query
-        if (searchQuery.trim()) {
-          const searchTerms = searchQuery.toLowerCase().trim();
-          const matchesSearch = 
-            item.name?.toLowerCase().includes(searchTerms) ||
-            item.location?.toLowerCase().includes(searchTerms) ||
-            item.description?.toLowerCase().includes(searchTerms) ||
-            item.category?.toLowerCase().includes(searchTerms);
-
-          return matchesCategory && matchesSearch;
-        }
-
-        // If no search query, just filter by category
-        return matchesCategory;
-      });
-
-      setLocalItems(filteredItems);
+    if (items.length > 0) {
+        fetchProcesses();
     }
-  }, [items, searchQuery, searchCategory, isInitialLoad]);
+  }, [items]); // Only re-fetch when items change
+
+  // Separate useEffect for filtering items
+  useEffect(() => {
+    setIsLoading(true);
+    
+    // Filter items based on search criteria
+    const filteredItems = items.filter(item => {
+        // Category filter
+        const matchesCategory = searchCategory === "all" || 
+            item.category?.toLowerCase() === searchCategory.toLowerCase();
+
+        // Search terms - only filter if there's a search query
+        if (searchQuery.trim()) {
+            const searchTerms = searchQuery.toLowerCase().trim();
+            const matchesSearch = 
+                item.name?.toLowerCase().includes(searchTerms) ||
+                item.location?.toLowerCase().includes(searchTerms) ||
+                item.description?.toLowerCase().includes(searchTerms) ||
+                item.category?.toLowerCase().includes(searchTerms);
+
+            return matchesCategory && matchesSearch;
+        }
+
+        // If no search query, just filter by category
+        return matchesCategory;
+    }).map(item => ({
+        ...item,
+        process: processes.find(p => p.itemId === item.id)
+    }));
+    
+    setLocalItems(filteredItems);
+    setIsLoading(false);
+  }, [items, searchQuery, searchCategory, processes]); // Include processes in dependencies
 
   const handleQRDialogChange = (open) => {
     setShowQRDialog(open);
@@ -263,11 +255,35 @@ export default function DashboardSection({
     setShowClaimDialog(true);
   };
 
-  const handleClaimSubmit = async (answers) => {
-    console.log('Claim answers:', answers);
-    // TODO: Implement claim submission
-    setShowClaimDialog(false);
-    setSelectedClaimItem(null);
+  const handleClaimSubmit = async (answers, additionalInfo) => {
+    try {
+        if (!user || !user.uid) {
+            toast.error("You must be logged in to claim an item");
+            return;
+        }
+
+        const claimData = {
+            itemId: selectedClaimItem.id,
+            questions: answers,
+            additionalInfo: additionalInfo,
+            requestorUserId: user.uid  // Using uid from Firebase auth
+        };
+        
+        console.log('Submitting claim data:', claimData);  // Debug log
+        
+        const response = await itemApi.submitClaim(claimData);
+
+        if (response.success) {
+            toast.success("Your claim has been submitted for review");
+            setShowClaimDialog(false);
+            setSelectedClaimItem(null);
+        } else {
+            toast.error(response.message || "Failed to submit claim");
+        }
+    } catch (error) {
+        console.error('Error submitting claim:', error);
+        toast.error("Failed to submit claim. Please try again.");
+    }
   };
 
   if (error) {
@@ -291,6 +307,16 @@ export default function DashboardSection({
       </Card>
     );
   }
+
+  const isButtonDisabled = (process) => {
+    return (
+        process.item.reporterId === user?.uid || // Current user is reporter
+        process.status === "claim_request" ||    // Already has a claim request
+        process.status === "in_verification" ||  // Already in verification
+        process.status === "verified" ||         // Already verified
+        process.status === "handed_over"         // Already handed over
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -563,10 +589,21 @@ export default function DashboardSection({
                             size="sm"
                             className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                             onClick={() => handleClaimClick(item)}
-                            disabled={userId === item.reporterId}
+                            disabled={
+                                userId === item.reporterId ||
+                                item.process?.status === "claim_request" ||
+                                item.process?.status === "in_verification" ||
+                                item.process?.status === "verified" ||
+                                item.process?.status === "handed_over"
+                            }
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            {userId === item.reporterId ? "You reported this item" : "This is mine"}
+                            {userId === item.reporterId 
+                                ? "You reported this item" 
+                                : item.process?.status === "claim_request"
+                                ? "Claim request pending"
+                                : "This is mine"
+                            }
                           </Button>
                         )}
                       </>

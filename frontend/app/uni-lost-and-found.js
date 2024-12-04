@@ -269,8 +269,7 @@ export default function UniLostAndFound() {
       case "dashboard":
         const dashboardItems = items
           .filter(item => 
-            (item.Item?.Approved === true || item.item?.approved === true) && 
-            (item.status === "approved" || item.Status === "approved")
+            (item.Item?.Approved === true || item.item?.approved === true)
           )
           .map(item => ({
             id: item.Item?.Id || item.item?.id,
@@ -306,8 +305,7 @@ export default function UniLostAndFound() {
         const lostItems = items
           .filter(process => 
             process.item?.status?.toLowerCase() === "lost" && 
-            process.item?.approved === true &&
-            process.status === "approved"
+            process.item?.approved === true
           )
           .map(process => ({
             id: process.item.id,
@@ -341,8 +339,7 @@ export default function UniLostAndFound() {
         const foundItems = items
           .filter(process => 
             process.item?.status?.toLowerCase() === "found" && 
-            process.item?.approved === true &&
-            process.status === "approved"
+            process.item?.approved === true
           )
           .map(process => ({
             id: process.item.id,

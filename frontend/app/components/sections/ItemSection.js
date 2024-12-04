@@ -40,32 +40,54 @@ export default function ItemSection({
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
+  const [processes, setProcesses] = useState([]);
+
+  useEffect(() => {
+    const fetchProcesses = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+            const data = await response.json();
+            setProcesses(data.$values || []);
+        } catch (error) {
+            console.error('Error fetching processes:', error);
+        }
+    };
+
+    if (items.length > 0) {
+        fetchProcesses();
+    }
+  }, [items]);
 
   useEffect(() => {
     setIsLoading(true);
+    
     const filteredItems = items.filter(item => {
-      // Category filter
-      const matchesCategory = searchCategory === "all" || 
-        item.category?.toLowerCase() === searchCategory.toLowerCase();
+        // Category filter
+        const matchesCategory = searchCategory === "all" || 
+            item.category?.toLowerCase() === searchCategory.toLowerCase();
 
-      // Search terms - only filter if there's a search query
-      if (searchQuery.trim()) {
-        const searchTerms = searchQuery.toLowerCase().trim();
-        const matchesSearch = 
-          item.name?.toLowerCase().includes(searchTerms) ||
-          item.location?.toLowerCase().includes(searchTerms) ||
-          item.description?.toLowerCase().includes(searchTerms) ||
-          item.category?.toLowerCase().includes(searchTerms);
+        // Search terms - only filter if there's a search query
+        if (searchQuery.trim()) {
+            const searchTerms = searchQuery.toLowerCase().trim();
+            const matchesSearch = 
+                item.name?.toLowerCase().includes(searchTerms) ||
+                item.location?.toLowerCase().includes(searchTerms) ||
+                item.description?.toLowerCase().includes(searchTerms) ||
+                item.category?.toLowerCase().includes(searchTerms);
 
-        return matchesCategory && matchesSearch;
-      }
+            return matchesCategory && matchesSearch;
+        }
 
-      // If no search query, just filter by category
-      return matchesCategory;
-    });
+        // If no search query, just filter by category
+        return matchesCategory;
+    }).map(item => ({
+        ...item,
+        process: processes.find(p => p.itemId === item.id)
+    }));
+    
     setLocalItems(filteredItems);
     setIsLoading(false);
-  }, [items, searchQuery, searchCategory]);
+  }, [items, searchQuery, searchCategory, processes]);
 
   const handleDeleteClick = async () => {
     if (!itemToDelete) return;
@@ -168,6 +190,38 @@ export default function ItemSection({
         console.error('Error submitting claim:', error);
         toast.error("Failed to submit claim. Please try again.");
     }
+  };
+
+  const isButtonDisabled = (item) => {
+    const process = processes.find(p => p.itemId === item.id);
+    return (
+        item.reporterId === user?.uid || // Current user is reporter
+        process?.status === "claim_request" ||    // Already has a claim request
+        process?.status === "in_verification" ||  // Already in verification
+        process?.status === "verified" ||         // Already verified
+        process?.status === "handed_over"         // Already handed over
+    );
+  };
+
+  const getButtonText = (item) => {
+    const process = processes.find(p => p.itemId === item.id);
+    
+    if (item.reporterId === user?.uid) {
+        return "You reported this item";
+    }
+    if (process?.status === "claim_request") {
+        return "Claim request pending";
+    }
+    if (process?.status === "in_verification") {
+        return "In verification";
+    }
+    if (process?.status === "verified") {
+        return "Already verified";
+    }
+    if (process?.status === "handed_over") {
+        return "Item handed over";
+    }
+    return "This is mine";
   };
 
   if (isLoading) {
@@ -480,10 +534,10 @@ export default function ItemSection({
                             size="sm"
                             className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                             onClick={() => handleClaimClick(item)}
-                            disabled={userId === item.reporterId}
+                            disabled={isButtonDisabled(item)}
                           >
                             <CheckCircle className="h-4 w-4 mr-2" />
-                            {userId === item.reporterId ? "You reported this item" : "This is mine"}
+                            {getButtonText(item)}
                           </Button>
                         )}
                       </>
