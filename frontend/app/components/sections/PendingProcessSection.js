@@ -979,7 +979,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     }
 
     return (
-      <Card key={process.id} className={cardStyle}>
+      <Card 
+        key={process.id} 
+        className={`${cardStyle} drop-shadow-[0_4px_4px_rgba(0,0,0,0.15)]`}
+      >
         <CardContent className="p-6 h-full">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">
