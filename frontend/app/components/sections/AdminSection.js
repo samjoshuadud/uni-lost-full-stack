@@ -709,11 +709,9 @@ export default function AdminSection({
               </TabsContent>
 
               <TabsContent value="verifications">
-                <VerificationsTab
-                  processes={pendingProcesses}
-                  isCountsLoading={isCountsLoading}
-                  onDelete={handleDelete}
-                  handleViewDetails={handleViewDetails}
+                <VerificationsTab 
+                  processes={pendingProcesses} 
+                  handleViewDetails={handleViewDetails} 
                 />
               </TabsContent>
 
