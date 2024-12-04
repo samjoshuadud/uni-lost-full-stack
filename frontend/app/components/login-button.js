@@ -20,7 +20,7 @@ export default function LoginButton() {
         <Button 
           variant="ghost"
           onClick={logout}
-          className="bg-yellow-400 text-[#0052cc] hover:text-004C99 font-bold"
+          className="bg-yellow-400 text-[#0052cc] hover:text-004C99 font-bold ml-4"
         >
           Logout
         </Button>
