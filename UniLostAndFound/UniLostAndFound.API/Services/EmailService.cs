@@ -8,7 +8,9 @@ using System.Threading.Tasks;
 using UniLostAndFound.API.Models;
 using System.Drawing;
 using System.IO;
-
+using System.Collections.Generic;
+using System.Linq;
+using UniLostAndFound.API.DTOs;
 namespace UniLostAndFound.API.Services
 {
     public class EmailService : IEmailService
@@ -375,14 +377,167 @@ namespace UniLostAndFound.API.Services
             }
         }
 
-        public async Task SendClaimApprovedEmailAsync(string userEmail, string itemName)
+        public async Task SendClaimApprovedEmailAsync(string userEmail, string itemName, List<ClaimQuestionAnswerDto> questionsAndAnswers)
         {
-            throw new NotImplementedException("This email notification will be implemented later");
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Claim Request Approved - Item Ready for Pickup";
+
+                // Build the questions and answers HTML
+                var questionsAnswersHtml = string.Join("\n", questionsAndAnswers.Select((qa, index) => $@"
+                    <div style='margin-bottom: 10px;'>
+                        <p style='margin: 0; font-weight: 500;'>Question {index + 1}:</p>
+                        <p style='margin: 0; color: #4B5563;'>{qa.Question}</p>
+                        <p style='margin: 0; color: #1F2937;'>Your answer: {qa.Answer}</p>
+                    </div>"));
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Claim Request Approved!</h2>
+                        <p>Dear Student,</p>
+                        <p>Great news! Your claim request for item ""{itemName}"" has been approved.</p>
+                        
+                        <div style='background-color: #ECFDF5; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0; color: #065F46;'>Your Verified Ownership Details:</h3>
+                            {questionsAnswersHtml}
+                        </div>
+
+                        <p>Next Steps for Item Pickup:</p>
+                        <ul>
+                            <li>Visit the Lost & Found office during business hours</li>
+                            <li>Bring your student ID for verification</li>
+                            <li>The item will be handed over after identity verification</li>
+                            <li>Please collect your item within 7 days</li>
+                        </ul>
+
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
+                                    <strong>Location:</strong> Student Services Building, Room 101<br>
+                                    <strong>Important:</strong> Please bring your student ID
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Dashboard
+                            </a>
+                        </div>
+
+                        <p>Thank you for using UNI Lost and Found System.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Claim approval notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send claim approval notification: {ex.Message}");
+                throw;
+            }
         }
 
-        public async Task SendClaimRejectedEmailAsync(string userEmail, string itemName)
+        public async Task SendClaimRejectedEmailAsync(string userEmail, string itemName, List<ClaimQuestionAnswerDto> questionsAndAnswers)
         {
-            throw new NotImplementedException("This email notification will be implemented later");
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Claim Request Rejected";
+
+                // Build the questions and answers HTML
+                var questionsAnswersHtml = string.Join("\n", questionsAndAnswers.Select((qa, index) => $@"
+                    <div style='margin-bottom: 10px;'>
+                        <p style='margin: 0; font-weight: 500;'>Question {index + 1}:</p>
+                        <p style='margin: 0; color: #4B5563;'>{qa.Question}</p>
+                        <p style='margin: 0; color: #1F2937;'>Your answer: {qa.Answer}</p>
+                    </div>"));
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Claim Request Rejected</h2>
+                        <p>Dear Student,</p>
+                        <p>We regret to inform you that your claim request for item ""{itemName}"" has been rejected.</p>
+                        
+                        <div style='background-color: #FEE2E2; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0; color: #991B1B;'>Your Submitted Verification Details:</h3>
+                            {questionsAnswersHtml}
+                        </div>
+
+                        <p>What You Can Do Next:</p>
+                        <ul>
+                            <li>If you believe this is a mistake, please visit the Lost & Found office in person</li>
+                            <li>Bring your student ID and any additional proof of ownership</li>
+                            <li>Our staff will assist you with manual verification</li>
+                        </ul>
+
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
+                                    <strong>Location:</strong> Student Services Building, Room 101<br>
+                                    <strong>Important:</strong> Please bring valid identification and proof of ownership
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                View Dashboard
+                            </a>
+                        </div>
+
+                        <p>Thank you for your understanding.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Claim rejection notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send claim rejection notification: {ex.Message}");
+                throw;
+            }
         }
 
         public async Task SendReadyForPickupEmailAsync(string userEmail, string itemName)
@@ -777,6 +932,86 @@ namespace UniLostAndFound.API.Services
             catch (Exception ex)
             {
                 _logger.LogError($"Failed to send found item approval notification: {ex.Message}");
+                throw;
+            }
+        }
+
+        public async Task SendClaimSubmittedEmailAsync(string userEmail, string itemName, List<ClaimQuestionAnswerDto> questionsAndAnswers)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Claim Request Submitted - Under Review";
+
+                // Build the questions and answers HTML
+                var questionsAnswersHtml = string.Join("\n", questionsAndAnswers.Select((qa, index) => $@"
+                    <div style='margin-bottom: 10px;'>
+                        <p style='margin: 0; font-weight: 500;'>Question {index + 1}:</p>
+                        <p style='margin: 0; color: #4B5563;'>{qa.Question}</p>
+                        <p style='margin: 0; color: #1F2937;'>Your answer: {qa.Answer}</p>
+                    </div>"));
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Claim Request Submitted Successfully</h2>
+                        <p>Dear Student,</p>
+                        <p>Your claim request for item ""{itemName}"" has been submitted successfully.</p>
+                        
+                        <div style='background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0;'>Your Submitted Verification Details:</h3>
+                            {questionsAnswersHtml}
+                        </div>
+
+                        <p>What Happens Next?</p>
+                        <ul>
+                            <li>Our admin team will review your claim details and submitted answers</li>
+                            <li>You will receive an email notification about the review result</li>
+                            <li>If approved, you will receive instructions for collecting your item</li>
+                        </ul>
+
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Note:</strong> The review process usually takes 1-2 business days.<br>
+                                    <strong>Important:</strong> Please monitor your email for further instructions.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div style='margin: 20px 0;'>
+                            <a href='http://localhost:3000' 
+                               style='background-color: #0066cc; 
+                                      color: white; 
+                                      padding: 10px 20px; 
+                                      text-decoration: none; 
+                                      border-radius: 5px;
+                                      display: inline-block;'>
+                                Track Status
+                            </a>
+                        </div>
+
+                        <p>Thank you for using UNI Lost and Found System.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Claim submitted notification sent to {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send claim submitted notification: {ex.Message}");
                 throw;
             }
         }
