@@ -296,7 +296,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         if (process.requestorUserId === user?.uid) {
           // Requestor view (person who made the claim)
           return (
-            <div key={process.id} className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle}`}>
+            <div 
+              key={process.id} 
+              className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle} transition-all duration-300 hover:shadow-xl hover:-translate-y-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.08)]`}
+            >
               <div className="p-4 flex flex-col h-full">
                 {/* Status Badge */}
                 <div className="flex justify-between items-start mb-4">
@@ -384,7 +387,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         } else if (process.item.reporterId === user?.uid) {
           // Reporter view (person who reported the item)
           return (
-            <div key={process.id} className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle}`}>
+            <div 
+              key={process.id} 
+              className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle} transition-all duration-300 hover:shadow-xl hover:-translate-y-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.08)]`}
+            >
               <div className="p-4 flex flex-col h-full">
                 {/* Status Badge */}
                 <div className="flex justify-between items-start mb-4">
@@ -979,7 +985,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     }
 
     return (
-      <Card key={process.id} className={cardStyle}>
+      <Card 
+        key={process.id} 
+        className={`${cardStyle} transition-all duration-300 hover:shadow-xl hover:-translate-y-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.08)]`}
+      >
         <CardContent className="p-6 h-full">
           <div className="flex flex-col h-full">
             <div className="flex items-center justify-between mb-4">

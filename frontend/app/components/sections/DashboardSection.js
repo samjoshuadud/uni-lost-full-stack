@@ -107,26 +107,55 @@ export default function DashboardSection({
   // Add loading skeleton UI
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="overflow-hidden">
-            <CardContent className="p-4">
-              <div className="w-full h-48 mb-4">
-                <Skeleton className="w-full h-full rounded-lg" />
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-5 w-16" />
-                  </div>
-                  <Skeleton className="h-4 w-2/3" />
+          <Card key={i} className="overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] border border-gray-200/80 relative">
+            {/* Status Badge Skeleton */}
+            <div className="absolute top-3 right-3 z-10">
+              <Skeleton className="h-6 w-16 rounded-full bg-white/20" />
+            </div>
+
+            {/* Header Section */}
+            <div className="p-4 animate-pulse" style={{ background: "linear-gradient(to right, #0F3A99 50%, #0A60C8 83%, #0873E0 100%)" }}>
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-3/4 bg-white/20" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="h-4 w-4 rounded-full bg-white/20" />
+                  <Skeleton className="h-4 w-1/2 bg-white/20" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-24" />
+              </div>
+            </div>
+
+            <CardContent className="p-4">
+              {/* Image Skeleton with subtle animation */}
+              <div className="w-full h-48 mb-4 relative overflow-hidden">
+                <Skeleton className="w-full h-full rounded-lg bg-gray-200/60 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+              </div>
+
+              {/* Content Skeletons */}
+              <div className="space-y-4">
+                {/* Category Badge */}
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-20 rounded-full bg-gray-200/60" />
+                  <Skeleton className="h-6 w-24 rounded-full bg-gray-200/60" />
+                </div>
+
+                {/* Description Lines */}
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full bg-gray-200/60" />
+                  <Skeleton className="h-4 w-4/5 bg-gray-200/60" />
+                </div>
+
+                {/* Footer Section */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded-full bg-gray-200/60" />
+                    <Skeleton className="h-4 w-24 bg-gray-200/60" />
+                  </div>
                   <div className="flex gap-2">
-                    <Skeleton className="h-9 w-[100px]" />
-                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-[120px] rounded-md bg-gray-200/60" />
+                    <Skeleton className="h-9 w-9 rounded-md bg-gray-200/60" />
                   </div>
                 </div>
               </div>
@@ -326,7 +355,7 @@ export default function DashboardSection({
           <Card 
             key={item.id} 
             id={`item-${item.id}`}
-            className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group"
+            className="bg-white overflow-hidden shadow-[0_8px_12px_rgba(0,0,0,0.08)] hover:shadow-[0_16px_24px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all duration-500 ease-in-out border border-gray-200/80 relative group"
           >
             {/* Status Badge - Moved outside header for better visibility */}
             <Badge 
@@ -362,7 +391,7 @@ export default function DashboardSection({
                       <img
                         src={item.imageUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.01]"
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
@@ -387,7 +416,7 @@ export default function DashboardSection({
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.01]"
                           onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
@@ -673,3 +702,4 @@ export default function DashboardSection({
     </div>
   );
 } 
+
