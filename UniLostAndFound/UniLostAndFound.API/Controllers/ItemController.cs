@@ -951,7 +951,7 @@ public class ItemController : ControllerBase
     }
 
     [HttpPost("process/claim")]
-    public async Task<ActionResult<ApiResponse<string>>> ClaimItem([FromBody] ClaimItemDto dto)
+    public async Task<ActionResult<ApiResponse<string>>> CreateClaimProcess([FromBody] ClaimItemDto dto)
     {
         try
         {
@@ -981,20 +981,41 @@ public class ItemController : ControllerBase
                 dto.AdditionalInfo
             );
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(dto.ItemId);
+            var user = await _userService.GetUserByIdAsync(dto.RequestorUserId);
+
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendClaimSubmittedEmailAsync(
+                        user.Email,
+                        item.Name,
+                        dto.Questions
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send claim submitted email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
             return Ok(new ApiResponse<string>
             {
                 Success = true,
-                Message = "Claim submitted successfully",
+                Message = "Claim request submitted successfully",
                 Data = process.Id
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error submitting claim: {ex.Message}");
+            _logger.LogError($"Error creating claim request: {ex.Message}");
             return StatusCode(500, new ApiResponse<string>
             {
                 Success = false,
-                Message = "Failed to submit claim"
+                Message = "Failed to submit claim request"
             });
         }
     }
@@ -1049,38 +1070,31 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the process
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
             {
-                return NotFound(new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Process not found"
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Process not found" 
                 });
             }
 
-            // Get the item
+            // Get the item and requestor details
             var item = await _itemService.GetItemAsync(process.ItemId);
-            if (item == null)
+            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
+            
+            if (item == null || requestor == null)
             {
                 return NotFound(new ApiResponse<bool>
                 {
                     Success = false,
-                    Message = "Item not found"
+                    Message = "Item or requestor not found"
                 });
             }
 
-            // Get the requestor's user details to get their student ID
-            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
-            if (requestor == null)
-            {
-                return NotFound(new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Requestor user not found"
-                });
-            }
+            // Get the verification questions and answers for email
+            var questionsAndAnswers = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
 
             _logger.LogInformation($"Updating item ownership. Old ReporterId: {item.ReporterId}, New ReporterId: {process.RequestorUserId}");
             _logger.LogInformation($"Updating student ID. Old StudentId: {item.StudentId}, New StudentId: {requestor.StudentId}");
@@ -1103,7 +1117,26 @@ public class ItemController : ControllerBase
             process.RequestorUserId = null;            // Clear requestor
             await _processService.UpdateProcessAsync(process);
 
-            // Delete verification questions
+            // Send email notification with verification details
+            try
+            {
+                await _emailService.SendClaimApprovedEmailAsync(
+                    requestor.Email,
+                    item.Name,
+                    questionsAndAnswers.Select(q => new ClaimQuestionAnswerDto 
+                    { 
+                        Question = q.Question,
+                        Answer = q.Answer 
+                    }).ToList()
+                );
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send claim approval email: {emailEx.Message}");
+                // Continue even if email fails
+            }
+
+            // Delete verification questions after successful email
             await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
             return Ok(new ApiResponse<bool>
@@ -1130,16 +1163,31 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the process
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
+            {
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Process not found" 
+                });
+            }
+
+            // Get the item and requestor details
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
+            
+            if (item == null || requestor == null)
             {
                 return NotFound(new ApiResponse<bool>
                 {
                     Success = false,
-                    Message = "Process not found"
+                    Message = "Item or requestor not found"
                 });
             }
+
+            // Get the verification questions and answers for email
+            var questionsAndAnswers = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
 
             // Store requestor info for future email notification
             string requestorUserId = process.RequestorUserId;
@@ -1150,20 +1198,27 @@ public class ItemController : ControllerBase
             process.RequestorUserId = null;  // Clear claim request
             await _processService.UpdateProcessAsync(process);
 
-            // Delete verification questions
-            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+            // Send email notification with verification details
+            try
+            {
+                await _emailService.SendClaimRejectedEmailAsync(
+                    requestor.Email,
+                    item.Name,
+                    questionsAndAnswers.Select(q => new ClaimQuestionAnswerDto 
+                    { 
+                        Question = q.Question,
+                        Answer = q.Answer 
+                    }).ToList()
+                );
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send claim rejection email: {emailEx.Message}");
+                // Continue even if email fails
+            }
 
-            // TODO: Email Integration
-            // Send email notification to requestor about rejected claim
-            // - Get user email from requestorUserId
-            // - Use email service to send rejection notification
-            // - Include item details and contact information for admin
-            // Example:
-            // await _emailService.SendClaimRejectionEmail(
-            //     requestorUserId,
-            //     process.ItemId,
-            //     "Your claim request has been rejected. Please contact admin for more information."
-            // );
+            // Delete verification questions after sending email
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
             return Ok(new ApiResponse<bool>
             {
