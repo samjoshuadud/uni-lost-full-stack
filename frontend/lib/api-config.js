@@ -18,7 +18,8 @@ const API_ENDPOINTS = {
         approve: (id) => `/api/Item/${id}/approve`,
         process: {
             status: (itemId) => `/api/Item/process/${itemId}/status`
-        }
+        },
+        claim: '/api/Item/process/claim'
     }
 };
 

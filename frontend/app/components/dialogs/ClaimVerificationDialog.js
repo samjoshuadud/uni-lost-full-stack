@@ -66,13 +66,16 @@ export default function ClaimVerificationDialog({
   };
 
   const handleSubmit = () => {
-    onSubmit({
-      answers: questions.map((q, i) => ({
+    const formattedAnswers = questions.map((q, index) => ({
         question: q,
-        answer: answers[i]
-      })),
-      additionalInfo: additionalInfo.trim()
-    });
+        answer: answers[index] || ''
+    }));
+    
+    console.log('Formatted answers:', formattedAnswers);  // Debug log
+    console.log('Additional info:', additionalInfo);      // Debug log
+    
+    onSubmit(formattedAnswers, additionalInfo);
+    onClose();
   };
 
   // Reset state when dialog closes

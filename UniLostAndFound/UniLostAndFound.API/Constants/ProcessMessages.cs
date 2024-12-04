@@ -14,6 +14,7 @@ public static class ProcessMessages
         public const string PENDING_RETRIEVAL = "pending_retrieval";
         public const string HANDED_OVER = "handed_over";
         public const string NO_SHOW = "no_show";
+        public const string CLAIM_REQUEST = "claim_request";
     }
 
     public static class Messages
@@ -31,5 +32,6 @@ public static class ProcessMessages
         public const string PENDING_RETRIEVAL = "Item is ready for retrieval at the admin office";
         public const string HANDED_OVER = "Item has been successfully handed over";
         public const string NO_SHOW = "User did not show up for item retrieval";
+        public const string CLAIM_REQUEST = "Claim request submitted with verification answers";
     }
 } 

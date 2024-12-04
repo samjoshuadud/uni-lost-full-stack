@@ -39,7 +39,7 @@ export async function generateVerificationQuestions(itemInfo) {
     // If there's an image URL, use the vision model
     if (itemInfo.imageUrl) {
       try {
-        model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+        model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         
         // Fetch the image
         const imageResponse = await fetch(itemInfo.imageUrl);
@@ -70,12 +70,12 @@ export async function generateVerificationQuestions(itemInfo) {
       } catch (imageError) {
         console.warn('Failed to process image, falling back to text-only:', imageError);
         // Fall back to text-only if image processing fails
-        model = genAI.getGenerativeModel({ model: "gemini-pro" });
+        model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         result = await model.generateContent(promptText);
       }
     } else {
       // Use text-only model if no image
-      model = genAI.getGenerativeModel({ model: "gemini-pro" });
+      model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       result = await model.generateContent(promptText);
     }
 

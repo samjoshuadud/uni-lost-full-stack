@@ -97,5 +97,17 @@ export const itemApi = {
             body: JSON.stringify({ status })
         });
         return response.json();
+    },
+
+    submitClaim: async (claimData) => {
+        const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.items.claim}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(claimData)
+        });
+        return response.json();
     }
 }; 
+
