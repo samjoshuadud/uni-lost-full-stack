@@ -95,6 +95,9 @@ export default function UniLostAndFound() {
   // Add state for claim processes
   const [claimProcesses, setClaimProcesses] = useState([]);
 
+  // Add new state for claim status filter
+  const [claimStatus, setClaimStatus] = useState("all");
+
   // Add useEffect for fetching claim processes
   useEffect(() => {
     const fetchClaimProcesses = async () => {
@@ -217,7 +220,6 @@ export default function UniLostAndFound() {
   const filteredItems = useMemo(() => {
     if (!items) return [];
 
-    // Get the array of items, handling both direct array and $values structure
     const itemsArray = Array.isArray(items) ? items : items.$values || [];
 
     return itemsArray.filter(process => {
@@ -232,6 +234,11 @@ export default function UniLostAndFound() {
       const matchesCategory = searchCategory === "all" || 
         item.category?.toLowerCase() === searchCategory.toLowerCase();
 
+      // Claim status filter
+      const matchesClaimStatus = claimStatus === "all" || 
+        (claimStatus === "none" && !process.requestorUserId) ||
+        (claimStatus === "pending" && process.requestorUserId);
+
       // Search terms - only filter if there's a search query
       if (searchQuery.trim()) {
         const searchTerms = searchQuery.toLowerCase().trim();
@@ -241,13 +248,13 @@ export default function UniLostAndFound() {
           item.description?.toLowerCase().includes(searchTerms) ||
           item.category?.toLowerCase().includes(searchTerms);
 
-        return matchesCategory && matchesSearch;
+        return matchesCategory && matchesSearch && matchesClaimStatus;
       }
 
-      // If no search query, just filter by category
-      return matchesCategory;
+      // If no search query, just filter by category and claim status
+      return matchesCategory && matchesClaimStatus;
     });
-  }, [items, searchCategory, searchQuery]);
+  }, [items, searchCategory, searchQuery, claimStatus]);
 
   const handleReportSubmit = async (data) => {
     try {
@@ -361,6 +368,7 @@ export default function UniLostAndFound() {
           onUnapprove={handleUnapprove}
           searchQuery={searchQuery}
           searchCategory={searchCategory}
+          claimStatus={claimStatus}
         />
       case "lost":
         const lostItems = items
@@ -1291,6 +1299,23 @@ export default function UniLostAndFound() {
                   <SelectItem value="Personal Items">Personal Items</SelectItem>
                   <SelectItem value="Documents">Documents</SelectItem>
                   <SelectItem value="Bags">Bags</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/*Claim Status Dropdown */}
+            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+              <Select
+                value={claimStatus}
+                onValueChange={setClaimStatus}
+              >
+                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                  <SelectValue placeholder="Claim Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Items</SelectItem>
+                  <SelectItem value="none">No Claims</SelectItem>
+                  <SelectItem value="pending">Pending Claims</SelectItem>
                 </SelectContent>
               </Select>
             </div>
