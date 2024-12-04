@@ -28,6 +28,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { API_BASE_URL } from "@/lib/api-config"
+import { generateVerificationQuestions } from "@/lib/gemini";
+import { toast } from "react-hot-toast";
 
 const LostReportsTab = memo(function LostReportsTab({
   items = [],
@@ -43,6 +45,7 @@ const LostReportsTab = memo(function LostReportsTab({
   const [selectedItemForVerification, setSelectedItemForVerification] = useState(null);
   const [verificationQuestions, setVerificationQuestions] = useState([{ question: '' }]);
   const [isSubmittingQuestions, setIsSubmittingQuestions] = useState(false);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
   const handleApproveClick = async (itemId) => {
     try {
@@ -126,6 +129,40 @@ const LostReportsTab = memo(function LostReportsTab({
       console.error("Error updating process status:", error);
     } finally {
       setIsSubmittingQuestions(false);
+    }
+  };
+
+  const handleGenerateQuestions = async () => {
+    if (!selectedItemForVerification?.item) return;
+
+    try {
+      setIsGeneratingQuestions(true);
+      const item = selectedItemForVerification.item;
+
+      const generatedQuestions = await generateVerificationQuestions({
+        name: item.name,
+        category: item.category,
+        description: item.description,
+        location: item.location,
+        imageUrl: item.imageUrl
+      });
+
+      // Convert generated questions to the format expected by the dialog
+      const formattedQuestions = generatedQuestions.map(question => ({
+        question,
+        id: Math.random().toString(36).substr(2, 9) // temporary ID for new questions
+      }));
+
+      setVerificationQuestions(formattedQuestions);
+    } catch (error) {
+      console.error('Error generating questions:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate questions. Please try again or add them manually.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGeneratingQuestions(false);
     }
   };
 
@@ -397,6 +434,28 @@ const LostReportsTab = memo(function LostReportsTab({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleGenerateQuestions}
+                disabled={isGeneratingQuestions}
+                className="mb-4"
+              >
+                {isGeneratingQuestions ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <span className="mr-2">✨</span>
+                    Generate Automatically
+                  </>
+                )}
+              </Button>
+            </div>
+
             {verificationQuestions.map((q, index) => (
               <div key={index} className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -434,6 +493,7 @@ const LostReportsTab = memo(function LostReportsTab({
             </Button>
             <p className="text-sm text-muted-foreground">
               Add specific questions that only the true owner would know.
+              You can generate questions automatically or add/edit them manually.
             </p>
           </div>
           <DialogFooter>

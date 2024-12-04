@@ -715,4 +715,98 @@ public class ItemController : ControllerBase
             });
         }
     }
+
+    [HttpPost("process/claim")]
+    public async Task<ActionResult<ApiResponse<string>>> ClaimItem([FromBody] ClaimItemDto dto)
+    {
+        try
+        {
+            // Get existing process for this item
+            var process = await _processService.GetProcessByItemIdAsync(dto.ItemId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "Process not found for this item"
+                });
+            }
+
+            // Update the process status
+            process.status = ProcessMessages.Status.CLAIM_REQUEST;
+            process.Message = ProcessMessages.Messages.CLAIM_REQUEST;
+            process.UpdatedAt = DateTime.UtcNow;
+            process.RequestorUserId = dto.RequestorUserId;  // Set the requestor's ID
+
+            await _processService.UpdateProcessAsync(process);
+
+            // Store the verification questions and answers
+            await _verificationQuestionService.CreateQuestionsWithAnswersAsync(
+                process.Id,
+                dto.Questions,
+                dto.AdditionalInfo
+            );
+
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "Claim submitted successfully",
+                Data = process.Id
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error submitting claim: {ex.Message}");
+            return StatusCode(500, new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Failed to submit claim"
+            });
+        }
+    }
+
+    [HttpPost("process/{processId}/cancel-claim")]
+    public async Task<ActionResult<ApiResponse<string>>> CancelClaimRequest(string processId)
+    {
+        try
+        {
+            // Get the process
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+            {
+                return NotFound(new ApiResponse<string>
+                {
+                    Success = false,
+                    Message = "Process not found"
+                });
+            }
+
+            // Delete verification questions
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+
+            // Update process status
+            process.status = ProcessMessages.Status.APPROVED;
+            process.Message = ProcessMessages.Messages.ITEM_APPROVED;
+            process.RequestorUserId = null;  // Clear requestor ID
+            process.UpdatedAt = DateTime.UtcNow;
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new ApiResponse<string>
+            {
+                Success = true,
+                Message = "Claim request cancelled successfully",
+                Data = processId
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error canceling claim request: {ex.Message}");
+            return StatusCode(500, new ApiResponse<string>
+            {
+                Success = false,
+                Message = "Failed to cancel claim request"
+            });
+        }
+    }
 } 

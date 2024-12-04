@@ -91,38 +91,98 @@ export default function UniLostAndFound() {
   // Add state for user's pending processes
   const [userPendingProcesses, setUserPendingProcesses] = useState([]);
 
+  // Add state for claim processes
+  const [claimProcesses, setClaimProcesses] = useState([]);
+
+  // Add useEffect for fetching claim processes
+  useEffect(() => {
+    const fetchClaimProcesses = async () => {
+      if (!user) return;
+      
+      try {
+        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+        const data = await response.json();
+        const processes = data.$values || [];
+        
+        // Filter processes where requestorUserId matches current user
+        const userClaims = processes.filter(p => 
+          p.requestorUserId === user.uid && 
+          p.status === "claim_request"
+        );
+        
+        setClaimProcesses(userClaims);
+      } catch (error) {
+        console.error('Error fetching claim processes:', error);
+      }
+    };
+
+    fetchClaimProcesses();
+  }, [user]);
+
   // Add function to fetch user's pending processes
   const fetchUserPendingProcesses = async () => {
-    if (!user?.uid) return;
-
+    if (!user) return;
+    
     try {
-      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-      if (!response.ok) throw new Error("Failed to fetch pending processes");
-      
-      const data = await response.json();
-      if (data && data.$values) {
-        // Filter processes for the current user
-        const userProcesses = data.$values.filter(process => 
-          process.userId === user.uid || process.item?.reporterId === user.uid
+        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+        const data = await response.json();
+        const processes = data.$values || [];
+        
+        // Filter processes:
+        // 1. User's regular processes (where UserId matches)
+        // 2. User's claim processes (where RequestorUserId matches)
+        const userProcesses = processes.filter(p => 
+            p.userId === user.uid || 
+            (p.requestorUserId === user.uid && p.status === "claim_request")
         );
+        
         setUserPendingProcesses(userProcesses);
-      }
     } catch (error) {
-      console.error('Error fetching user pending processes:', error);
+        console.error('Error fetching user pending processes:', error);
     }
   };
 
   // Add useEffect to fetch user's pending processes
   useEffect(() => {
-    if (user?.uid && activeSection === "pending_process") {
-      fetchUserPendingProcesses();
-      
-      // Set up polling for updates
-      const intervalId = setInterval(fetchUserPendingProcesses, 5000);
-      
-      return () => clearInterval(intervalId);
+    const fetchPendingProcesses = async () => {
+        if (!user) return;
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+            const data = await response.json();
+            const processes = data.$values || [];
+            
+            // Filter processes:
+            // 1. User's regular processes (where UserId matches)
+            // 2. User's claim processes (where RequestorUserId matches)
+            const userProcesses = processes.filter(p => 
+                p.userId === user.uid || 
+                (p.requestorUserId === user.uid && p.status === "claim_request")
+            );
+            
+            setUserPendingProcesses(userProcesses);
+        } catch (error) {
+            console.error('Error fetching user pending processes:', error);
+        }
+    };
+
+    // Add event listener for manual refresh
+    const handleRefresh = () => {
+        fetchPendingProcesses();
+    };
+
+    if (user) {
+        fetchPendingProcesses();
+        window.addEventListener('refreshPendingProcesses', handleRefresh);
+        const interval = setInterval(fetchPendingProcesses, 5000);
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('refreshPendingProcesses', handleRefresh);
+        };
+    } else {
+        setUserPendingProcesses([]);
     }
-  }, [user?.uid, activeSection]);
+  }, [user]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -269,8 +329,7 @@ export default function UniLostAndFound() {
       case "dashboard":
         const dashboardItems = items
           .filter(item => 
-            (item.Item?.Approved === true || item.item?.approved === true) && 
-            (item.status === "approved" || item.Status === "approved")
+            (item.Item?.Approved === true || item.item?.approved === true)
           )
           .map(item => ({
             id: item.Item?.Id || item.item?.id,
@@ -306,8 +365,7 @@ export default function UniLostAndFound() {
         const lostItems = items
           .filter(process => 
             process.item?.status?.toLowerCase() === "lost" && 
-            process.item?.approved === true &&
-            process.status === "approved"
+            process.item?.approved === true
           )
           .map(process => ({
             id: process.item.id,
@@ -341,8 +399,7 @@ export default function UniLostAndFound() {
         const foundItems = items
           .filter(process => 
             process.item?.status?.toLowerCase() === "found" && 
-            process.item?.approved === true &&
-            process.status === "approved"
+            process.item?.approved === true
           )
           .map(process => ({
             id: process.item.id,
@@ -840,55 +897,57 @@ export default function UniLostAndFound() {
 
   useEffect(() => {
     const fetchPendingProcessCount = async () => {
-      if (!user || authLoading) return;
-      
-      try {
-        const response = await makeAuthenticatedRequest(`/api/Item/pending/all`);
+        if (!user || authLoading) return;
         
-        if (response && response.$values) {
-          // Set items first
-          setItems(response.$values);
-          setIsLoading(false);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+            const data = await response.json();
+            
+            if (data && data.$values) {
+                // Set items first
+                setItems(data.$values);
+                setIsLoading(false);
 
-          // Calculate count - exclude awaiting_surrender status
-          const newCount = isAdmin
-            ? response.$values.filter(process => 
-                !process.item?.approved && 
-                process.status !== "awaiting_surrender"  // Add this condition
-              ).length
-            : response.$values.filter(process => 
-                process.userId === user.uid && 
-                process.status !== "awaiting_surrender"  // Add this condition
-              ).length;
+                // Calculate count based on:
+                // 1. User's regular processes (where UserId matches)
+                // 2. User's claim processes (where RequestorUserId matches)
+                // 3. Exclude awaiting_surrender status
+                const newCount = data.$values.filter(process => 
+                      process.status !== ProcessStatus.AWAITING_SURRENDER && (
+                        process.userId === user.uid || 
+                        (process.requestorUserId === user.uid && process.status === ProcessStatus.CLAIM_REQUEST)
+                    )
+                ).length;
 
-          setPendingProcessCount(prevCount => {
-            if (prevCount !== newCount) {
-              return newCount;
+
+                setPendingProcessCount(prevCount => {
+                    if (prevCount !== newCount) {
+                        return newCount;
+                    }
+                    return prevCount;
+                });
             }
-            return prevCount;
-          });
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            setPendingProcessCount(0);
+            setIsLoading(false);
+        } finally {
+            setIsProcessCountLoading(false);
         }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setPendingProcessCount(0);
-        setIsLoading(false);
-      } finally {
-        setIsProcessCountLoading(false);
-      }
     };
 
     if (user && !authLoading) {
-      setIsLoading(true);
-      setIsProcessCountLoading(true);
-      fetchPendingProcessCount();
-      const interval = setInterval(fetchPendingProcessCount, 5000);
-      return () => clearInterval(interval);
+        setIsLoading(true);
+        setIsProcessCountLoading(true);
+        fetchPendingProcessCount();
+        const interval = setInterval(fetchPendingProcessCount, 5000);
+        return () => clearInterval(interval);
     } else {
-      setPendingProcessCount(0);
-      setIsLoading(false);
-      setIsProcessCountLoading(false);
+        setPendingProcessCount(0);
+        setIsLoading(false);
+        setIsProcessCountLoading(false);
     }
-  }, [user, authLoading, isAdmin, makeAuthenticatedRequest]);
+  }, [user, authLoading]);
 
   // Add sort state
   const [sortOrder, setSortOrder] = useState("newest");

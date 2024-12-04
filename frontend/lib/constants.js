@@ -8,7 +8,8 @@ export const ProcessStatus = {
   AWAITING_REVIEW: "awaiting_review",
   PENDING_RETRIEVAL: "pending_retrieval",
   HANDED_OVER: "handed_over",
-  NO_SHOW: "no_show"
+  NO_SHOW: "no_show",
+  CLAIM_REQUEST: "claim_request"
 };
 
 export const ProcessMessages = {
@@ -26,7 +27,8 @@ export const ProcessMessages = {
   VERIFICATION_FAILED_FINAL: "Verification failed. Please visit the admin office to claim your item.",
   ADMIN_VERIFICATION_FAILED: "User failed verification after 2 attempts. Manual verification required.",
   HANDED_OVER: "Item has been successfully handed over",
-  NO_SHOW: "User did not show up for item retrieval"
+  NO_SHOW: "User did not show up for item retrieval",
+  CLAIM_REQUEST: "Claim request submitted with verification answers"
 };
 
 export const ItemStatus = {
@@ -36,7 +38,8 @@ export const ItemStatus = {
   HANDED_OVER: "handed_over",
   EXPIRED: "expired",
   UNCLAIMED: "unclaimed",
-  NO_SHOW: "no_show"
+  NO_SHOW: "no_show",
+  CLAIM_REQUEST: "claim_request"
 };
 
 export const ItemCategories = {
