@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using UniLostAndFound.API.Data;
 using UniLostAndFound.API.Repositories;
 using UniLostAndFound.API.Services.BackgroundServices;
+using UniLostAndFound.API.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,6 +73,10 @@ try
     {
         options.MultipartBodyLengthLimit = 10 * 1024 * 1024; // 10MB
     });
+
+    // Add these lines where you register other services
+    builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+    builder.Services.AddScoped<IEmailService, EmailService>();
 
     var app = builder.Build();
 
