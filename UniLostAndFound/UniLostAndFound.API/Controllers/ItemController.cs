@@ -5,6 +5,12 @@ using UniLostAndFound.API.Services;
 using System.Text.Json;
 using UniLostAndFound.API.Constants;
 using System.Security.Claims;
+using MailKit.Security;
+using MailKit.Net.Smtp;
+using MimeKit;
+using QRCoder;
+using System.Drawing;
+using System.Drawing.Imaging;
 
 namespace UniLostAndFound.API.Controllers;
 
@@ -18,6 +24,7 @@ public class ItemController : ControllerBase
     private readonly VerificationQuestionService _verificationQuestionService;
     private readonly AdminService _adminService;
     private readonly UserService _userService;
+    private readonly IEmailService _emailService;
 
     public ItemController(
         ItemService itemService,
@@ -25,7 +32,8 @@ public class ItemController : ControllerBase
         ILogger<ItemController> logger,
         VerificationQuestionService verificationQuestionService,
         AdminService adminService,
-        UserService userService)
+        UserService userService,
+        IEmailService emailService)
     {
         _itemService = itemService;
         _processService = processService;
@@ -33,6 +41,7 @@ public class ItemController : ControllerBase
         _verificationQuestionService = verificationQuestionService;
         _adminService = adminService;
         _userService = userService;
+        _emailService = emailService;
     }
 
     [HttpPost]
@@ -76,6 +85,43 @@ public class ItemController : ControllerBase
             // Get the created process ID from the service
             var process = await _processService.GetProcessByItemIdAsync(itemId);
             var processId = process?.Id;
+
+            // Get the user to send email
+            var user = await _userService.GetUserByIdAsync(createDto.ReporterId);
+            if (user != null)
+            {
+                _logger.LogInformation($"Attempting to send email. User: {user.Email}, Item: {createDto.Name}, Process: {process.Id}");
+                try
+                {
+                    if (createDto.Status == ItemStatus.FOUND)
+                    {
+                        await _emailService.SendFoundItemReportedEmailAsync(
+                            user.Email,
+                            createDto.Name,
+                            process.Id,
+                            ""  // Empty string since we're not using QR code anymore
+                        );
+                    }
+                    else
+                    {
+                        // Send regular lost item email
+                        await _emailService.SendItemReportedEmailAsync(
+                            user.Email,
+                            createDto.Name,
+                            process.Id
+                        );
+                    }
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Email send failed: {emailEx.Message}");
+                    // Continue with item creation even if email fails
+                }
+            }
+            else
+            {
+                _logger.LogWarning($"No user found for ReporterId: {createDto.ReporterId}");
+            }
 
             return Ok(new { itemId, processId });
         }
@@ -177,11 +223,55 @@ public class ItemController : ControllerBase
         try
         {
             await _itemService.UpdateApprovalStatusAsync(id, dto.Approved);
-            return Ok();
+
+            if (dto.Approved)
+            {
+                // Get the item and process details
+                var item = await _itemService.GetItemAsync(id);
+                var process = await _processService.GetProcessByItemIdAsync(id);
+                
+                if (item != null && process != null)
+                {
+                    // Get the reporter's details
+                    var reporter = await _userService.GetUserByIdAsync(item.ReporterId);
+                    if (reporter != null)
+                    {
+                        try
+                        {
+                            // Send different emails based on item type
+                            if (item.Status == ItemStatus.FOUND)
+                            {
+                                await _emailService.SendFoundItemApprovedEmailAsync(
+                                    reporter.Email,
+                                    item.Name,
+                                    item.Id,
+                                    process.Id
+                                );
+                            }
+                            else
+                            {
+                                await _emailService.SendItemApprovedEmailAsync(
+                                    reporter.Email,
+                                    item.Name,
+                                    item.Id,
+                                    process.Id
+                                );
+                            }
+                        }
+                        catch (Exception emailEx)
+                        {
+                            _logger.LogError($"Failed to send approval email: {emailEx.Message}");
+                            // Continue even if email fails
+                        }
+                    }
+                }
+            }
+
+            return Ok(new { message = "Item approved successfully" });
         }
         catch (Exception ex)
         {
-            return StatusCode(500, ex.Message);
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 
@@ -205,10 +295,29 @@ public class ItemController : ControllerBase
                 
                 // Set the standard message from constants
                 process.Message = "Item is being verified";
+
+                // Get the item and user details for email
+                var item = await _itemService.GetItemAsync(process.ItemId);
+                var user = await _userService.GetUserByIdAsync(process.UserId);
+
+                if (item != null && user != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationStartedEmailAsync(
+                            user.Email,
+                            item.Name
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send verification email: {emailEx.Message}");
+                        // Continue even if email fails
+                    }
+                }
             }
             else 
             {
-                // For other statuses, use the provided message
                 process.Message = dto.Message;
             }
 
@@ -227,27 +336,59 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the process and its questions
+            _logger.LogInformation($"Starting verification for process: {processId}");
+            
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
+            {
+                _logger.LogWarning($"Process not found: {processId}");
                 return NotFound("Process not found");
+            }
 
-            var questions = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
-            if (!questions.Any())
-                return BadRequest("No verification questions found for this process");
+            // Save the answers first
+            await _verificationQuestionService.SaveAnswersAsync(
+                processId,
+                dto.Answers
+            );
 
-            // For now, we'll just update the status to verified
-            // In a real application, you would compare the answers with stored correct answers
-            process.status = "verified";
-            process.Message = "Verification completed successfully";
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
+            _logger.LogInformation($"Item found: {item != null}, User found: {user != null}");
+
+            // Send email to notify user their answers are being reviewed
+            if (user != null && item != null)
+            {
+                try
+                {
+                    _logger.LogInformation($"Attempting to send email to {user.Email}");
+                    await _emailService.SendAnswersSubmittedEmailAsync(
+                        user.Email,
+                        item.Name,
+                        dto.Answers
+                    );
+                    _logger.LogInformation("Email sent successfully");
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send answers submitted email: {emailEx.Message}");
+                    _logger.LogError($"Stack trace: {emailEx.StackTrace}");
+                }
+            }
+
+            // Update process status to awaiting_review
+            process.status = ProcessMessages.Status.AWAITING_REVIEW;
+            process.Message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW;
             
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new { message = "Verification completed successfully" });
+            return Ok(new { success = true, message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error verifying answers: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return StatusCode(500, new { message = "Error verifying answers", error = ex.Message });
         }
     }
@@ -455,6 +596,10 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Increment verification attempts
             process.VerificationAttempts += 1;
 
@@ -463,33 +608,53 @@ public class ItemController : ControllerBase
             {
                 process.status = ProcessMessages.Status.VERIFICATION_FAILED;
                 process.Message = ProcessMessages.Messages.VERIFICATION_FAILED;
+                
+                // Send max attempts reached email
+                if (user != null && item != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationMaxAttemptsEmailAsync(
+                            user.Email,
+                            item.Name
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send max attempts email: {emailEx.Message}");
+                    }
+                }
             }
             else
             {
                 process.status = ProcessMessages.Status.IN_VERIFICATION;
                 process.Message = $"Incorrect answers. {3 - process.VerificationAttempts} attempt(s) remaining.";
+                
+                // Send regular verification failed email
+                if (user != null && item != null)
+                {
+                    try
+                    {
+                        await _emailService.SendVerificationFailedEmailAsync(
+                            user.Email,
+                            item.Name,
+                            3 - process.VerificationAttempts
+                        );
+                    }
+                    catch (Exception emailEx)
+                    {
+                        _logger.LogError($"Failed to send verification failed email: {emailEx.Message}");
+                    }
+                }
             }
 
             await _processService.UpdateProcessAsync(process);
-
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = process.Message,
-                Data = new { 
-                    attemptsRemaining = 3 - process.VerificationAttempts,
-                    status = process.status
-                }
-            });
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling wrong answer: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling verification answer"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -502,33 +667,41 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Update process status and message
-            process.status = Constants.ProcessMessages.Status.PENDING_RETRIEVAL;
-            process.Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
+            process.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            process.Message = ProcessMessages.Messages.VERIFICATION_SUCCESSFUL;
 
             // Clear verification questions since they're no longer needed
             await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
-            await _processService.UpdateProcessAsync(process);
-
-            return Ok(new ApiResponse<object>
+            // Send success email notification
+            if (user != null && item != null)
             {
-                Success = true,
-                Message = Constants.ProcessMessages.Messages.VERIFICATION_SUCCESSFUL,
-                Data = new { 
-                    status = process.status,
-                    message = process.Message
+                try
+                {
+                    await _emailService.SendReadyForPickupEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
                 }
-            });
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send pickup notification email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
+            await _processService.UpdateProcessAsync(process);
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling correct answer: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling verification answer"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -541,30 +714,46 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Update process status
             process.status = ProcessMessages.Status.HANDED_OVER;
             process.Message = ProcessMessages.Messages.HANDED_OVER;
 
+            // Update item's approved status to false
+            if (item != null)
+            {
+                item.Approved = false;
+                await _itemService.UpdateItemAsync(item);
+            }
+
+            // Send email notification
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendItemHandedOverEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send hand over email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = ProcessMessages.Messages.HANDED_OVER,
-                Data = new { 
-                    status = process.status,
-                    message = process.Message
-                }
-            });
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling hand over: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling hand over"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -577,6 +766,10 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
             // Update process status
             process.status = ProcessMessages.Status.NO_SHOW;
             process.Message = ProcessMessages.Messages.NO_SHOW;
@@ -584,32 +777,36 @@ public class ItemController : ControllerBase
             // Update item status back to pending approval
             if (process.Item != null)
             {
-                // Keep the original status (lost/found) but mark as not approved
                 process.Item.Status = process.Item.Status; // Keeps original lost/found status
                 process.Item.Approved = false;
                 await _itemService.UpdateItemAsync(process.Item);
             }
 
+            // Send email notification
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendNoShowEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send no-show email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new ApiResponse<object>
-            {
-                Success = true,
-                Message = ProcessMessages.Messages.NO_SHOW,
-                Data = new { 
-                    status = process.status,
-                    message = process.Message
-                }
-            });
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error handling no-show: {ex.Message}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
-                Success = false,
-                Message = "Error handling no-show"
-            });
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 
@@ -664,7 +861,6 @@ public class ItemController : ControllerBase
                 });
             }
 
-            // Get the process
             var process = await _processService.GetProcessByIdAsync(dto.ProcessId);
             if (process == null)
             {
@@ -675,26 +871,49 @@ public class ItemController : ControllerBase
                 });
             }
 
-            // Validate process status
-            if (process.status != ProcessMessages.Status.AWAITING_SURRENDER && 
-                process.status != "approved")
+            // Check if already in pending_retrieval
+            if (process.status == ProcessMessages.Status.PENDING_RETRIEVAL)
             {
-                return BadRequest(new ApiResponse<object>
+                return Ok(new ApiResponse<object>
                 {
                     Success = false,
-                    Message = $"Invalid process status. Expected {ProcessMessages.Status.AWAITING_SURRENDER} or approved, got {process.status}"
+                    Message = "Item is already in pending_retrieval status",
+                    Data = new
+                    {
+                        processId = process.Id,
+                        status = process.status,
+                        message = process.Message
+                    }
                 });
             }
+
+            // Get the item and reporter details for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var reporter = await _userService.GetUserByIdAsync(item?.ReporterId);
 
             // Update process status
             process.status = ProcessMessages.Status.PENDING_RETRIEVAL;
             process.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
             process.UpdatedAt = DateTime.UtcNow;
 
-            // Update item approval status directly
-            await _itemService.UpdateApprovalStatusAsync(process.ItemId, false);
-
             await _processService.UpdateProcessAsync(process);
+
+            // Send email to the reporter if we have their details
+            if (reporter != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendReadyForPickupEmailAsync(
+                        reporter.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send item ready for pickup email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
 
             return Ok(new ApiResponse<object>
             {
@@ -720,7 +939,7 @@ public class ItemController : ControllerBase
     }
 
     [HttpPost("process/claim")]
-    public async Task<ActionResult<ApiResponse<string>>> ClaimItem([FromBody] ClaimItemDto dto)
+    public async Task<ActionResult<ApiResponse<string>>> CreateClaimProcess([FromBody] ClaimItemDto dto)
     {
         try
         {
@@ -750,20 +969,41 @@ public class ItemController : ControllerBase
                 dto.AdditionalInfo
             );
 
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(dto.ItemId);
+            var user = await _userService.GetUserByIdAsync(dto.RequestorUserId);
+
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendClaimSubmittedEmailAsync(
+                        user.Email,
+                        item.Name,
+                        dto.Questions
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send claim submitted email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
             return Ok(new ApiResponse<string>
             {
                 Success = true,
-                Message = "Claim submitted successfully",
+                Message = "Claim request submitted successfully",
                 Data = process.Id
             });
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error submitting claim: {ex.Message}");
+            _logger.LogError($"Error creating claim request: {ex.Message}");
             return StatusCode(500, new ApiResponse<string>
             {
                 Success = false,
-                Message = "Failed to submit claim"
+                Message = "Failed to submit claim request"
             });
         }
     }
@@ -818,38 +1058,31 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the process
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
             {
-                return NotFound(new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Process not found"
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Process not found" 
                 });
             }
 
-            // Get the item
+            // Get the item and requestor details
             var item = await _itemService.GetItemAsync(process.ItemId);
-            if (item == null)
+            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
+            
+            if (item == null || requestor == null)
             {
                 return NotFound(new ApiResponse<bool>
                 {
                     Success = false,
-                    Message = "Item not found"
+                    Message = "Item or requestor not found"
                 });
             }
 
-            // Get the requestor's user details to get their student ID
-            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
-            if (requestor == null)
-            {
-                return NotFound(new ApiResponse<bool>
-                {
-                    Success = false,
-                    Message = "Requestor user not found"
-                });
-            }
+            // Get the verification questions and answers for email
+            var questionsAndAnswers = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
 
             _logger.LogInformation($"Updating item ownership. Old ReporterId: {item.ReporterId}, New ReporterId: {process.RequestorUserId}");
             _logger.LogInformation($"Updating student ID. Old StudentId: {item.StudentId}, New StudentId: {requestor.StudentId}");
@@ -872,7 +1105,26 @@ public class ItemController : ControllerBase
             process.RequestorUserId = null;            // Clear requestor
             await _processService.UpdateProcessAsync(process);
 
-            // Delete verification questions
+            // Send email notification with verification details
+            try
+            {
+                await _emailService.SendClaimApprovedEmailAsync(
+                    requestor.Email,
+                    item.Name,
+                    questionsAndAnswers.Select(q => new ClaimQuestionAnswerDto 
+                    { 
+                        Question = q.Question,
+                        Answer = q.Answer 
+                    }).ToList()
+                );
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send claim approval email: {emailEx.Message}");
+                // Continue even if email fails
+            }
+
+            // Delete verification questions after successful email
             await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
             return Ok(new ApiResponse<bool>
@@ -899,16 +1151,31 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the process
             var process = await _processService.GetProcessByIdAsync(processId);
             if (process == null)
+            {
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Process not found" 
+                });
+            }
+
+            // Get the item and requestor details
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var requestor = await _userService.GetUserByIdAsync(process.RequestorUserId);
+            
+            if (item == null || requestor == null)
             {
                 return NotFound(new ApiResponse<bool>
                 {
                     Success = false,
-                    Message = "Process not found"
+                    Message = "Item or requestor not found"
                 });
             }
+
+            // Get the verification questions and answers for email
+            var questionsAndAnswers = await _verificationQuestionService.GetQuestionsByProcessIdAsync(processId);
 
             // Store requestor info for future email notification
             string requestorUserId = process.RequestorUserId;
@@ -919,20 +1186,27 @@ public class ItemController : ControllerBase
             process.RequestorUserId = null;  // Clear claim request
             await _processService.UpdateProcessAsync(process);
 
-            // Delete verification questions
-            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
+            // Send email notification with verification details
+            try
+            {
+                await _emailService.SendClaimRejectedEmailAsync(
+                    requestor.Email,
+                    item.Name,
+                    questionsAndAnswers.Select(q => new ClaimQuestionAnswerDto 
+                    { 
+                        Question = q.Question,
+                        Answer = q.Answer 
+                    }).ToList()
+                );
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send claim rejection email: {emailEx.Message}");
+                // Continue even if email fails
+            }
 
-            // TODO: Email Integration
-            // Send email notification to requestor about rejected claim
-            // - Get user email from requestorUserId
-            // - Use email service to send rejection notification
-            // - Include item details and contact information for admin
-            // Example:
-            // await _emailService.SendClaimRejectionEmail(
-            //     requestorUserId,
-            //     process.ItemId,
-            //     "Your claim request has been rejected. Please contact admin for more information."
-            // );
+            // Delete verification questions after sending email
+            await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
             return Ok(new ApiResponse<bool>
             {

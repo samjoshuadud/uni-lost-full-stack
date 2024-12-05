@@ -52,6 +52,53 @@ export default function DashboardSection({
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
   const [processes, setProcesses] = useState([]);
 
+  // Move the highlight effect here, before other useEffects
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const highlightId = urlParams.get('highlight');
+      const shouldDelay = urlParams.get('delay') === 'true';
+
+      if (highlightId) {
+        const delay = shouldDelay ? 8000 : 100;
+
+        setTimeout(() => {
+          const findAndHighlightItem = () => {
+            const itemElement = document.getElementById(highlightId);
+            if (itemElement) {
+              itemElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              
+              itemElement.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+              itemElement.style.boxShadow = '0 0 0 3px rgb(0, 82, 204), 0 8px 20px -4px rgba(0, 82, 204, 0.3)';
+              itemElement.style.transform = 'scale(1.02)';
+              itemElement.style.zIndex = '50';
+              
+              const pulseAnimation = itemElement.animate([
+                { boxShadow: '0 0 0 3px rgba(0, 82, 204, 0.8), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' },
+                { boxShadow: '0 0 0 6px rgba(0, 82, 204, 0.2), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' },
+                { boxShadow: '0 0 0 3px rgba(0, 82, 204, 0.8), 0 8px 20px -4px rgba(0, 82, 204, 0.3)' }
+              ], {
+                duration: 1500,
+                iterations: 2
+              });
+              
+              setTimeout(() => {
+                itemElement.style.transition = 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)';
+                itemElement.style.boxShadow = '';
+                itemElement.style.transform = '';
+                itemElement.style.zIndex = '';
+              }, 3000);
+            } else {
+              setTimeout(findAndHighlightItem, 100);
+            }
+          };
+
+          findAndHighlightItem();
+        }, delay);
+      }
+    }
+  }, []);  // Empty dependency array
+
   // Separate useEffect for fetching processes
   useEffect(() => {
     const fetchProcesses = async () => {
@@ -118,7 +165,7 @@ export default function DashboardSection({
   // Add loading skeleton UI
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
           <Card 
             key={i} 
@@ -130,22 +177,35 @@ export default function DashboardSection({
             }}
           >
             <CardContent className="p-4">
-              <div className="w-full h-48 mb-4">
-                <Skeleton className="w-full h-full rounded-lg" />
+              {/* Image Skeleton with subtle animation */}
+              <div className="w-full h-48 mb-4 relative overflow-hidden">
+                <Skeleton className="w-full h-full rounded-lg bg-gray-200/60 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
               </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-5 w-16" />
-                  </div>
-                  <Skeleton className="h-4 w-2/3" />
+
+              {/* Content Skeletons */}
+              <div className="space-y-4">
+                {/* Category Badge */}
+                <div className="flex gap-2">
+                  <Skeleton className="h-6 w-20 rounded-full bg-gray-200/60" />
+                  <Skeleton className="h-6 w-24 rounded-full bg-gray-200/60" />
                 </div>
-                <div className="flex items-center justify-between">
-                  <Skeleton className="h-4 w-24" />
+
+                {/* Description Lines */}
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-full bg-gray-200/60" />
+                  <Skeleton className="h-4 w-4/5 bg-gray-200/60" />
+                </div>
+
+                {/* Footer Section */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-4 w-4 rounded-full bg-gray-200/60" />
+                    <Skeleton className="h-4 w-24 bg-gray-200/60" />
+                  </div>
                   <div className="flex gap-2">
-                    <Skeleton className="h-9 w-[100px]" />
-                    <Skeleton className="h-9 w-9" />
+                    <Skeleton className="h-9 w-[120px] rounded-md bg-gray-200/60" />
+                    <Skeleton className="h-9 w-9 rounded-md bg-gray-200/60" />
                   </div>
                 </div>
               </div>
@@ -386,7 +446,7 @@ export default function DashboardSection({
                       <img
                         src={item.imageUrl}
                         alt={item.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        className="w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.01]"
                         onError={(e) => {
                           e.target.style.display = 'none';
                           e.target.nextSibling.style.display = 'flex';
@@ -411,7 +471,7 @@ export default function DashboardSection({
                         <img
                           src={item.imageUrl}
                           alt={item.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          className="w-full h-full object-cover transition-all duration-500 ease-in-out group-hover:scale-[1.01]"
                           onError={(e) => {
                             e.target.style.display = 'none';
                             e.target.nextSibling.style.display = 'flex';
@@ -591,7 +651,7 @@ export default function DashboardSection({
                               size="sm"
                               className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                               onClick={() => handleFoundThisClick(item)}
-                              disabled={generatingQRForItem === item.id}
+                              disabled={generatingQRForItem === item.id || userId === item.reporterId}
                             >
                               {generatingQRForItem === item.id ? (
                                 <>
@@ -601,7 +661,7 @@ export default function DashboardSection({
                               ) : (
                                 <>
                                   <Package className="h-4 w-4 mr-2" />
-                                  I Found This
+                                  {userId === item.reporterId ? "You reported this item" : "I Found This"}
                                 </>
                               )}
                             </Button>
@@ -697,3 +757,4 @@ export default function DashboardSection({
     </div>
   );
 } 
+
