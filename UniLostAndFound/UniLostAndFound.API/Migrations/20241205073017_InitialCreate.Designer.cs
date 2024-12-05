@@ -11,8 +11,8 @@ using UniLostAndFound.API.Data;
 namespace UniLostAndFound.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241204115457_AddAnswerToVerificationQuestions")]
-    partial class AddAnswerToVerificationQuestions
+    [Migration("20241205073017_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -132,6 +132,9 @@ namespace UniLostAndFound.API.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("RequestorUserId")
+                        .HasColumnType("varchar(255)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -150,6 +153,8 @@ namespace UniLostAndFound.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("RequestorUserId");
 
                     b.HasIndex("UserId");
 
@@ -195,7 +200,7 @@ namespace UniLostAndFound.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
                     b.Property<string>("Type")
                         .IsRequired()
@@ -217,16 +222,13 @@ namespace UniLostAndFound.API.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("varchar(255)");
 
-                    b.Property<string>("AdditionalInfo")
-                        .HasColumnType("longtext");
-
                     b.Property<string>("Answer")
                         .HasColumnType("longtext");
 
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
                     b.Property<string>("ProcessId")
                         .IsRequired()
@@ -239,7 +241,7 @@ namespace UniLostAndFound.API.Migrations
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
                     b.HasKey("Id");
 
@@ -278,6 +280,11 @@ namespace UniLostAndFound.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("UniLostAndFound.API.Models.User", "RequestorUser")
+                        .WithMany()
+                        .HasForeignKey("RequestorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("UniLostAndFound.API.Models.User", "User")
                         .WithMany("PendingProcesses")
                         .HasForeignKey("UserId")
@@ -285,6 +292,8 @@ namespace UniLostAndFound.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Item");
+
+                    b.Navigation("RequestorUser");
 
                     b.Navigation("User");
                 });
