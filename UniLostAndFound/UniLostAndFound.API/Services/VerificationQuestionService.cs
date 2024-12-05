@@ -116,4 +116,31 @@ public class VerificationQuestionService : IVerificationQuestionService
             throw;
         }
     }
+
+    public async Task SaveAnswersAsync(string processId, List<VerificationAnswerDto> answers)
+    {
+        try
+        {
+            var questions = await _context.VerificationQuestions
+                .Where(q => q.ProcessId == processId)
+                .ToListAsync();
+
+            foreach (var question in questions)
+            {
+                var answer = answers.FirstOrDefault(a => a.Question == question.Question);
+                if (answer != null)
+                {
+                    question.Answer = answer.Answer;
+                    question.UpdatedAt = DateTime.UtcNow;
+                }
+            }
+
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error saving verification answers: {ex.Message}");
+            throw;
+        }
+    }
 } 
