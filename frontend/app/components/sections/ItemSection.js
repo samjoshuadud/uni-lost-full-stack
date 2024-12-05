@@ -512,7 +512,7 @@ export default function ItemSection({
                               size="sm"
                               className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                               onClick={() => handleFoundThisClick(item)}
-                              disabled={generatingQRForItem === item.id}
+                              disabled={generatingQRForItem === item.id || userId === item.reporterId}
                             >
                               {generatingQRForItem === item.id ? (
                                 <>
@@ -522,7 +522,7 @@ export default function ItemSection({
                               ) : (
                                 <>
                                   <Package className="h-4 w-4 mr-2" />
-                                  I Found This
+                                  {userId === item.reporterId ? "You reported this item" : "I Found This"}
                                 </>
                               )}
                             </Button>
