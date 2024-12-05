@@ -125,13 +125,14 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
       console.log('Submitting answers:', formattedAnswers);
 
-      const response = await fetch(`${API_BASE_URL}/api/Item/verify`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(formattedAnswers)
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/api/Item/process/${selectedProcess.id}/verify`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formattedAnswers)
+        }
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to submit answers: ${response.status} ${response.statusText}`);
@@ -304,7 +305,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         if (process.requestorUserId === user?.uid) {
           // Requestor view (person who made the claim)
           return (
-            <div key={process.id} className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle}`}>
+            <div 
+              key={process.id} 
+              className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle} transition-all duration-300 hover:shadow-xl hover:-translate-y-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.08)]`}
+            >
               <div className="p-4 flex flex-col h-full">
                 {/* Status Badge */}
                 <div className="flex justify-between items-start mb-4">
@@ -318,22 +322,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
                 {/* Item Details */}
                 <div className="space-y-4 flex-grow">
-                  <div className="flex gap-4">
-                    {/* Item Image */}
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                      {process.item?.imageUrl ? (
-                        <img
-                          src={process.item.imageUrl}
-                          alt={process.item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-
+                  <div className="flex flex-col gap-2">
                     {/* Item Info */}
                     <div className="flex-grow">
                       <h3 className="font-medium text-gray-900">
@@ -392,7 +381,10 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         } else if (process.item.reporterId === user?.uid) {
           // Reporter view (person who reported the item)
           return (
-            <div key={process.id} className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle}`}>
+            <div 
+              key={process.id} 
+              className={`bg-white rounded-lg shadow-md overflow-hidden ${cardStyle} transition-all duration-300 hover:shadow-xl hover:-translate-y-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.08)]`}
+            >
               <div className="p-4 flex flex-col h-full">
                 {/* Status Badge */}
                 <div className="flex justify-between items-start mb-4">
@@ -408,22 +400,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
                 {/* Item Details */}
                 <div className="space-y-4 flex-grow">
-                  <div className="flex gap-4">
-                    {/* Item Image */}
-                    <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0">
-                      {process.item?.imageUrl ? (
-                        <img
-                          src={process.item.imageUrl}
-                          alt={process.item.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-8 w-8 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
-
+                  <div className="flex flex-col gap-2">
                     {/* Item Info */}
                     <div className="flex-grow">
                       <h3 className="font-medium text-gray-900">
@@ -582,7 +559,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
               </div>
             </div>
             {renderActionButtons(
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-2 w-full">
                 <Button
                   key="view-details"
                   variant="outline"
@@ -989,7 +966,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     return (
       <Card 
         key={process.id} 
-        className={`${cardStyle} drop-shadow-[0_4px_4px_rgba(0,0,0,0.15)]`}
+        className={`${cardStyle} transition-all duration-300 hover:shadow-xl hover:-translate-y-1 drop-shadow-[0_4px_8px_rgba(0,0,0,0.08)]`}
       >
         <CardContent className="p-6 h-full">
           <div className="flex flex-col h-full">
