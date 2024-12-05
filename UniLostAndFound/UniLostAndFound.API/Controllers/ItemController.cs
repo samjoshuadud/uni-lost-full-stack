@@ -365,7 +365,8 @@ public class ItemController : ControllerBase
                     _logger.LogInformation($"Attempting to send email to {user.Email}");
                     await _emailService.SendAnswersSubmittedEmailAsync(
                         user.Email,
-                        item.Name
+                        item.Name,
+                        dto.Answers
                     );
                     _logger.LogInformation("Email sent successfully");
                 }
