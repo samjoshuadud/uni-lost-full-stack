@@ -763,6 +763,13 @@ public class ItemController : ControllerBase
             process.status = ProcessMessages.Status.HANDED_OVER;
             process.Message = ProcessMessages.Messages.HANDED_OVER;
 
+            // Update item's approved status to false
+            if (item != null)
+            {
+                item.Approved = false;
+                await _itemService.UpdateItemAsync(item);
+            }
+
             // Send email notification
             if (user != null && item != null)
             {
