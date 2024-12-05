@@ -611,7 +611,7 @@ namespace UniLostAndFound.API.Services
             }
         }
 
-        public async Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName)
+        public async Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName, List<VerificationAnswerDto> answers)
         {
             try
             {
@@ -620,12 +620,26 @@ namespace UniLostAndFound.API.Services
                 email.To.Add(MailboxAddress.Parse(userEmail));
                 email.Subject = "Verification Answers Submitted - Under Review";
 
+                // Build the questions and answers HTML
+                var answersHtml = string.Join("\n", answers.Select((a, index) => $@"
+                    <div style='margin-bottom: 10px;'>
+                        <p style='margin: 0; font-weight: 500;'>Question {index + 1}:</p>
+                        <p style='margin: 0; color: #4B5563;'>{a.Question}</p>
+                        <p style='margin: 0; color: #1F2937;'>Your answer: {a.Answer}</p>
+                    </div>"));
+
                 var builder = new BodyBuilder
                 {
                     HtmlBody = $@"
                         <h2>Answers Submitted Successfully</h2>
                         <p>Dear Student,</p>
                         <p>Your verification answers for item ""{itemName}"" have been submitted successfully.</p>
+
+                        <div style='background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin: 20px 0;'>
+                            <h3 style='margin-top: 0;'>Your Submitted Answers:</h3>
+                            {answersHtml}
+                        </div>
+
                         <p>What's Next?</p>
                         <ul>
                             <li>Our admin team will review your answers</li>

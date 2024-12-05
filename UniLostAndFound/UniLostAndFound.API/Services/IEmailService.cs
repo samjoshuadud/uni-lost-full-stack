@@ -10,7 +10,7 @@ public interface IEmailService
     Task SendClaimApprovedEmailAsync(string userEmail, string itemName, List<ClaimQuestionAnswerDto> questionsAndAnswers);
     Task SendClaimRejectedEmailAsync(string userEmail, string itemName, List<ClaimQuestionAnswerDto> questionsAndAnswers);
     Task SendReadyForPickupEmailAsync(string userEmail, string itemName);
-    Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName);
+    Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName, List<VerificationAnswerDto> answers);
     Task SendVerificationMaxAttemptsEmailAsync(string userEmail, string itemName);
     Task SendItemHandedOverEmailAsync(string userEmail, string itemName);
     Task SendNoShowEmailAsync(string userEmail, string itemName);
