@@ -28,7 +28,7 @@ public class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .IsRequired();
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
         });
 
         modelBuilder.Entity<Item>(entity =>
@@ -92,8 +92,10 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Question).IsRequired();
             entity.Property(e => e.ProcessId).IsRequired();
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
 
             entity.HasOne(e => e.Process)
                 .WithMany()

@@ -25,7 +25,7 @@ namespace UniLostAndFound.API.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Value = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)")
                 },
                 constraints: table =>
                 {
@@ -135,6 +135,8 @@ namespace UniLostAndFound.API.Migrations
                     Message = table.Column<string>(type: "longtext", nullable: false)
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     VerificationAttempts = table.Column<int>(type: "int", nullable: false),
+                    RequestorUserId = table.Column<string>(type: "varchar(255)", nullable: true)
+                        .Annotation("MySql:CharSet", "utf8mb4"),
                     CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
                 },
@@ -147,6 +149,12 @@ namespace UniLostAndFound.API.Migrations
                         principalTable: "Items",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_PendingProcesses_Users_RequestorUserId",
+                        column: x => x.RequestorUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
                         name: "FK_PendingProcesses_Users_UserId",
                         column: x => x.UserId,
@@ -168,8 +176,8 @@ namespace UniLostAndFound.API.Migrations
                         .Annotation("MySql:CharSet", "utf8mb4"),
                     Answer = table.Column<string>(type: "longtext", nullable: true)
                         .Annotation("MySql:CharSet", "utf8mb4"),
-                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP"),
-                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP")
+                    CreatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)"),
+                    UpdatedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false, defaultValueSql: "CURRENT_TIMESTAMP(6)")
                 },
                 constraints: table =>
                 {
@@ -197,6 +205,11 @@ namespace UniLostAndFound.API.Migrations
                 name: "IX_PendingProcesses_ItemId",
                 table: "PendingProcesses",
                 column: "ItemId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PendingProcesses_RequestorUserId",
+                table: "PendingProcesses",
+                column: "RequestorUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_PendingProcesses_UserId",
