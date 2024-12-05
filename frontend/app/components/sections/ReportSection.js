@@ -422,7 +422,7 @@ export default function ReportSection({
         {/* Enhanced Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#0052cc] to-[#0747a6]">
-            Report Item Section
+            Report Item
           </h1>
           <p className="text-gray-600">
             Please provide detailed information about the item
