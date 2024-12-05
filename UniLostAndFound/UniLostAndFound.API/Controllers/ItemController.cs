@@ -345,7 +345,11 @@ public class ItemController : ControllerBase
                 return NotFound("Process not found");
             }
 
-            _logger.LogInformation($"Found process. ItemId: {process.ItemId}, UserId: {process.UserId}");
+            // Save the answers first
+            await _verificationQuestionService.SaveAnswersAsync(
+                processId,
+                dto.Answers
+            );
 
             // Get the item and user for email
             var item = await _itemService.GetItemAsync(process.ItemId);
@@ -372,59 +376,13 @@ public class ItemController : ControllerBase
                 }
             }
 
-            // Compare answers and determine success
-            bool isVerified = true; // Your verification logic here
-            
-            if (isVerified)
-            {
-                process.status = "verified";
-                process.Message = "Verification completed successfully";
-                
-                // Send success email
-                if (user != null && item != null)
-                {
-                    try
-                    {
-                        await _emailService.SendVerificationSuccessEmailAsync(
-                            user.Email,
-                            item.Name
-                        );
-                    }
-                    catch (Exception emailEx)
-                    {
-                        _logger.LogError($"Failed to send verification success email: {emailEx.Message}");
-                    }
-                }
-            }
-            else
-            {
-                process.status = "verification_failed";
-                process.Message = "Verification failed";
-                
-                // Send failure email with remaining attempts
-                if (user != null && item != null)
-                {
-                    try
-                    {
-                        // Calculate remaining attempts (assuming max is 3)
-                        int remainingAttempts = 3 - (process.VerificationAttempts + 1);
-                        
-                        await _emailService.SendVerificationFailedEmailAsync(
-                            user.Email,
-                            item.Name,
-                            remainingAttempts  // Add the remaining attempts parameter
-                        );
-                    }
-                    catch (Exception emailEx)
-                    {
-                        _logger.LogError($"Failed to send verification failed email: {emailEx.Message}");
-                    }
-                }
-            }
+            // Update process status to awaiting_review
+            process.status = ProcessMessages.Status.AWAITING_REVIEW;
+            process.Message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW;
             
             await _processService.UpdateProcessAsync(process);
 
-            return Ok(new { success = isVerified, message = process.Message });
+            return Ok(new { success = true, message = ProcessMessages.Messages.AWAITING_ANSWER_REVIEW });
         }
         catch (Exception ex)
         {
