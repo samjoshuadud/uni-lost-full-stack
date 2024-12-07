@@ -1303,22 +1303,24 @@ export default function UniLostAndFound() {
               </Select>
             </div>
 
-            {/*Claim Status Dropdown */}
-            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-              <Select
-                value={claimStatus}
-                onValueChange={setClaimStatus}
-              >
-                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                  <SelectValue placeholder="Claim Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Items</SelectItem>
-                  <SelectItem value="none">No Claims</SelectItem>
-                  <SelectItem value="pending">Pending Claims</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Claim Status Dropdown - Only show for non-admin users */}
+            {!isAdmin && (
+              <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                <Select
+                  value={claimStatus}
+                  onValueChange={setClaimStatus}
+                >
+                  <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                    <SelectValue placeholder="Claim Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Items</SelectItem>
+                    <SelectItem value="none">No Claims</SelectItem>
+                    <SelectItem value="pending">Pending Claims</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Sort Dropdown */}
             <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">

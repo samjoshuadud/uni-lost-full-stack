@@ -14,6 +14,7 @@ import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
 import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock, Eye } from "lucide-react"
 import { API_BASE_URL } from "@/lib/api-config";
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 
 export default function ReportSection({ 
   onSubmit, 
@@ -416,46 +417,61 @@ export default function ReportSection({
   };
 
   return (
-    <div className="bg-[#f8f9fa] p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-[#0052cc]">Report Item Section</h1>
+    <div className="min-h-screen bg-gradient-to-b from-[#f8f9fa] to-white p-6">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Enhanced Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#0052cc] to-[#0747a6]">
+            Report Item
+          </h1>
+          <p className="text-gray-600">
+            Please provide detailed information about the item
+          </p>
         </div>
 
-        {/* Main Form */}
-        <Card className="border-0 shadow-[0_10px_15px_rgba(0,0,0,0.1)]">
-          <CardContent className="p-6 space-y-6">
-            <form onSubmit={handlePreSubmit} className="space-y-6">
+        {/* Main Form Card - Updated shadow */}
+        <Card className="border-0 shadow-[0_10px_50px_-12px_rgba(0,0,0,0.25)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.35)] transition-shadow duration-300">
+          <CardContent className="p-8">
+            <form onSubmit={handlePreSubmit} className="space-y-8">
               {/* Two Column Layout */}
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-8">
                 {/* Left Column */}
                 <div className="space-y-6">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                  {/* Report Type Section */}
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">
                       Report Type
                     </label>
-                    {adminMode ? (
-                      <Input
-                        value="Found Item"
-                        disabled
-                        className="bg-gray-50"
-                      />
-                    ) : isScannedData ? (
-                      <Input
-                        value="Found Item"
-                        disabled
-                        className="bg-gray-50"
-                      />
-                    ) : activeSection === "reports" ? (
-                      <Input
-                        value="Lost Item"
-                        disabled
-                        className="bg-gray-50"
-                      />
+                    {adminMode || isScannedData || activeSection === "reports" ? (
+                      <div className="relative">
+                        <Input
+                          value={
+                            adminMode || isScannedData 
+                              ? "Found Item" 
+                              : activeSection === "reports" 
+                                ? "Lost Item" 
+                                : ""
+                          }
+                          disabled
+                          className="bg-gray-50 border-gray-200 text-gray-600 font-medium"
+                        />
+                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                          <Badge variant="outline" className={
+                            adminMode || isScannedData || activeSection !== "reports"
+                              ? "bg-green-50 text-green-700 border-green-200"
+                              : "bg-red-50 text-red-700 border-red-200"
+                          }>
+                            {adminMode || isScannedData || activeSection !== "reports" ? "Found" : "Lost"}
+                          </Badge>
+                        </div>
+                      </div>
                     ) : (
-                      <Select value={itemStatus} onValueChange={setItemStatus} required>
-                        <SelectTrigger className="bg-white">
+                      <Select 
+                        value={itemStatus} 
+                        onValueChange={setItemStatus} 
+                        required
+                      >
+                        <SelectTrigger className="bg-white border-gray-200">
                           <SelectValue placeholder="Select Report Type" />
                         </SelectTrigger>
                         <SelectContent>
@@ -466,39 +482,55 @@ export default function ReportSection({
                     )}
                   </div>
 
-                  <div className="grid gap-2">
-                    <Label htmlFor="studentId">
+                  {/* Enhanced Student ID field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="studentId" className="text-gray-700">
                       {adminMode || userData?.isAdmin ? 'Reported By:' : 'Student ID'}
                     </Label>
-                    <Input
-                      id="studentId"
-                      name="studentId"
-                      value={studentId}
-                      readOnly
-                      disabled
-                      className="bg-gray-100 text-gray-600 cursor-not-allowed"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="studentId"
+                        name="studentId"
+                        value={studentId}
+                        readOnly
+                        disabled
+                        className="bg-gray-50 border-gray-200 text-gray-600 font-medium pl-10"
+                      />
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg
+                          className="h-5 w-5 text-gray-400"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
-                      Item Name
-                    </label>
+                  {/* Enhanced Item Name field */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-700">Item Name</Label>
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="Enter Item Name"
-                      className="bg-white"
+                      className="bg-white border-gray-200"
                       required
                     />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
-                      Category
-                    </label>
+                  {/* Enhanced Category field */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-700">Category</Label>
                     <Select value={category} onValueChange={setCategory} required>
-                      <SelectTrigger className="bg-white">
+                      <SelectTrigger className="bg-white border-gray-200">
                         <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -511,15 +543,14 @@ export default function ReportSection({
                     </Select>
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
-                      Last Seen Location
-                    </label>
+                  {/* Enhanced Location field */}
+                  <div className="space-y-2">
+                    <Label className="text-gray-700">Last Seen Location</Label>
                     <Input
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
                       placeholder="Enter Location"
-                      className="bg-white"
+                      className="bg-white border-gray-200"
                       required
                     />
                   </div>
@@ -559,7 +590,7 @@ export default function ReportSection({
                     </div>
 
                     {isAddingDescription && (
-                      <Card className="border border-gray-200">
+                      <Card className="border border-gray-200 shadow-[0_4px_12px_rgb(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.08)] transition-shadow duration-300">
                         <CardContent className="p-4 space-y-4">
                           <div className="space-y-2">
                             <Label>Title</Label>
@@ -616,7 +647,7 @@ export default function ReportSection({
 
                     <div className="space-y-3">
                       {additionalDescriptions.map((desc, index) => (
-                        <div key={index} className="relative bg-white p-3 rounded-lg border">
+                        <div key={index} className="relative bg-white p-3 rounded-lg border border-gray-200 shadow-[0_2px_8px_rgb(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgb(0,0,0,0.06)] transition-shadow duration-300">
                           <Button
                             type="button"
                             variant="ghost"
@@ -648,13 +679,16 @@ export default function ReportSection({
               </div>
 
               {/* Submit Button */}
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-4">
                 <Button
                   type="button"
-                  variant="outline"
                   onClick={handlePreview}
-                  disabled={!isFormValid() || isSubmitting || (adminMode && !itemStatus)}
-                  className="w-full sm:w-auto"
+                  disabled={!isFormValid() || isSubmitting}
+                  className={`w-full sm:w-auto transition-all duration-200 ${
+                    isFormValid() && !isSubmitting
+                      ? "bg-[#0052cc] hover:bg-[#0747a6]"
+                      : "bg-gray-200 cursor-not-allowed"
+                  }`}
                 >
                   <Eye className="h-4 w-4 mr-2" />
                   Preview Report
@@ -711,7 +745,7 @@ export default function ReportSection({
               )}
 
               {/* Report Details Card */}
-              <div className="rounded-lg border bg-white shadow-sm">
+              <div className="rounded-lg border bg-white shadow-[0_4px_16px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgb(0,0,0,0.12)] transition-shadow duration-300">
                 {imagePreview && (
                   <div className="border-b">
                     <div className="aspect-video relative overflow-hidden">
