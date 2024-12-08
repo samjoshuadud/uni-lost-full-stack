@@ -495,6 +495,10 @@ export default function VerificationsTab({
     );
   };
 
+  // Update the container styles
+  const tabContentContainerStyles = "bg-white rounded-lg border border-gray-100 shadow-sm p-6";
+  const scrollContainerStyles = "space-y-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-50";
+
   return (
     <div className="space-y-6">
       <h3 className="text-lg font-semibold flex items-center gap-2">
@@ -503,47 +507,62 @@ export default function VerificationsTab({
       </h3>
 
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
-        <TabsList className="w-full flex justify-between bg-muted p-1 rounded-lg mb-6">
+        <TabsList className="w-full grid grid-cols-4 gap-2 bg-gray-100/80 p-1.5 rounded-lg mb-6 min-h-[48px]">
           <TabsTrigger 
             value="in_progress"
-            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            className="relative group flex items-center justify-center gap-2 h-[38px] text-gray-600 rounded-md transition-all duration-200
+              data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm
+              hover:bg-white/60 px-3"
           >
-            In Progress
+            <Clock className="h-4 w-4" />
+            <span className="font-medium">In Progress</span>
             {verificationCounts.inProgress > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">
+              <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 bg-blue-500 text-white border-2 border-white shadow-sm h-5 min-w-[20px] flex items-center justify-center">
                 {verificationCounts.inProgress}
               </Badge>
             )}
           </TabsTrigger>
+
           <TabsTrigger 
             value="awaiting_review"
-            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            className="relative group flex items-center justify-center gap-2 h-[38px] text-gray-600 rounded-md transition-all duration-200
+              data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm
+              hover:bg-white/60 px-3"
           >
-            Under Review
+            <AlertTriangle className="h-4 w-4" />
+            <span className="font-medium">Under Review</span>
             {verificationCounts.underReview > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-indigo-100 text-indigo-700">
+              <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 bg-indigo-500 text-white border-2 border-white shadow-sm h-5 min-w-[20px] flex items-center justify-center">
                 {verificationCounts.underReview}
               </Badge>
             )}
           </TabsTrigger>
+
           <TabsTrigger 
             value="failed"
-            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            className="relative group flex items-center justify-center gap-2 h-[38px] text-gray-600 rounded-md transition-all duration-200
+              data-[state=active]:bg-white data-[state=active]:text-red-600 data-[state=active]:shadow-sm
+              hover:bg-white/60 px-3"
           >
-            Failed
+            <XCircle className="h-4 w-4" />
+            <span className="font-medium">Failed</span>
             {verificationCounts.failed > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-red-100 text-red-700">
+              <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 bg-red-500 text-white border-2 border-white shadow-sm h-5 min-w-[20px] flex items-center justify-center">
                 {verificationCounts.failed}
               </Badge>
             )}
           </TabsTrigger>
+
           <TabsTrigger 
-            value="claims" 
-            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
+            value="claims"
+            className="relative group flex items-center justify-center gap-2 h-[38px] text-gray-600 rounded-md transition-all duration-200
+              data-[state=active]:bg-white data-[state=active]:text-purple-600 data-[state=active]:shadow-sm
+              hover:bg-white/60 px-3"
           >
-            Claim Requests
+            <MessageSquare className="h-4 w-4" />
+            <span className="font-medium">Claim Requests</span>
             {verificationCounts.claims > 0 && (
-              <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">
+              <Badge variant="secondary" className="absolute -top-1.5 -right-1.5 bg-purple-500 text-white border-2 border-white shadow-sm h-5 min-w-[20px] flex items-center justify-center">
                 {verificationCounts.claims}
               </Badge>
             )}
@@ -551,345 +570,377 @@ export default function VerificationsTab({
         </TabsList>
 
         <TabsContent value="in_progress">
-          <div className="space-y-4">
-            {verificationProcesses.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">No verifications in progress</p>
-                </CardContent>
-              </Card>
-            ) : (
-              verificationProcesses
-                .map((process) => (
-                  <Card 
-                    key={process.id}
-                    className="border-l-4 border-l-blue-500"
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex gap-6">
-                        <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                          {process.item?.imageUrl ? (
-                            <img
-                              src={process.item.imageUrl}
-                              alt={process.item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              <Package className="h-8 w-8" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <h4 className="font-bold text-lg">
-                                {process.item?.name}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Student ID: {process.item?.studentId}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                              In Verification
-                            </Badge>
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-sm">
-                              <strong>Category:</strong> {process.item?.category}
-                            </p>
-                            <p className="text-sm">
-                              <strong>Location:</strong> {process.item?.location}
-                            </p>
-                            <div className="mt-4 space-y-2">
-                              <p className="text-sm font-medium text-blue-600">Verification Questions:</p>
-                              {questionsMap[process.id]?.map((q, index) => (
-                                <div key={index} className="bg-blue-50 p-3 rounded-lg">
-                                  <p className="text-sm text-blue-800">
-                                    {index + 1}. {q.question}
-                                  </p>
-                                </div>
-                              ))}
-                              {!questionsMap[process.id] && (
-                                <p className="text-sm text-gray-500 italic">Loading questions...</p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2 justify-start min-w-[140px]">
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => handleViewDetailsClick(process)}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={() => {
-                              setSelectedProcessId(process.id);
-                              setShowCancelDialog(true);
-                            }}
-                            disabled={cancelingProcessId === process.id}
-                          >
-                            {cancelingProcessId === process.id ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Canceling...
-                              </>
+          <div className={tabContentContainerStyles}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <Clock className="h-5 w-5 text-blue-600" />
+                In Progress Verifications
+              </h4>
+            </div>
+            <div className={scrollContainerStyles}>
+              {verificationProcesses.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No verifications in progress</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4 pb-4">
+                  {verificationProcesses.map((process) => (
+                    <Card key={process.id} className="border-l-4 border-l-blue-500">
+                      <CardContent className="p-6">
+                        <div className="flex gap-6">
+                          <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                            {process.item?.imageUrl ? (
+                              <img
+                                src={process.item.imageUrl}
+                                alt={process.item.name}
+                                className="w-full h-full object-cover"
+                              />
                             ) : (
-                              <>
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Cancel Verification
-                              </>
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <Package className="h-8 w-8" />
+                              </div>
                             )}
-                          </Button>
+                          </div>
+
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="font-bold text-lg">
+                                  {process.item?.name}
+                                </h4>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Student ID: {process.item?.studentId}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                                In Verification
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-sm">
+                                <strong>Category:</strong> {process.item?.category}
+                              </p>
+                              <p className="text-sm">
+                                <strong>Location:</strong> {process.item?.location}
+                              </p>
+                              <div className="mt-4 space-y-2">
+                                <p className="text-sm font-medium text-blue-600">Verification Questions:</p>
+                                {questionsMap[process.id]?.map((q, index) => (
+                                  <div key={index} className="bg-blue-50 p-3 rounded-lg">
+                                    <p className="text-sm text-blue-800">
+                                      {index + 1}. {q.question}
+                                    </p>
+                                  </div>
+                                ))}
+                                {!questionsMap[process.id] && (
+                                  <p className="text-sm text-gray-500 italic">Loading questions...</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => handleViewDetailsClick(process)}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                            
+                            <Button
+                              variant="outline"
+                              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => {
+                                setSelectedProcessId(process.id);
+                                setShowCancelDialog(true);
+                              }}
+                              disabled={cancelingProcessId === process.id}
+                            >
+                              {cancelingProcessId === process.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Canceling...
+                                </>
+                              ) : (
+                                <>
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Cancel Verification
+                                </>
+                              )}
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-            )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="awaiting_review">
-          <div className="space-y-4">
-            {answerReviewProcesses.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">No verifications awaiting review</p>
-                </CardContent>
-              </Card>
-            ) : (
-              answerReviewProcesses
-                .map((process) => (
-                  <Card key={process.id} className="border-l-4 border-l-indigo-500">
-                    <CardContent className="p-6">
-                      <div className="flex gap-6">
-                        <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                          {process.item?.imageUrl ? (
-                            <img
-                              src={process.item.imageUrl}
-                              alt={process.item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              <Package className="h-8 w-8" />
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <h4 className="font-bold text-lg">
-                                {process.item?.name}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Student ID: {process.item?.studentId}
-                              </p>
-                            </div>
-                            <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
-                              Under Review
-                            </Badge>
+          <div className={tabContentContainerStyles}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-indigo-600" />
+                Items Under Review
+              </h4>
+            </div>
+            <div className={scrollContainerStyles}>
+              {answerReviewProcesses.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    <Clock className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No verifications awaiting review</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                answerReviewProcesses
+                  .map((process) => (
+                    <Card key={process.id} className="border-l-4 border-l-indigo-500">
+                      <CardContent className="p-6">
+                        <div className="flex gap-6">
+                          <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                            {process.item?.imageUrl ? (
+                              <img
+                                src={process.item.imageUrl}
+                                alt={process.item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <Package className="h-8 w-8" />
+                              </div>
+                            )}
                           </div>
-                          <div className="space-y-3">
-                            <p className="text-sm font-medium text-indigo-600">Verification Questions & Answers:</p>
-                            {questionsMap[process.id] ? (
-                              questionsMap[process.id].map((qa, index) => (
-                                <div key={qa.id} className="bg-indigo-50 p-4 rounded-lg space-y-2">
-                                  <p className="text-sm text-indigo-800">
-                                    <span className="font-medium">Q{index + 1}:</span> {qa.question}
-                                  </p>
-                                  {qa.answer && (
-                                    <p className="text-sm text-indigo-600 pl-4">
-                                      <span className="font-medium">Answer:</span> {qa.answer}
+
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="font-bold text-lg">
+                                  {process.item?.name}
+                                </h4>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Student ID: {process.item?.studentId}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className="bg-indigo-100 text-indigo-800">
+                                Under Review
+                              </Badge>
+                            </div>
+                            <div className="space-y-3">
+                              <p className="text-sm font-medium text-indigo-600">Verification Questions & Answers:</p>
+                              {questionsMap[process.id] ? (
+                                questionsMap[process.id].map((qa, index) => (
+                                  <div key={qa.id} className="bg-indigo-50 p-4 rounded-lg space-y-2">
+                                    <p className="text-sm text-indigo-800">
+                                      <span className="font-medium">Q{index + 1}:</span> {qa.question}
                                     </p>
-                                  )}
-                                </div>
-                              ))
-                            ) : (
-                              <p className="text-sm text-gray-500 italic">Loading questions and answers...</p>
-                            )}
+                                    {qa.answer && (
+                                      <p className="text-sm text-indigo-600 pl-4">
+                                        <span className="font-medium">Answer:</span> {qa.answer}
+                                      </p>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-sm text-gray-500 italic">Loading questions and answers...</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
 
-                        <div className="flex flex-col gap-2 justify-start min-w-[140px]">
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => handleViewDetailsClick(process)}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            className="w-full text-red-600 border-red-200 hover:bg-red-50"
-                            onClick={() => {
-                              setSelectedProcessId(process.id);
-                              setShowCancelDialog(true);
-                            }}
-                            disabled={cancelingProcessId === process.id}
-                          >
-                            {cancelingProcessId === process.id ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Canceling...
-                              </>
-                            ) : (
-                              <>
-                                <RotateCcw className="h-4 w-4 mr-2" />
-                                Cancel Verification
-                              </>
-                            )}
-                          </Button>
-                          
-                          <div className="flex gap-2 mt-4">
+                          <div className="flex flex-col gap-2 justify-start min-w-[140px]">
                             <Button
                               variant="outline"
-                              className="flex-1 border-green-500 hover:bg-green-50 text-green-600"
-                              onClick={() => handleCorrectAnswer(process.id)}
-                              disabled={isMarkingCorrect}
+                              className="w-full"
+                              onClick={() => handleViewDetailsClick(process)}
                             >
-                              {isMarkingCorrect ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Processing...
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  Correct
-                                </>
-                              )}
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View Details
                             </Button>
+                            
                             <Button
-                              variant="destructive"
-                              className="flex-1"
-                              onClick={() => handleWrongAnswer(process.id)}
-                              disabled={isMarkingWrong}
+                              variant="outline"
+                              className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                              onClick={() => {
+                                setSelectedProcessId(process.id);
+                                setShowCancelDialog(true);
+                              }}
+                              disabled={cancelingProcessId === process.id}
                             >
-                              {isMarkingWrong ? (
+                              {cancelingProcessId === process.id ? (
                                 <>
                                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Processing...
+                                  Canceling...
                                 </>
                               ) : (
                                 <>
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  Wrong
+                                  <RotateCcw className="h-4 w-4 mr-2" />
+                                  Cancel Verification
                                 </>
                               )}
                             </Button>
+                            
+                            <div className="flex gap-2 mt-4">
+                              <Button
+                                variant="outline"
+                                className="flex-1 border-green-500 hover:bg-green-50 text-green-600"
+                                onClick={() => handleCorrectAnswer(process.id)}
+                                disabled={isMarkingCorrect}
+                              >
+                                {isMarkingCorrect ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                    Correct
+                                  </>
+                                )}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                className="flex-1"
+                                onClick={() => handleWrongAnswer(process.id)}
+                                disabled={isMarkingWrong}
+                              >
+                                {isMarkingWrong ? (
+                                  <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Processing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Wrong
+                                  </>
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-            )}
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="failed">
-          <div className="space-y-4">
-            {processes.filter(process => process.status === "verification_failed").length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="font-medium">No failed verifications</p>
-                </CardContent>
-              </Card>
-            ) : (
-              processes
-                .filter(process => process.status === "verification_failed")
-                .map((process) => (
-                  <Card key={process.id} className="border-l-4 border-l-red-500">
-                    <CardContent className="p-6">
-                      <div className="flex gap-6">
-                        <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                          {process.item?.imageUrl ? (
-                            <img
-                              src={process.item.imageUrl}
-                              alt={process.item.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                              <Package className="h-8 w-8" />
-                            </div>
-                          )}
-                        </div>
+          <div className={tabContentContainerStyles}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <XCircle className="h-5 w-5 text-red-600" />
+                Failed Verifications
+              </h4>
+            </div>
+            <div className={scrollContainerStyles}>
+              {processes.filter(process => process.status === "verification_failed").length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No failed verifications</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                processes
+                  .filter(process => process.status === "verification_failed")
+                  .map((process) => (
+                    <Card key={process.id} className="border-l-4 border-l-red-500">
+                      <CardContent className="p-6">
+                        <div className="flex gap-6">
+                          <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                            {process.item?.imageUrl ? (
+                              <img
+                                src={process.item.imageUrl}
+                                alt={process.item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                                <Package className="h-8 w-8" />
+                              </div>
+                            )}
+                          </div>
 
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between mb-4">
-                            <div>
-                              <h4 className="font-bold text-lg">
-                                {process.item?.name}
-                              </h4>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Student ID: {process.item?.studentId}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-4">
+                              <div>
+                                <h4 className="font-bold text-lg">
+                                  {process.item?.name}
+                                </h4>
+                                <p className="text-sm text-muted-foreground mt-1">
+                                  Student ID: {process.item?.studentId}
+                                </p>
+                              </div>
+                              <Badge variant="destructive">
+                                Failed Verification
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              <p className="text-sm">
+                                <strong>Category:</strong> {process.item?.category}
+                              </p>
+                              <p className="text-sm">
+                                <strong>Location:</strong> {process.item?.location}
+                              </p>
+                              <p className="text-sm text-red-600">
+                                Failed verification after {process.verificationAttempts} attempts
                               </p>
                             </div>
-                            <Badge variant="destructive">
-                              Failed Verification
-                            </Badge>
                           </div>
-                          <div className="space-y-2">
-                            <p className="text-sm">
-                              <strong>Category:</strong> {process.item?.category}
-                            </p>
-                            <p className="text-sm">
-                              <strong>Location:</strong> {process.item?.location}
-                            </p>
-                            <p className="text-sm text-red-600">
-                              Failed verification after {process.verificationAttempts} attempts
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="flex flex-col gap-2 justify-start min-w-[140px]">
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => handleViewDetailsClick(process)}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                          
+                          <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+                            <Button
+                              variant="outline"
+                              className="w-full"
+                              onClick={() => handleViewDetailsClick(process)}
+                            >
+                              <ExternalLink className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
+                            
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
-            )}
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </div>
           </div>
         </TabsContent>
 
         <TabsContent value="claims" className="space-y-4">
-          {claimRequestProcesses.length === 0 ? (
-            <Card>
-              <CardContent className="p-8 text-center text-muted-foreground">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">No pending claim requests</p>
-                <p className="text-sm mt-2">When users submit claims for lost items, they will appear here</p>
-              </CardContent>
-            </Card>
-          ) : (
-            claimRequestProcesses.map((process) => renderClaimRequestCard(process))
-          )}
+          <div className={tabContentContainerStyles}>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-purple-600" />
+                Claim Requests
+              </h4>
+            </div>
+            <div className={scrollContainerStyles}>
+              {claimRequestProcesses.length === 0 ? (
+                <Card>
+                  <CardContent className="p-8 text-center text-muted-foreground">
+                    <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-medium">No pending claim requests</p>
+                    <p className="text-sm mt-2">When users submit claims for lost items, they will appear here</p>
+                  </CardContent>
+                </Card>
+              ) : (
+                claimRequestProcesses.map((process) => renderClaimRequestCard(process))
+              )}
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
