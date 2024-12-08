@@ -735,17 +735,7 @@ export default function AdminSection({
                 </TabsTrigger>
               </TabsList>
 
-              {/* Loading Overlay */}
-              {isLoadingVisible && (
-                <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center rounded-lg z-50">
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#0052cc]" />
-                    <p className="text-sm text-gray-600">Loading data...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Tab Contents */}
+              {/* Remove absolute positioning and simplify TabsContent */}
               <TabsContent value="statistics">
                 <StatisticsSection />
               </TabsContent>
