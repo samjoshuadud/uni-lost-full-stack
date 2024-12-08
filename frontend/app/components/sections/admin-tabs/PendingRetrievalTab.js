@@ -4,8 +4,10 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Package, CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { Package, CheckCircle, XCircle, Loader2, CalendarIcon, MapPinIcon, AlertCircle } from "lucide-react"
 import { API_BASE_URL } from '@/lib/api-config';
+import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const getProcessId = (process) => {
   return process.Id || process.id;
@@ -20,6 +22,8 @@ export default function PendingRetrievalTab({
   const [handingOverItems, setHandingOverItems] = useState(new Set());
   const [noShowItems, setNoShowItems] = useState(new Set());
   const [error, setError] = useState(null);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
 
   const pendingRetrievalItems = items.filter(process => process.status === "pending_retrieval");
 
@@ -97,6 +101,11 @@ export default function PendingRetrievalTab({
     }
   };
 
+  const handleItemClick = (item) => {
+    setSelectedItemForDetails(item);
+    setShowDetailsDialog(true);
+  };
+
   if (isCountsLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -123,7 +132,11 @@ export default function PendingRetrievalTab({
 
       <div className="space-y-4">
         {pendingRetrievalItems.map((process) => (
-          <Card key={process.id} className="overflow-hidden">
+          <Card 
+            key={process.id} 
+            className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+            onClick={() => handleItemClick(process.item)}
+          >
             <CardContent className="p-6">
               <div className="flex gap-6">
                 <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
@@ -204,6 +217,127 @@ export default function PendingRetrievalTab({
           </Card>
         )}
       </div>
+
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          {/* Header Section */}
+          <div className="px-6 py-4 border-b bg-[#f8f9fa]">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <DialogTitle className="text-xl font-semibold text-[#0052cc]">Item Details</DialogTitle>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CalendarIcon className="h-4 w-4" />
+                    {selectedItemForDetails?.dateReported ? 
+                      format(new Date(selectedItemForDetails.dateReported), 'MMMM do, yyyy') 
+                      : 'Date not available'
+                    }
+                  </div>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-800 capitalize px-3 py-1.5">
+                  Ready for Pickup
+                </Badge>
+              </div>
+            </DialogHeader>
+          </div>
+
+          {selectedItemForDetails && (
+            <>
+              {/* Content Section */}
+              <div className="p-6 space-y-6">
+                {/* Image and Details Grid */}
+                <div className="grid md:grid-cols-[240px,1fr] gap-6">
+                  {/* Image Section */}
+                  <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                    {selectedItemForDetails.imageUrl ? (
+                      <img
+                        src={selectedItemForDetails.imageUrl}
+                        alt={selectedItemForDetails.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                        <Package className="h-12 w-12 mb-2" />
+                        <p className="text-sm">No Image</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Item Name</h4>
+                        <p className="font-medium">{selectedItemForDetails.name}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                        <p className="font-medium capitalize">Ready for Pickup</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Category</h4>
+                        <p className="font-medium">{selectedItemForDetails.category}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Location</h4>
+                        <p className="font-medium flex items-center gap-1.5">
+                          <MapPinIcon className="h-4 w-4 text-gray-400" />
+                          {selectedItemForDetails.location}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                      <p className="text-gray-700">{selectedItemForDetails.description}</p>
+                    </div>
+
+                    {/* Additional Details if any */}
+                    {selectedItemForDetails.additionalDescriptions?.$values?.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
+                        <div className="space-y-2">
+                          {selectedItemForDetails.additionalDescriptions.$values.map((desc, index) => (
+                            <p key={index} className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200">
+                              {desc}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons Section */}
+              <div className="px-6 py-4 border-t bg-[#f8f9fa] flex justify-end gap-3">
+                <Button
+                  variant="default"
+                  onClick={() => {
+                    onHandOver(selectedItemForDetails.id);
+                    setShowDetailsDialog(false);
+                  }}
+                  className="bg-[#0F172A] hover:bg-[#0F172A]/90"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Hand Over Item
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    onNoShow(selectedItemForDetails.id);
+                    setShowDetailsDialog(false);
+                  }}
+                >
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Mark as No Show
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
