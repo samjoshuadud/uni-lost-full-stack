@@ -28,7 +28,6 @@ const item = {
 export default function ProfileSection() {
   const { user, userData } = useAuth();
   const [reports, setReports] = useState([]);
-  const [claims, setClaims] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -54,19 +53,7 @@ export default function ProfileSection() {
           itemStatus: process.item?.status
         }));
 
-        // Filter claims made by the user
-        const userClaims = processes.filter(process => 
-          process.requestorUserId === user.uid
-        ).map(process => ({
-          id: process.id,
-          itemName: process.item?.name,
-          status: process.status,
-          date: process.createdAt,
-          category: process.item?.category
-        }));
-
         setReports(userReports);
-        setClaims(userClaims);
       } catch (error) {
         console.error('Error fetching user processes:', error);
       } finally {
@@ -188,12 +175,6 @@ export default function ProfileSection() {
               My Reports
             </TabsTrigger>
             <TabsTrigger 
-              value="claims"
-              className="flex-1 py-1.5 px-6 rounded-full data-[state=active]:bg-yellow-400 data-[state=active]:text-[#0052cc] text-white"
-            >
-              My Claims
-            </TabsTrigger>
-            <TabsTrigger 
               value="activity"
               className="flex-1 py-1.5 px-6 rounded-full data-[state=active]:bg-yellow-400 data-[state=active]:text-[#0052cc] text-white"
             >
@@ -276,87 +257,6 @@ export default function ProfileSection() {
                   <h4 className="text-gray-900 font-medium mb-1">No Reports Yet</h4>
                   <p className="text-gray-500 text-sm">
                     When you report lost or found items, they will appear here.
-                  </p>
-                </motion.div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="claims" className="mt-10">
-            <div className="bg-white rounded-2xl shadow-[0_10px_20px_rgba(0,0,0,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-50 rounded-lg">
-                    <Package className="h-5 w-5 text-purple-500" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-[#0052cc]">
-                    Claims History
-                  </h3>
-                </div>
-                <Badge variant="secondary" className="bg-gray-100">
-                  {claims.length} {claims.length === 1 ? 'Claim' : 'Claims'}
-                </Badge>
-              </div>
-              {isLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#0052cc]" />
-                    <p className="text-sm text-gray-500">Loading your claims...</p>
-                  </div>
-                </div>
-              ) : claims.length ? (
-                <motion.div 
-                  className="space-y-4"
-                  variants={container}
-                  initial="hidden"
-                  animate="show"
-                >
-                  {claims.map((claim, index) => (
-                    <motion.div key={claim.id} variants={item}>
-                      <div className="group">
-                        <div className="flex items-start gap-4 p-6 bg-white hover:bg-gray-50 transition-all duration-200 rounded-xl border border-gray-200 shadow-sm hover:shadow-md">
-                          <div className="p-3 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
-                            <Package className="h-5 w-5 text-purple-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <h4 className="font-semibold text-gray-900 truncate">{claim.itemName}</h4>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  <Badge variant="secondary" className="bg-gray-100/80 text-gray-700 group-hover:bg-gray-100">
-                                    {claim.category}
-                                  </Badge>
-                                </div>
-                              </div>
-                              {getStatusBadge(claim.status)}
-                            </div>
-                            <div className="mt-3 flex items-center text-sm text-gray-600">
-                              <CalendarDays className="h-4 w-4 mr-2 text-gray-400" />
-                              <time dateTime={claim.date}>
-                                {format(new Date(claim.date), "EEEE, MMMM d, yyyy 'at' h:mm a")}
-                              </time>
-                            </div>
-                          </div>
-                        </div>
-                        {index < claims.length - 1 && (
-                          <div className="h-[2px] bg-gradient-to-r from-transparent via-gray-200 to-transparent my-4 opacity-60" />
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
-                </motion.div>
-              ) : (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="text-center py-12"
-                >
-                  <div className="w-16 h-16 bg-gray-100/80 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <AlertCircle className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h4 className="text-gray-900 font-medium mb-1">No Claims Yet</h4>
-                  <p className="text-gray-500 text-sm">
-                    When you claim found items, they will appear here.
                   </p>
                 </motion.div>
               )}
