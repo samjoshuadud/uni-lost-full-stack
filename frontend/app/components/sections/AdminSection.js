@@ -69,6 +69,7 @@ export default function AdminSection({
   onDelete,
   onUpdateItemStatus,
   handleViewDetails,
+  verificationCounts,
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
   const [approvingItems, setApprovingItems] = useState(new Set());
@@ -114,6 +115,9 @@ export default function AdminSection({
   const [historyCount, setHistoryCount] = useState(0);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [claimCount, setClaimCount] = useState(0);
+  const [pendingLostCount, setPendingLostCount] = useState(0);
+  const [pendingFoundCount, setPendingFoundCount] = useState(0);
+  const [verificationCount, setVerificationCount] = useState(0);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -542,6 +546,54 @@ export default function AdminSection({
     toast.success("QR code scanned successfully");
   };
 
+  // Add this useEffect to handle counting
+  useEffect(() => {
+    if (!pendingProcesses) return;
+
+    const processes = Array.isArray(pendingProcesses) ? pendingProcesses : 
+                     pendingProcesses.$values || [];
+
+    // Calculate all counts in one pass through the array
+    const counts = processes.reduce((acc, process) => {
+      const status = process.status;
+      const itemStatus = process.item?.status?.toLowerCase();
+      const isApproved = process.item?.approved;
+
+      if (status === ProcessStatus.PENDING_APPROVAL) {
+        if (itemStatus === "lost" && !isApproved) acc.lost++;
+        if (itemStatus === "found" && !isApproved) acc.found++;
+      }
+      
+      if (status === ProcessStatus.IN_VERIFICATION ||
+          status === ProcessStatus.AWAITING_REVIEW ||
+          status === ProcessStatus.CLAIM_REQUEST) {
+        acc.verification++;
+      }
+
+      if (status === ProcessStatus.PENDING_RETRIEVAL) {
+        acc.pickup++;
+      }
+
+      return acc;
+    }, { lost: 0, found: 0, verification: 0, pickup: 0 });
+
+    // Update all states at once
+    setPendingLostCount(counts.lost);
+    setPendingFoundCount(counts.found);
+    setVerificationCount(counts.verification);
+    setReadyForPickupCount(counts.pickup);
+
+  }, [pendingProcesses]);
+
+  useEffect(() => {
+    console.log('Current counts:', {
+      lostItems: pendingLostCount,
+      foundItems: pendingFoundCount,
+      verifications: verificationCount,
+      readyForPickup: readyForPickupCount
+    });
+  }, [pendingLostCount, pendingFoundCount, verificationCount, readyForPickupCount]);
+
   if (!isAdmin) {
     return (
       <Card>
@@ -590,26 +642,30 @@ export default function AdminSection({
         <Card className="border-0 shadow-sm bg-white relative drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
           <CardContent className="p-6">
             <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="w-full grid grid-cols-6 gap-2 bg-[#2E3F65] p-1 rounded-[10px] mb-6 h-12">
+              <TabsList className="w-full grid grid-cols-6 gap-4 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px]">
                 {/* Overview Tab */}
                 <TabsTrigger 
                   value="statistics"
-                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
+                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                    hover:bg-white/10"
                 >
                   <BarChart className="h-4 w-4" />
-                  <span>Overview</span>
+                  <span className="font-medium">Overview</span>
                 </TabsTrigger>
 
                 {/* Lost Items Tab */}
                 <TabsTrigger 
                   value="reports"
-                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
+                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                    hover:bg-white/10"
                 >
                   <ClipboardList className="h-4 w-4" />
-                  <span>Lost Items</span>
-                  {pendingLostApprovalCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-red-400 text-white">
-                      {pendingLostApprovalCount}
+                  <span className="font-medium">Lost Items</span>
+                  {pendingLostCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {pendingLostCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -617,13 +673,15 @@ export default function AdminSection({
                 {/* Found Items Tab */}
                 <TabsTrigger 
                   value="found"
-                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
+                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                    hover:bg-white/10"
                 >
                   <Package className="h-4 w-4" />
-                  <span>Found Items</span>
-                  {pendingFoundApprovalCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-red-400 text-white">
-                      {pendingFoundApprovalCount}
+                  <span className="font-medium">Found Items</span>
+                  {pendingFoundCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {pendingFoundCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -631,13 +689,15 @@ export default function AdminSection({
                 {/* Verifications Tab */}
                 <TabsTrigger 
                   value="verifications"
-                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
+                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                    hover:bg-white/10"
                 >
                   <Activity className="h-4 w-4" />
-                  <span>Verifications</span>
-                  {(inVerificationCount + awaitingReviewCount + failedVerificationCount + claimCount) > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-blue-400 text-white">
-                      {inVerificationCount + awaitingReviewCount + failedVerificationCount + claimCount}
+                  <span className="font-medium">Verifications</span>
+                  {verificationCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-blue-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {verificationCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -645,12 +705,14 @@ export default function AdminSection({
                 {/* Retrieval Tab */}
                 <TabsTrigger 
                   value="retrieval"
-                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
+                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                    hover:bg-white/10"
                 >
                   <PieChart className="h-4 w-4" />
-                  <span>Ready for Pickup</span>
+                  <span className="font-medium">Ready for Pickup</span>
                   {readyForPickupCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-green-400 text-white">
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-green-500 text-white border-2 border-[#2E3F65] shadow-md">
                       {readyForPickupCount}
                     </Badge>
                   )}
@@ -659,12 +721,14 @@ export default function AdminSection({
                 {/* History Tab */}
                 <TabsTrigger 
                   value="history"
-                  className="flex-1 data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] hover:bg-white hover:text-[#0F3A99] flex items-center gap-2 text-white rounded-[5px] justify-center text-center transition-colors duration-200"
+                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                    hover:bg-white/10"
                 >
                   <History className="h-4 w-4" />
-                  <span>History</span>
+                  <span className="font-medium">History</span>
                   {historyCount > 0 && (
-                    <Badge variant="secondary" className="ml-1 bg-gray-400 text-white">
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-gray-500 text-white border-2 border-[#2E3F65] shadow-md">
                       {historyCount}
                     </Badge>
                   )}
@@ -712,6 +776,7 @@ export default function AdminSection({
                 <VerificationsTab 
                   processes={pendingProcesses} 
                   handleViewDetails={handleViewDetails} 
+                  verificationCounts={verificationCounts}
                 />
               </TabsContent>
 
