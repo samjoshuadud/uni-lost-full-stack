@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { AlertTriangle, Package, Trash, ExternalLink, Loader2, Activity, RotateCcw, Clock, CheckCircle, XCircle, MessageSquare } from "lucide-react"
+import { AlertTriangle, Package, Trash, ExternalLink, Loader2, Activity, RotateCcw, Clock, CheckCircle, XCircle, MessageSquare, CalendarIcon, MapPinIcon } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useState, useEffect } from "react"
 import { ProcessStatus, ProcessMessages } from "@/lib/constants"
@@ -11,6 +11,14 @@ import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, A
 import { toast } from "react-hot-toast"
 import { API_BASE_URL } from "@/lib/api-config"
 import { useAuth } from "@/lib/AuthContext"
+import { format } from "date-fns"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
 export default function VerificationsTab({ 
   processes = [], 
   handleViewDetails,
@@ -31,6 +39,8 @@ export default function VerificationsTab({
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState({});
   const { makeAuthenticatedRequest } = useAuth();
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
 
   // Filter processes based on status
   const verificationProcesses = processes.filter(p => p.status === ProcessStatus.IN_VERIFICATION);
@@ -495,6 +505,11 @@ export default function VerificationsTab({
     );
   };
 
+  const handleItemClick = (item) => {
+    setSelectedItemForDetails(item);
+    setShowDetailsDialog(true);
+  };
+
   // Update the container styles
   const tabContentContainerStyles = "bg-white rounded-lg border border-gray-100 shadow-sm p-6";
   const scrollContainerStyles = "space-y-4 max-h-[calc(100vh-320px)] overflow-y-auto pr-4 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-50";
@@ -588,7 +603,11 @@ export default function VerificationsTab({
               ) : (
                 <div className="space-y-4 pb-4">
                   {verificationProcesses.map((process) => (
-                    <Card key={process.id} className="border-l-4 border-l-blue-500">
+                    <Card 
+                      key={process.id} 
+                      className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => handleItemClick(process)}
+                    >
                       <CardContent className="p-6">
                         <div className="flex gap-6">
                           <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
@@ -964,6 +983,130 @@ export default function VerificationsTab({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-3xl p-0 overflow-hidden">
+          {/* Header Section */}
+          <div className="px-6 py-4 border-b bg-[#f8f9fa]">
+            <DialogHeader>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <DialogTitle className="text-xl font-semibold text-[#0052cc]">Item Details</DialogTitle>
+                  <div className="flex items-center gap-2 text-sm text-gray-500">
+                    <CalendarIcon className="h-4 w-4" />
+                    {selectedItemForDetails?.item?.dateReported ? 
+                      format(new Date(selectedItemForDetails.item.dateReported), 'MMMM do, yyyy') 
+                      : 'Date not available'
+                    }
+                  </div>
+                </div>
+                <Badge variant="outline" className="bg-blue-100 text-blue-800 capitalize px-3 py-1.5">
+                  In Verification
+                </Badge>
+              </div>
+            </DialogHeader>
+          </div>
+
+          {selectedItemForDetails && (
+            <>
+              {/* Content Section */}
+              <div className="p-6 space-y-6">
+                {/* Image and Details Grid */}
+                <div className="grid md:grid-cols-[240px,1fr] gap-6">
+                  {/* Image Section */}
+                  <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                    {selectedItemForDetails.item?.imageUrl ? (
+                      <img
+                        src={selectedItemForDetails.item.imageUrl}
+                        alt={selectedItemForDetails.item.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                        <Package className="h-12 w-12 mb-2" />
+                        <p className="text-sm">No Image</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Item Name</h4>
+                        <p className="font-medium">{selectedItemForDetails.item?.name}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                        <p className="font-medium capitalize">In Verification</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Category</h4>
+                        <p className="font-medium">{selectedItemForDetails.item?.category}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Location</h4>
+                        <p className="font-medium flex items-center gap-1.5">
+                          <MapPinIcon className="h-4 w-4 text-gray-400" />
+                          {selectedItemForDetails.item?.location}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1">
+                      <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                      <p className="text-gray-700">{selectedItemForDetails.item?.description}</p>
+                    </div>
+
+                    {/* Verification Questions */}
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-blue-600">Verification Questions:</h4>
+                      <div className="space-y-2">
+                        {questionsMap[selectedItemForDetails.id]?.map((q, index) => (
+                          <div key={index} className="bg-blue-50 p-3 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              {index + 1}. {q.question}
+                            </p>
+                          </div>
+                        ))}
+                        {!questionsMap[selectedItemForDetails.id] && (
+                          <p className="text-sm text-gray-500 italic">Loading questions...</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons Section */}
+              <div className="px-6 py-4 border-t bg-[#f8f9fa] flex justify-end gap-3">
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setSelectedProcessId(selectedItemForDetails.id);
+                    setShowCancelDialog(true);
+                    setShowDetailsDialog(false);
+                  }}
+                  disabled={cancelingProcessId === selectedItemForDetails.id}
+                >
+                  {cancelingProcessId === selectedItemForDetails.id ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Canceling...
+                    </>
+                  ) : (
+                    <>
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Cancel Verification
+                    </>
+                  )}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

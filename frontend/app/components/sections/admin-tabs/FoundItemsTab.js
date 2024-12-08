@@ -14,7 +14,9 @@ import {
   Plus,
   Camera,
   Upload,
-  Inbox
+  Inbox,
+  CalendarIcon,
+  MapPinIcon
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import ReportSection from "../ReportSection"
@@ -24,6 +26,7 @@ import { ProcessStatus } from '@/lib/constants';
 import { useAuth } from "@/lib/AuthContext"
 import { API_BASE_URL } from "@/lib/api-config"
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
+import { format } from "date-fns";
 const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
   isCountsLoading,
@@ -47,6 +50,8 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const [showReportDialog, setShowReportDialog] = useState(false);
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
 
   useEffect(() => {
     console.log('Raw items received:', items);
@@ -323,6 +328,11 @@ const FoundItemsTab = memo(function FoundItemsTab({
     };
   }, [showScannerModal]);
 
+  const handleItemClick = (item) => {
+    setSelectedItemForDetails(item);
+    setShowDetailsDialog(true);
+  };
+
   return (
     <div className="space-y-6">
       <div className="min-h-[600px]">
@@ -456,7 +466,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                       <Card 
                         key={process.id || process.Id} 
                         className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-                        onClick={() => onViewDetails(process.item)}
+                        onClick={() => handleItemClick(process.item)}
                       >
                         <CardContent className="p-6">
                           <div className="flex gap-6">
@@ -533,7 +543,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="outline"
                                 size="sm"
                                 className="w-full"
-                                onClick={() => onViewDetails(process.item)}
+                                onClick={() => handleItemClick(process.item)}
                               >
                                 <ExternalLink className="h-4 w-4 mr-2" />
                                 View Details
@@ -760,6 +770,145 @@ const FoundItemsTab = memo(function FoundItemsTab({
               adminMode={true}
               activeSection="found"
             />
+          </DialogContent>
+        </Dialog>
+
+        {/* Item Details Dialog */}
+        <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden">
+            {/* Header Section */}
+            <div className="px-6 py-4 border-b bg-[#f8f9fa]">
+              <DialogHeader>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <DialogTitle className="text-xl font-semibold text-[#0052cc]">Item Details</DialogTitle>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <CalendarIcon className="h-4 w-4" />
+                      {selectedItemForDetails?.dateReported ? 
+                        format(new Date(selectedItemForDetails.dateReported), 'MMMM do, yyyy') 
+                        : 'Date not available'
+                      }
+                    </div>
+                  </div>
+                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 capitalize px-3 py-1.5">
+                    {selectedItemForDetails?.status || 'Found'}
+                  </Badge>
+                </div>
+              </DialogHeader>
+            </div>
+
+            {selectedItemForDetails && (
+              <>
+                {/* Content Section */}
+                <div className="p-6 space-y-6">
+                  {/* Image and Details Grid */}
+                  <div className="grid md:grid-cols-[240px,1fr] gap-6">
+                    {/* Image Section */}
+                    <div className="aspect-square bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                      {selectedItemForDetails.imageUrl ? (
+                        <img
+                          src={selectedItemForDetails.imageUrl}
+                          alt={selectedItemForDetails.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                          <Package className="h-12 w-12 mb-2" />
+                          <p className="text-sm">No Image</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Details Grid */}
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium text-gray-500">Item Name</h4>
+                          <p className="font-medium">{selectedItemForDetails.name}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium text-gray-500">Status</h4>
+                          <p className="font-medium capitalize">{selectedItemForDetails.status || 'found'}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium text-gray-500">Category</h4>
+                          <p className="font-medium">{selectedItemForDetails.category}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-medium text-gray-500">Location</h4>
+                          <p className="font-medium flex items-center gap-1.5">
+                            <MapPinIcon className="h-4 w-4 text-gray-400" />
+                            {selectedItemForDetails.location}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-medium text-gray-500">Description</h4>
+                        <p className="text-gray-700">{selectedItemForDetails.description}</p>
+                      </div>
+
+                      {/* Additional Details if any */}
+                      {selectedItemForDetails.additionalDescriptions?.$values?.length > 0 && (
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
+                          <div className="space-y-2">
+                            {selectedItemForDetails.additionalDescriptions.$values.map((desc, index) => (
+                              <p key={index} className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200">
+                                {desc}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons Section */}
+                <div className="px-6 py-4 border-t bg-[#f8f9fa] flex justify-end gap-3">
+                  <Button
+                    variant="default"
+                    onClick={() => handleApprove(selectedItemForDetails.id)}
+                    disabled={approvingItems.has(selectedItemForDetails.id)}
+                    className="bg-[#0F172A] hover:bg-[#0F172A]/90"
+                  >
+                    {approvingItems.has(selectedItemForDetails.id) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Approve Post
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      handleDeleteClick(selectedItemForDetails.id);
+                      setShowDetailsDialog(false);
+                    }}
+                    disabled={deletingItems.has(selectedItemForDetails.id)}
+                  >
+                    {deletingItems.has(selectedItemForDetails.id) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Deleting...
+                      </>
+                    ) : (
+                      <>
+                        <Trash className="h-4 w-4 mr-2" />
+                        Delete
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </>
+            )}
           </DialogContent>
         </Dialog>
       </div>
