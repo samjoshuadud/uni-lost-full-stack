@@ -13,7 +13,13 @@ import { API_BASE_URL } from "@/lib/api-config"
 import { useAuth } from "@/lib/AuthContext"
 export default function VerificationsTab({ 
   processes = [], 
-  handleViewDetails 
+  handleViewDetails,
+  verificationCounts = {
+    inProgress: 0,
+    underReview: 0,
+    failed: 0,
+    claims: 0
+  }
 }) {
   const [activeSubTab, setActiveSubTab] = useState("in_progress");
   const [cancelingProcessId, setCancelingProcessId] = useState(null);
@@ -503,29 +509,43 @@ export default function VerificationsTab({
             className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             In Progress
+            {verificationCounts.inProgress > 0 && (
+              <Badge variant="secondary" className="ml-2 bg-blue-100 text-blue-700">
+                {verificationCounts.inProgress}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger 
             value="awaiting_review"
             className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             Under Review
+            {verificationCounts.underReview > 0 && (
+              <Badge variant="secondary" className="ml-2 bg-indigo-100 text-indigo-700">
+                {verificationCounts.underReview}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger 
             value="failed"
             className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             Failed
+            {verificationCounts.failed > 0 && (
+              <Badge variant="secondary" className="ml-2 bg-red-100 text-red-700">
+                {verificationCounts.failed}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger 
-          value="claims" 
-          className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
-          
+            value="claims" 
+            className="flex-1 text-center data-[state=active]:bg-[#0052cc] data-[state=active]:text-white"
           >
             Claim Requests
-            {claimRequestProcesses.length > 0 && (
-                <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">
-                    {claimRequestProcesses.length}
-                </Badge>
+            {verificationCounts.claims > 0 && (
+              <Badge variant="secondary" className="ml-2 bg-purple-100 text-purple-700">
+                {verificationCounts.claims}
+              </Badge>
             )}
           </TabsTrigger>
         </TabsList>
