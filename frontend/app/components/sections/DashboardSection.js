@@ -181,10 +181,12 @@ export default function DashboardSection({
     setIsLoading(true);
     
     const filteredItems = items.filter(item => {
-      // Category filter - Updated to handle "Others" category correctly
+      // Category filter - Consolidate "others" categories
+      const itemCategory = item.category?.toLowerCase() || '';
+      const searchCat = searchCategory.toLowerCase();
       const matchesCategory = 
         searchCategory === "all" || 
-        (item.category?.toLowerCase() === searchCategory.toLowerCase());
+        (searchCat === "others" ? itemCategory.startsWith("others") : itemCategory === searchCat);
 
       // Claim status filter
       const process = processes.find(p => p.itemId === item.id);
@@ -209,16 +211,30 @@ export default function DashboardSection({
           item.name?.toLowerCase().includes(searchTerms) ||
           item.location?.toLowerCase().includes(searchTerms) ||
           item.description?.toLowerCase().includes(searchTerms) ||
-          item.category?.toLowerCase().includes(searchTerms);
+          itemCategory.includes(searchTerms);
 
         return matchesCategory && matchesSearch;
       }
 
       return matchesCategory;
-    }).map(item => ({
-      ...item,
-      process: processes.find(p => p.itemId === item.id)
-    }));
+    }).map(item => {
+      const itemCategory = item.category?.toLowerCase() || '';
+      const isOthers = itemCategory.startsWith('others');
+      
+      // Extract specification from others category
+      let othersSpec = '';
+      if (isOthers && itemCategory.includes('-')) {
+        othersSpec = item.category.split('-')[1].trim();
+      }
+
+      return {
+        ...item,
+        // Normalize the category display and keep specification
+        category: isOthers ? "Others" : item.category,
+        othersSpecification: othersSpec,
+        process: processes.find(p => p.itemId === item.id)
+      };
+    });
     
     setLocalItems(filteredItems);
     setIsLoading(false);
@@ -723,7 +739,9 @@ export default function DashboardSection({
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <Badge variant="secondary" className="bg-gray-100/80">
-                                {item.category}
+                                {item.category === "Others" && item.othersSpecification 
+                                  ? `Others - ${item.othersSpecification}`
+                                  : item.category}
                               </Badge>
                             </div>
                           </div>

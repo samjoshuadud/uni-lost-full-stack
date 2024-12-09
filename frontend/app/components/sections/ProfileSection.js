@@ -197,6 +197,7 @@ export default function ProfileSection() {
                   {reports.length} {reports.length === 1 ? 'Report' : 'Reports'}
                 </Badge>
               </div>
+
               {isLoading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex flex-col items-center gap-3">
@@ -206,44 +207,48 @@ export default function ProfileSection() {
                 </div>
               ) : reports.length ? (
                 <motion.div 
-                  className="space-y-4"
+                  className="relative"
                   variants={container}
                   initial="hidden"
                   animate="show"
                 >
-                  {reports.map((report, index) => (
-                    <motion.div key={report.id} variants={item}>
-                      <div className="group">
-                        <div className="flex items-start gap-4 p-6 bg-white hover:bg-gray-50 transition-all duration-200 rounded-xl border border-gray-200 shadow-sm hover:shadow-md">
-                          <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                            <Package className="h-5 w-5 text-blue-500" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <h4 className="font-semibold text-gray-900 truncate">{report.itemName}</h4>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                  <Badge variant="secondary" className="bg-gray-100/80 text-gray-700 group-hover:bg-gray-100">
-                                    {report.category}
-                                  </Badge>
+                  <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-50">
+                    <div className="space-y-4">
+                      {reports.map((report, index) => (
+                        <motion.div key={report.id} variants={item}>
+                          <div className="group">
+                            <div className="flex items-start gap-4 p-4 bg-white hover:bg-gray-50 transition-all duration-200 rounded-xl border border-gray-200 shadow-sm hover:shadow-md">
+                              <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                                <Package className="h-5 w-5 text-blue-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-4">
+                                  <div>
+                                    <h4 className="font-semibold text-gray-900 truncate">{report.itemName}</h4>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                      <Badge variant="secondary" className="bg-gray-100/80 text-gray-700 group-hover:bg-gray-100">
+                                        {report.category === "Others" && report.specification 
+                                          ? `Others - ${report.specification}`
+                                          : report.category}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                  {getStatusBadge(report.status, report.itemStatus)}
+                                </div>
+                                <div className="mt-2 flex items-center text-sm text-gray-600">
+                                  <CalendarDays className="h-4 w-4 mr-2 text-gray-400" />
+                                  <time dateTime={report.date}>
+                                    {format(new Date(report.date), "MMM d, yyyy 'at' h:mm a")}
+                                  </time>
                                 </div>
                               </div>
-                              {getStatusBadge(report.status, report.itemStatus)}
-                            </div>
-                            <div className="mt-3 flex items-center text-sm text-gray-600">
-                              <CalendarDays className="h-4 w-4 mr-2 text-gray-400" />
-                              <time dateTime={report.date}>
-                                {format(new Date(report.date), "EEEE, MMMM d, yyyy 'at' h:mm a")}
-                              </time>
                             </div>
                           </div>
-                        </div>
-                        {index < reports.length - 1 && (
-                          <div className="h-[2px] bg-gradient-to-r from-transparent via-gray-200 to-transparent my-4 opacity-60" />
-                        )}
-                      </div>
-                    </motion.div>
-                  ))}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-2 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
                 </motion.div>
               ) : (
                 <motion.div 
