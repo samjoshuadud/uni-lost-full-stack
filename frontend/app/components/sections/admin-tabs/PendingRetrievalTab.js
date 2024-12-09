@@ -183,7 +183,7 @@ export default function PendingRetrievalTab({
                     <Button 
                       variant="default" 
                       size="sm"
-                      className="w-full"
+                      className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
                       onClick={() => handleHandOver(process)}
                       disabled={handingOverItems.has(getProcessId(process))}
                     >
@@ -197,7 +197,7 @@ export default function PendingRetrievalTab({
                     <Button 
                       variant="destructive" 
                       size="sm"
-                      className="w-full"
+                      className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
                       onClick={() => handleNoShow(process)}
                       disabled={noShowItems.has(getProcessId(process))}
                     >
@@ -326,7 +326,7 @@ export default function PendingRetrievalTab({
                     onHandOver(selectedItemForDetails.id);
                     setShowDetailsDialog(false);
                   }}
-                  className="bg-[#0F172A] hover:bg-[#0F172A]/90"
+                  className="bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Hand Over Item
@@ -337,6 +337,7 @@ export default function PendingRetrievalTab({
                     onNoShow(selectedItemForDetails.id);
                     setShowDetailsDialog(false);
                   }}
+                  className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
                 >
                   <AlertCircle className="h-4 w-4 mr-2" />
                   Mark as No Show
