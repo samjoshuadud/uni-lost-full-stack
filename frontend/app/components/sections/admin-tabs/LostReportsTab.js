@@ -179,10 +179,14 @@ const LostReportsTab = memo(function LostReportsTab({
   return (
     <div className="space-y-6">
       <div className="min-h-[600px]">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
-          Lost Items Reports
+          Lost Items Management
         </h3>
+        <p className="text-gray-600 mt-2">
+          Process lost item reports and manage student claims. Review item details, 
+          approve posts to make them visible, or handle verification processes.
+        </p>
 
         {/* Status Cards */}
         <div className="grid gap-6 md:grid-cols-3 mt-6">
@@ -368,16 +372,16 @@ const LostReportsTab = memo(function LostReportsTab({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-full"
+                                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-all duration-200"
                                 onClick={() => handleItemClick(process.item)}
                               >
-                                <ExternalLink className="h-4 w-4 mr-2" />
+                                <ExternalLink className="h-4 w-4 mr-2 text-slate-500" />
                                 View Details
                               </Button>
                               <Button
                                 variant="default"
                                 size="sm"
-                                className="w-full"
+                                className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white shadow-sm transition-all duration-200"
                                 onClick={() => handleApproveClick(process.item?.id)}
                                 disabled={approvingItems.has(process.item?.id)}
                               >
@@ -389,23 +393,23 @@ const LostReportsTab = memo(function LostReportsTab({
                                 ) : (
                                   <>
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Approve Post
+                                    Approve & Post
                                   </>
                                 )}
                               </Button>
                               <Button
                                 variant="secondary"
                                 size="sm"
-                                className="w-full"
+                                className="w-full bg-gradient-to-r from-[#1E293B] to-[#334155] hover:from-[#334155] hover:to-[#1E293B] text-white shadow-sm transition-all duration-200"
                                 onClick={() => handleItemInPossession(process)}
                               >
                                 <Package className="h-4 w-4 mr-2" />
-                                Item in Possession
+                                Set Verification Questions
                               </Button>
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                className="w-full"
+                                className="w-full bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 transition-all duration-200"
                                 onClick={() => handleDeleteClick(process.item?.id)}
                                 disabled={deletingItems.has(process.item?.id)}
                               >
@@ -417,7 +421,7 @@ const LostReportsTab = memo(function LostReportsTab({
                                 ) : (
                                   <>
                                     <Trash className="h-4 w-4 mr-2" />
-                                    Delete
+                                    Delete Report
                                   </>
                                 )}
                               </Button>
@@ -636,7 +640,7 @@ const LostReportsTab = memo(function LostReportsTab({
                   variant="default"
                   onClick={() => handleApproveClick(selectedItemForDetails.id)}
                   disabled={approvingItems.has(selectedItemForDetails.id)}
-                  className="bg-[#0F172A] hover:bg-[#0F172A]/90"
+                  className="bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white shadow-sm transition-all duration-200"
                 >
                   {approvingItems.has(selectedItemForDetails.id) ? (
                     <>
@@ -646,7 +650,7 @@ const LostReportsTab = memo(function LostReportsTab({
                   ) : (
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" />
-                      Approve Post
+                      Approve & Post
                     </>
                   )}
                 </Button>
@@ -656,10 +660,10 @@ const LostReportsTab = memo(function LostReportsTab({
                     handleItemInPossession({ item: selectedItemForDetails });
                     setShowDetailsDialog(false);
                   }}
-                  className="bg-white hover:bg-gray-50"
+                  className="bg-gradient-to-r from-[#1E293B] to-[#334155] hover:from-[#334155] hover:to-[#1E293B] text-white shadow-sm transition-all duration-200"
                 >
                   <Package className="h-4 w-4 mr-2" />
-                  Item in Possession
+                  Set Verification Questions
                 </Button>
                 <Button
                   variant="destructive"

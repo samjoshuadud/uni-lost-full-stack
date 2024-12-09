@@ -298,9 +298,18 @@ export default function ItemDetailSection({
   );
 }
 
-const DetailItem = ({ label, value, fullWidth = false }) => (
-  <div className={fullWidth ? 'col-span-2' : ''}>
-    <dt className="text-sm font-medium text-gray-600">{label}</dt>
-    <dd className="mt-1 text-sm text-gray-900">{value}</dd>
-  </div>
-); 
+const DetailItem = ({ label, value, fullWidth = false }) => {
+  const renderValue = () => {
+    if (label === "Category" && value === "Others" && item.specification) {
+      return `Others - ${item.specification}`;
+    }
+    return value;
+  };
+
+  return (
+    <div className={fullWidth ? 'col-span-2' : ''}>
+      <dt className="text-sm font-medium text-gray-600">{label}</dt>
+      <dd className="mt-1 text-sm text-gray-900">{renderValue()}</dd>
+    </div>
+  );
+}; 

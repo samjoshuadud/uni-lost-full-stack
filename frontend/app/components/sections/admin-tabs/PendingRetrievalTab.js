@@ -119,103 +119,111 @@ export default function PendingRetrievalTab({
 
   return (
     <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Items Ready for Retrieval
+        </h3>
+        <p className="text-gray-600 mt-2">
+          Manage items that are ready to be picked up. Process item handovers to students 
+          who have successfully verified their ownership, or mark items as no-show if unclaimed.
+        </p>
+      </div>
+
       {error && (
-        <div className="bg-red-50 text-red-800 p-3 rounded-md mb-4">
+        <div className="bg-red-50 text-red-800 p-3 rounded-md">
           {error}
         </div>
       )}
 
-      <h3 className="text-lg font-semibold flex items-center gap-2">
-        <Package className="h-5 w-5 text-primary" />
-        Items Ready for Retrieval
-      </h3>
-
-      <div className="space-y-4">
-        {pendingRetrievalItems.map((process) => (
-          <Card 
-            key={process.id} 
-            className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
-            onClick={() => handleItemClick(process.item)}
-          >
-            <CardContent className="p-6">
-              <div className="flex gap-6">
-                <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
-                  {process.item?.imageUrl ? (
-                    <img 
-                      src={process.item.imageUrl} 
-                      alt={process.item.name} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                      No Image
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-bold text-lg">{process.item?.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Student ID: {process.item?.studentId || 'N/A'}
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="bg-green-100 text-green-800">
-                      Ready for Retrieval
-                    </Badge>
-                  </div>
-                  <div className="space-y-1.5">
-                    <p className="text-sm"><strong>Location:</strong> {process.item?.location}</p>
-                    <p className="text-sm"><strong>Category:</strong> {process.item?.category}</p>
-                    <p className="text-sm"><strong>Description:</strong> {process.item?.description}</p>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 justify-start min-w-[140px]">
-                  <Button 
-                    variant="default" 
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleHandOver(process)}
-                    disabled={handingOverItems.has(getProcessId(process))}
-                  >
-                    {handingOverItems.has(getProcessId(process)) ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+      <div className="mt-6">
+        <div className="space-y-4">
+          {pendingRetrievalItems.map((process) => (
+            <Card 
+              key={process.id} 
+              className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+              onClick={() => handleItemClick(process.item)}
+            >
+              <CardContent className="p-6">
+                <div className="flex gap-6">
+                  <div className="w-32 h-32 bg-muted rounded-lg overflow-hidden flex-shrink-0">
+                    {process.item?.imageUrl ? (
+                      <img 
+                        src={process.item.imageUrl} 
+                        alt={process.item.name} 
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <CheckCircle className="h-4 w-4 mr-2" />
+                      <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                        No Image
+                      </div>
                     )}
-                    {handingOverItems.has(getProcessId(process)) ? 'Processing...' : 'Handed Over'}
-                  </Button>
-                  <Button 
-                    variant="destructive" 
-                    size="sm"
-                    className="w-full"
-                    onClick={() => handleNoShow(process)}
-                    disabled={noShowItems.has(getProcessId(process))}
-                  >
-                    {noShowItems.has(getProcessId(process)) ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : (
-                      <XCircle className="h-4 w-4 mr-2" />
-                    )}
-                    {noShowItems.has(getProcessId(process)) ? 'Processing...' : 'No Show'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                  </div>
 
-        {pendingRetrievalItems.length === 0 && (
-          <Card>
-            <CardContent className="p-8 text-center text-muted-foreground">
-              <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p className="font-medium">No items pending retrieval</p>
-              <p className="text-sm">Items that are ready for retrieval will appear here</p>
-            </CardContent>
-          </Card>
-        )}
+                  <div className="flex-1">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h3 className="font-bold text-lg">{process.item?.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Student ID: {process.item?.studentId || 'N/A'}
+                        </p>
+                      </div>
+                      <Badge variant="outline" className="bg-green-100 text-green-800">
+                        Ready for Retrieval
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      <p className="text-sm"><strong>Location:</strong> {process.item?.location}</p>
+                      <p className="text-sm"><strong>Category:</strong> {process.item?.category}</p>
+                      <p className="text-sm"><strong>Description:</strong> {process.item?.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+                    <Button 
+                      variant="default" 
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleHandOver(process)}
+                      disabled={handingOverItems.has(getProcessId(process))}
+                    >
+                      {handingOverItems.has(getProcessId(process)) ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                      )}
+                      {handingOverItems.has(getProcessId(process)) ? 'Processing...' : 'Handed Over'}
+                    </Button>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      className="w-full"
+                      onClick={() => handleNoShow(process)}
+                      disabled={noShowItems.has(getProcessId(process))}
+                    >
+                      {noShowItems.has(getProcessId(process)) ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <XCircle className="h-4 w-4 mr-2" />
+                      )}
+                      {noShowItems.has(getProcessId(process)) ? 'Processing...' : 'No Show'}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          {pendingRetrievalItems.length === 0 && (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                <p className="font-medium">No items pending retrieval</p>
+                <p className="text-sm">Items that are ready for retrieval will appear here</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
