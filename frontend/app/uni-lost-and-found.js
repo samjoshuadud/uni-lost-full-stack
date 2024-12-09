@@ -30,6 +30,7 @@ import { authApi, itemApi } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/api-config';
 import Image from "next/image"
 import { exportToPDF, exportToExcel } from '@/lib/export-utils';
+import { Skeleton } from "@/components/ui/skeleton"
 const styles = `
   @keyframes fadeIn {
     from {
@@ -356,7 +357,61 @@ export default function UniLostAndFound() {
     }
   };
 
+  const renderSkeletonCards = () => {
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="overflow-hidden bg-white shadow-md">
+            {/* Card Header - Warmer and more subtle blue gradient background */}
+            <div className="bg-gradient-to-r from-[#1A5BB5] to-[#3D7DD9] p-4">
+              <div className="flex justify-between items-center">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24 bg-white/20" /> {/* Title */}
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-3 rounded-full bg-white/20" /> {/* Location icon */}
+                    <Skeleton className="h-3 w-16 bg-white/20" /> {/* Location text */}
+                  </div>
+                </div>
+                <Skeleton className="h-6 w-12 rounded-full bg-yellow-400/30" /> {/* Status badge */}
+              </div>
+            </div>
+
+            {/* Card Body */}
+            <div className="p-4">
+              {/* Image placeholder */}
+              <div className="mb-4 bg-gray-100 rounded-lg flex items-center justify-center" style={{ height: "200px" }}>
+                <Skeleton className="h-full w-full bg-[#E3EDFF]" />
+              </div>
+
+              {/* Item name */}
+              <Skeleton className="h-5 w-3/4 mb-4 bg-[#E3EDFF]" />
+
+              {/* Bottom section */}
+              <div className="flex items-center justify-between mt-2">
+                <Skeleton className="h-4 w-24 bg-[#E3EDFF]" /> {/* Date */}
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 w-24 rounded-md bg-[#E3EDFF]" /> {/* View Details button */}
+                  <Skeleton className="h-9 w-9 rounded-md bg-[#E3EDFF]" /> {/* Report icon */}
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
   const renderSection = () => {
+    if (isLoading) {
+      return (
+        <div className="space-y-8">
+          <div className="animate-pulse">
+            {renderSkeletonCards()}
+          </div>
+        </div>
+      );
+    }
+
     switch (activeSection) {
       case "dashboard":
         const dashboardItems = items

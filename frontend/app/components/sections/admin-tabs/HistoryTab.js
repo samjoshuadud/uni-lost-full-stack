@@ -175,6 +175,15 @@ export default function HistoryTab({ handleViewDetails }) {
                   >
                     View Details
                   </Button>
+                  {process.status === ProcessStatus.NO_SHOW && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-green-500 text-white hover:bg-green-600 border-0"
+                    >
+                      Mark as Handed Over
+                    </Button>
+                  )}
                 </td>
               </tr>
             ))}
