@@ -516,12 +516,20 @@ export default function VerificationsTab({
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold flex items-center gap-2">
-        <Activity className="h-5 w-5 text-primary" />
-        Verifications
-      </h3>
+      {/* Header Section */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary" />
+          Verifications Management
+        </h3>
+        <p className="text-gray-600 mt-2">
+          Monitor and process item verifications. Review student responses to verification questions, 
+          handle claim requests, and ensure legitimate ownership before item retrieval.
+        </p>
+      </div>
 
-      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full">
+      {/* Tabs Section - Add mt-6 for consistent spacing */}
+      <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="w-full mt-6">
         <TabsList className="w-full grid grid-cols-4 gap-2 bg-gray-100/80 p-1.5 rounded-lg mb-6 min-h-[48px]">
           <TabsTrigger 
             value="in_progress"

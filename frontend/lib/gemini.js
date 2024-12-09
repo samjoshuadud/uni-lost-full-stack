@@ -18,23 +18,28 @@ export async function generateVerificationQuestions(itemInfo) {
     let model;
     let result;
 
-    const promptText = `Generate 3-4 verification questions for this lost item:
+    const promptText = `Generate 3-4 simple verification questions for this lost item:
       Item: ${itemInfo.name}
       Category: ${itemInfo.category}
       Description: ${itemInfo.description}
       Location Found: ${itemInfo.location}
       
       Generate questions that:
-      1. Are specific to this item
-      2. Only the true owner would know
-      3. Are based on the provided description
-      4. Are clear and direct
-      5. Simple and easy to understand
-      6. Are not too difficult to answer
+      1. Are very basic and straightforward
+      2. Focus on simple visible features (color, brand)
+      3. Require short, one-word answers
+      4. Ask "what" instead of "is it"
+      5. Are based on obvious characteristics
+      6. Avoid complex details
       
       Format the response as a clean list of questions only.
-      Each question should be specific and help verify the true owner.
-      Do not include any additional text, just the questions.`;
+      Example types of questions:
+      - What color is the item?
+      - What brand is the item?
+      - What material is it made of?
+      
+      Do not include any additional text, just the questions.
+      Do not generate yes/no questions.`;
 
     // If there's an image URL, use the vision model
     if (itemInfo.imageUrl) {

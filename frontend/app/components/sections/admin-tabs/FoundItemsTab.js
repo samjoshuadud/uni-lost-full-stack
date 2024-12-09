@@ -336,24 +336,28 @@ const FoundItemsTab = memo(function FoundItemsTab({
   return (
     <div className="space-y-6">
       <div className="min-h-[600px]">
-        <h3 className="text-lg font-semibold flex items-center gap-2">
+        <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
-          Found Items Overview
+          Found Items Management
         </h3>
+        <p className="text-gray-600 mt-2">
+          Process found item reports and manage surrendered items. Verify item details, 
+          approve posts to make them visible, or handle inappropriate submissions.
+        </p>
 
         {/* Status Cards with New Buttons */}
         <div className="grid gap-6 md:grid-cols-3 mt-6">
-          <Card className="bg-background hover:bg-muted/50 transition-colors">
+          <Card className="bg-gradient-to-br from-white via-[#F8FAFF] to-[#F0F7FF] hover:shadow-md transition-all duration-300 border-l-4 border border-[#0052cc]/30">
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-full">
-                  <Package className="h-6 w-6 text-primary" />
+                <div className="p-3 bg-gradient-to-br from-[#0052cc]/10 to-[#0747a6]/10 rounded-full">
+                  <Package className="h-6 w-6 text-[#0052cc]" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-muted-foreground">
+                  <p className="text-sm font-medium text-[#1E3A8A]">
                     Pending Approval
                   </p>
-                  <p className="text-2xl font-bold">
+                  <p className="text-2xl font-bold text-[#0052cc]">
                     {items.filter(process => 
                       process.status === ProcessStatus.PENDING_APPROVAL && 
                       process.item?.status?.toLowerCase() === "found" && 
@@ -367,23 +371,21 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
           {/* QR Code Scanner Card */}
           <Card 
-            className="bg-background hover:bg-muted/50 transition-colors cursor-pointer group"
+            className="bg-gradient-to-br from-white via-[#F8FAFF] to-[#F0F7FF] hover:shadow-md transition-all duration-300 border-l-4 border border-[#0052cc]/30 cursor-pointer group"
             onClick={() => setShowScannerModal(true)}
           >
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#0052cc]/10 rounded-full">
-                    <QrCode className="h-6 w-6 text-[#0052cc] group-hover:scale-110 transition-transform" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Scan QR Code
-                    </p>
-                    <p className="text-sm text-muted-foreground/80 mt-1">
-                      Click to scan item QR code
-                    </p>
-                  </div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-gradient-to-br from-[#0052cc]/10 to-[#0747a6]/10 rounded-full group-hover:from-[#0052cc]/15 group-hover:to-[#0747a6]/15 transition-colors">
+                  <QrCode className="h-6 w-6 text-[#0052cc] group-hover:scale-110 transition-transform" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[#1E3A8A]">
+                    Scan QR Code
+                  </p>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Scan QR codes from surrendered items to update their status
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -391,23 +393,21 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
           {/* Manual Report Card */}
           <Card 
-            className="bg-background hover:bg-muted/50 transition-colors cursor-pointer group"
+            className="bg-gradient-to-br from-white via-[#F8FAFF] to-[#F0F7FF] hover:shadow-md transition-all duration-300 border-l-4 border border-[#0052cc]/30 cursor-pointer group"
             onClick={() => setShowReportDialog(true)}
           >
             <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 bg-[#0052cc]/10 rounded-full">
-                    <Plus className="h-6 w-6 text-[#0052cc] group-hover:scale-110 transition-transform" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Report Found Item
-                    </p>
-                    <p className="text-sm text-muted-foreground/80 mt-1">
-                      Click to report a found item
-                    </p>
-                  </div>
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-gradient-to-br from-[#0052cc]/10 to-[#0747a6]/10 rounded-full group-hover:from-[#0052cc]/15 group-hover:to-[#0747a6]/15 transition-colors">
+                  <Plus className="h-6 w-6 text-[#0052cc] group-hover:scale-110 transition-transform" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-[#1E3A8A]">
+                    Report Found Item
+                  </p>
+                  <p className="text-sm text-slate-600 mt-1">
+                    Manually add a found item report on behalf of students or staff
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -542,20 +542,20 @@ const FoundItemsTab = memo(function FoundItemsTab({
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-full"
+                                className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition-all duration-200"
                                 onClick={() => handleItemClick(process.item)}
                               >
-                                <ExternalLink className="h-4 w-4 mr-2" />
+                                <ExternalLink className="h-4 w-4 mr-2 text-gray-500" />
                                 View Details
                               </Button>
                               <Button
                                 variant="default"
                                 size="sm"
-                                className="w-full"
-                                onClick={() => handleApprove(process.item?.id || process.item?.Id)}
-                                disabled={approvingItems.has(process.item?.id || process.item?.Id)}
+                                className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white shadow-sm transition-all duration-200"
+                                onClick={() => handleApprove(process.item?.id)}
+                                disabled={approvingItems.has(process.item?.id)}
                               >
-                                {approvingItems.has(process.item?.id || process.item?.Id) ? (
+                                {approvingItems.has(process.item?.id) ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                     Approving...
@@ -563,18 +563,18 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 ) : (
                                   <>
                                     <CheckCircle className="h-4 w-4 mr-2" />
-                                    Approve Post
+                                    Approve & Post
                                   </>
                                 )}
                               </Button>
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                className="w-full"
-                                onClick={() => handleDeleteClick(process.item?.id || process.item?.Id)}
-                                disabled={deletingItems.has(process.item?.id || process.item?.Id)}
+                                className="w-full bg-white hover:bg-red-50 text-red-600 border border-red-200 transition-all duration-200"
+                                onClick={() => handleDeleteClick(process.item?.id)}
+                                disabled={deletingItems.has(process.item?.id)}
                               >
-                                {deletingItems.has(process.item?.id || process.item?.Id) ? (
+                                {deletingItems.has(process.item?.id) ? (
                                   <>
                                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                                     Deleting...
@@ -582,7 +582,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 ) : (
                                   <>
                                     <Trash className="h-4 w-4 mr-2" />
-                                    Delete
+                                    Delete Report
                                   </>
                                 )}
                               </Button>
@@ -872,7 +872,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     variant="default"
                     onClick={() => handleApprove(selectedItemForDetails.id)}
                     disabled={approvingItems.has(selectedItemForDetails.id)}
-                    className="bg-[#0F172A] hover:bg-[#0F172A]/90"
+                    className="bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white shadow-sm transition-all duration-200"
                   >
                     {approvingItems.has(selectedItemForDetails.id) ? (
                       <>
@@ -882,7 +882,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        Approve Post
+                        Approve & Post
                       </>
                     )}
                   </Button>

@@ -608,186 +608,184 @@ export default function AdminSection({
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] p-6">
-      <div className="max-w-full mx-auto space-y-6">
-        {/* Admin Dashboard Title */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-[#0052cc]">Admin Dashboard</h2>
-              <p className="text-gray-600 mt-1">Manage and monitor all the lost and found items in the system</p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowQRScanner(true)}
-                className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
-              >
-                <QrCode className="h-4 w-4" />
-                Scan QR Code
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowAdminDialog(true)}
-                className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
-              >
-                <Users className="h-4 w-4" />
-                Manage Users
-              </Button>
-            </div>
+    <div className="max-w-full mx-auto space-y-6">
+      {/* Admin Dashboard Title */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#0052cc]">Admin Dashboard</h2>
+            <p className="text-gray-600 mt-1">Manage and monitor all the lost and found items in the system</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowQRScanner(true)}
+              className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+            >
+              <QrCode className="h-4 w-4" />
+              Scan QR Code
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAdminDialog(true)}
+              className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
+            >
+              <Users className="h-4 w-4" />
+              Manage Users
+            </Button>
           </div>
         </div>
-
-        {/* Main Content Card */}
-        <Card className="border-0 shadow-sm bg-white relative drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
-          <CardContent className="p-6">
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-              <TabsList className="w-full grid grid-cols-6 gap-4 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px]">
-                {/* Overview Tab */}
-                <TabsTrigger 
-                  value="statistics"
-                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                    hover:bg-white/10"
-                >
-                  <BarChart className="h-4 w-4" />
-                  <span className="font-medium">Overview</span>
-                </TabsTrigger>
-
-                {/* Lost Items Tab */}
-                <TabsTrigger 
-                  value="reports"
-                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                    hover:bg-white/10"
-                >
-                  <ClipboardList className="h-4 w-4" />
-                  <span className="font-medium">Lost Items</span>
-                  {pendingLostCount > 0 && (
-                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
-                      {pendingLostCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-
-                {/* Found Items Tab */}
-                <TabsTrigger 
-                  value="found"
-                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                    hover:bg-white/10"
-                >
-                  <Package className="h-4 w-4" />
-                  <span className="font-medium">Found Items</span>
-                  {pendingFoundCount > 0 && (
-                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
-                      {pendingFoundCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-
-                {/* Verifications Tab */}
-                <TabsTrigger 
-                  value="verifications"
-                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                    hover:bg-white/10"
-                >
-                  <Activity className="h-4 w-4" />
-                  <span className="font-medium">Verifications</span>
-                  {verificationCount > 0 && (
-                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-blue-500 text-white border-2 border-[#2E3F65] shadow-md">
-                      {verificationCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-
-                {/* Retrieval Tab */}
-                <TabsTrigger 
-                  value="retrieval"
-                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                    hover:bg-white/10"
-                >
-                  <PieChart className="h-4 w-4" />
-                  <span className="font-medium">Ready for Pickup</span>
-                  {readyForPickupCount > 0 && (
-                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-green-500 text-white border-2 border-[#2E3F65] shadow-md">
-                      {readyForPickupCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-
-                {/* History Tab */}
-                <TabsTrigger 
-                  value="history"
-                  className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                    data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                    hover:bg-white/10"
-                >
-                  <History className="h-4 w-4" />
-                  <span className="font-medium">History</span>
-                  {historyCount > 0 && (
-                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-gray-500 text-white border-2 border-[#2E3F65] shadow-md">
-                      {historyCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-              </TabsList>
-
-              {/* Remove absolute positioning and simplify TabsContent */}
-              <TabsContent value="statistics">
-                <StatisticsSection />
-              </TabsContent>
-
-              <TabsContent value="reports">
-                <LostReportsTab
-                  items={pendingProcesses}
-                  isCountsLoading={isCountsLoading}
-                  getPendingRetrievalCount={getPendingRetrievalCount}
-                  handleDelete={handleDelete}
-                  onApprove={onApprove}
-                  handleViewDetails={handleViewDetails}
-                  onUpdateCounts={calculateCounts}
-                />
-              </TabsContent>
-
-              <TabsContent value="found">
-                <FoundItemsTab
-                  items={pendingProcesses}
-                  isCountsLoading={isCountsLoading}
-                  onDelete={handleDelete}
-                  onViewDetails={handleViewDetails}
-                  onApprove={onApprove}
-                />
-              </TabsContent>
-
-              <TabsContent value="verifications">
-                <VerificationsTab 
-                  processes={pendingProcesses} 
-                  handleViewDetails={handleViewDetails} 
-                  verificationCounts={verificationCounts}
-                />
-              </TabsContent>
-
-              <TabsContent value="retrieval">
-                <PendingRetrievalTab
-                  items={allItems}
-                  onHandOver={onHandOver}
-                  onNoShow={handleNoShow}
-                  isCountsLoading={isCountsLoading}
-                />
-              </TabsContent>
-
-              <TabsContent value="history">
-                <HistoryTab 
-                  handleViewDetails={handleViewDetails}
-                />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
       </div>
+
+      {/* Main Content Card */}
+      <Card className="border-0 shadow-sm bg-white relative drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+        <CardContent className="p-6">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="w-full grid grid-cols-6 gap-4 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px]">
+              {/* Overview Tab */}
+              <TabsTrigger 
+                value="statistics"
+                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                  hover:bg-white/10"
+              >
+                <BarChart className="h-4 w-4" />
+                <span className="font-medium">Overview</span>
+              </TabsTrigger>
+
+              {/* Lost Items Tab */}
+              <TabsTrigger 
+                value="reports"
+                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                  hover:bg-white/10"
+              >
+                <ClipboardList className="h-4 w-4" />
+                <span className="font-medium">Lost Items</span>
+                {pendingLostCount > 0 && (
+                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
+                    {pendingLostCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
+              {/* Found Items Tab */}
+              <TabsTrigger 
+                value="found"
+                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                  hover:bg-white/10"
+              >
+                <Package className="h-4 w-4" />
+                <span className="font-medium">Found Items</span>
+                {pendingFoundCount > 0 && (
+                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
+                    {pendingFoundCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
+              {/* Verifications Tab */}
+              <TabsTrigger 
+                value="verifications"
+                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                  hover:bg-white/10"
+              >
+                <Activity className="h-4 w-4" />
+                <span className="font-medium">Verifications</span>
+                {verificationCount > 0 && (
+                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-blue-500 text-white border-2 border-[#2E3F65] shadow-md">
+                    {verificationCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
+              {/* Retrieval Tab */}
+              <TabsTrigger 
+                value="retrieval"
+                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                  hover:bg-white/10"
+              >
+                <PieChart className="h-4 w-4" />
+                <span className="font-medium">Ready for Pickup</span>
+                {readyForPickupCount > 0 && (
+                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-green-500 text-white border-2 border-[#2E3F65] shadow-md">
+                    {readyForPickupCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+
+              {/* History Tab */}
+              <TabsTrigger 
+                value="history"
+                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
+                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
+                  hover:bg-white/10"
+              >
+                <History className="h-4 w-4" />
+                <span className="font-medium">History</span>
+                {historyCount > 0 && (
+                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-gray-500 text-white border-2 border-[#2E3F65] shadow-md">
+                    {historyCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Remove absolute positioning and simplify TabsContent */}
+            <TabsContent value="statistics">
+              <StatisticsSection />
+            </TabsContent>
+
+            <TabsContent value="reports">
+              <LostReportsTab
+                items={pendingProcesses}
+                isCountsLoading={isCountsLoading}
+                getPendingRetrievalCount={getPendingRetrievalCount}
+                handleDelete={handleDelete}
+                onApprove={onApprove}
+                handleViewDetails={handleViewDetails}
+                onUpdateCounts={calculateCounts}
+              />
+            </TabsContent>
+
+            <TabsContent value="found">
+              <FoundItemsTab
+                items={pendingProcesses}
+                isCountsLoading={isCountsLoading}
+                onDelete={handleDelete}
+                onViewDetails={handleViewDetails}
+                onApprove={onApprove}
+              />
+            </TabsContent>
+
+            <TabsContent value="verifications">
+              <VerificationsTab 
+                processes={pendingProcesses} 
+                handleViewDetails={handleViewDetails} 
+                verificationCounts={verificationCounts}
+              />
+            </TabsContent>
+
+            <TabsContent value="retrieval">
+              <PendingRetrievalTab
+                items={allItems}
+                onHandOver={onHandOver}
+                onNoShow={handleNoShow}
+                isCountsLoading={isCountsLoading}
+              />
+            </TabsContent>
+
+            <TabsContent value="history">
+              <HistoryTab 
+                handleViewDetails={handleViewDetails}
+              />
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
 
       {/* Admin Management Dialog */}
       <Dialog open={showAdminDialog} onOpenChange={setShowAdminDialog}>
