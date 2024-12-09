@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { API_BASE_URL } from '@/lib/api-config';
-import { exportHistoryItems } from '@/lib/export-utils';
+import { exportToExcel, exportToPDF } from '@/lib/export-utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -136,10 +136,10 @@ export default function HistoryTab({ handleViewDetails }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => exportHistoryItems.toExcel(filteredItems)}>
+            <DropdownMenuItem onClick={() => exportToExcel(filteredItems)}>
               Export to Excel
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportHistoryItems.toPdf(filteredItems)}>
+            <DropdownMenuItem onClick={() => exportToPDF(filteredItems)}>
               Export to PDF
             </DropdownMenuItem>
           </DropdownMenuContent>
