@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/lib/AuthContext"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants"
+import { ItemStatus, ProcessStatus, ProcessMessages, ItemCategories } from "@/lib/constants"
 import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock, Eye } from "lucide-react"
 import { API_BASE_URL } from "@/lib/api-config";
 import { Label } from "@/components/ui/label"
@@ -49,6 +49,7 @@ export default function ReportSection({
   const [isAddingDescription, setIsAddingDescription] = useState(false)
   const [showEmptyDescriptionError, setShowEmptyDescriptionError] = useState(false)
   const [originalItem, setOriginalItem] = useState(null);
+  const [otherCategory, setOtherCategory] = useState("");
 
   useEffect(() => {
     if (initialData) {
@@ -262,7 +263,7 @@ export default function ReportSection({
       formData.append("Name", name);
       formData.append("Description", description);
       formData.append("Location", location);
-      formData.append("Category", category);
+      formData.append("Category", category === "Others" ? `Others - ${otherCategory}` : category);
       formData.append("StudentId", userData?.studentId || "");
       formData.append("ReporterId", user.uid);
       
@@ -417,287 +418,299 @@ export default function ReportSection({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#f8f9fa] to-white p-6">
-      <div className="max-w-4xl mx-auto space-y-8">
-        {/* Enhanced Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#0052cc] to-[#0747a6]">
-            Report Item
-          </h1>
-          <p className="text-gray-600">
-            Please provide detailed information about the item
-          </p>
-        </div>
+    <div className="max-w-4xl mx-auto space-y-8">
+      {/* Enhanced Header */}
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#0052cc] to-[#0747a6]">
+          Report Item
+        </h1>
+        <p className="text-gray-600">
+          Please provide detailed information about the item
+        </p>
+      </div>
 
-        {/* Main Form Card - Updated shadow */}
-        <Card className="border-0 shadow-[0_10px_50px_-12px_rgba(0,0,0,0.25)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.35)] transition-shadow duration-300">
-          <CardContent className="p-8">
-            <form onSubmit={handlePreSubmit} className="space-y-8">
-              {/* Two Column Layout */}
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* Left Column */}
-                <div className="space-y-6">
-                  {/* Report Type Section */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Report Type
-                    </label>
-                    {adminMode || isScannedData || activeSection === "reports" ? (
-                      <div className="relative">
-                        <Input
-                          value={
-                            adminMode || isScannedData 
-                              ? "Found Item" 
-                              : activeSection === "reports" 
-                                ? "Lost Item" 
-                                : ""
-                          }
-                          disabled
-                          className="bg-gray-50 border-gray-200 text-gray-600 font-medium"
-                        />
-                        <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                          <Badge variant="outline" className={
-                            adminMode || isScannedData || activeSection !== "reports"
-                              ? "bg-green-50 text-green-700 border-green-200"
-                              : "bg-red-50 text-red-700 border-red-200"
-                          }>
-                            {adminMode || isScannedData || activeSection !== "reports" ? "Found" : "Lost"}
-                          </Badge>
-                        </div>
-                      </div>
-                    ) : (
-                      <Select 
-                        value={itemStatus} 
-                        onValueChange={setItemStatus} 
-                        required
-                      >
-                        <SelectTrigger className="bg-white border-gray-200">
-                          <SelectValue placeholder="Select Report Type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
-                          <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-
-                  {/* Enhanced Student ID field */}
-                  <div className="space-y-2">
-                    <Label htmlFor="studentId" className="text-gray-700">
-                      {adminMode || userData?.isAdmin ? 'Reported By:' : 'Student ID'}
-                    </Label>
+      {/* Main Form Card */}
+      <Card className="border-0 shadow-[0_10px_50px_-12px_rgba(0,0,0,0.25)] hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.35)] transition-shadow duration-300">
+        <CardContent className="p-8">
+          <form onSubmit={handlePreSubmit} className="space-y-8">
+            {/* Two Column Layout */}
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Left Column */}
+              <div className="space-y-6">
+                {/* Report Type Section */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Report Type
+                  </label>
+                  {adminMode || isScannedData || activeSection === "reports" ? (
                     <div className="relative">
                       <Input
-                        id="studentId"
-                        name="studentId"
-                        value={studentId}
-                        readOnly
+                        value={
+                          adminMode || isScannedData 
+                            ? "Found Item" 
+                            : activeSection === "reports" 
+                              ? "Lost Item" 
+                              : ""
+                        }
                         disabled
-                        className="bg-gray-50 border-gray-200 text-gray-600 font-medium pl-10"
+                        className="bg-gray-50 border-gray-200 text-gray-600 font-medium"
                       />
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg
-                          className="h-5 w-5 text-gray-400"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <Badge variant="outline" className={
+                          adminMode || isScannedData || activeSection !== "reports"
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : "bg-red-50 text-red-700 border-red-200"
+                        }>
+                          {adminMode || isScannedData || activeSection !== "reports" ? "Found" : "Lost"}
+                        </Badge>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Enhanced Item Name field */}
-                  <div className="space-y-2">
-                    <Label className="text-gray-700">Item Name</Label>
-                    <Input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter Item Name"
-                      className="bg-white border-gray-200"
+                  ) : (
+                    <Select 
+                      value={itemStatus} 
+                      onValueChange={setItemStatus} 
                       required
-                    />
-                  </div>
-
-                  {/* Enhanced Category field */}
-                  <div className="space-y-2">
-                    <Label className="text-gray-700">Category</Label>
-                    <Select value={category} onValueChange={setCategory} required>
+                    >
                       <SelectTrigger className="bg-white border-gray-200">
-                        <SelectValue placeholder="Select Category" />
+                        <SelectValue placeholder="Select Report Type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Books">Books</SelectItem>
-                        <SelectItem value="Electronics">Electronics</SelectItem>
-                        <SelectItem value="Personal Items">Personal Items</SelectItem>
-                        <SelectItem value="Documents">Documents</SelectItem>
-                        <SelectItem value="Bags">Bags</SelectItem>
+                        <SelectItem value={ItemStatus.LOST}>Lost Item</SelectItem>
+                        <SelectItem value={ItemStatus.FOUND}>Found Item</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Enhanced Location field */}
-                  <div className="space-y-2">
-                    <Label className="text-gray-700">Last Seen Location</Label>
+                {/* Enhanced Student ID field */}
+                <div className="space-y-2">
+                  <Label htmlFor="studentId" className="text-gray-700">
+                    {adminMode || userData?.isAdmin ? 'Reported By:' : 'Student ID'}
+                  </Label>
+                  <div className="relative">
                     <Input
-                      value={location}
-                      onChange={(e) => setLocation(e.target.value)}
-                      placeholder="Enter Location"
-                      className="bg-white border-gray-200"
-                      required
+                      id="studentId"
+                      name="studentId"
+                      value={studentId}
+                      readOnly
+                      disabled
+                      className="bg-gray-50 border-gray-200 text-gray-600 font-medium pl-10"
                     />
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    </div>
                   </div>
                 </div>
 
-                {/* Right Column */}
-                <div className="space-y-6">
-                  <div>
-                    <label className="text-sm font-medium text-gray-600 mb-1.5 block">
-                      Description
-                    </label>
-                    <Textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Describe the Item"
-                      className="min-h-[120px] bg-white"
-                      required
-                    />
+                {/* Enhanced Item Name field */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700">Item Name</Label>
+                  <Input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter Item Name"
+                    className="bg-white border-gray-200"
+                    required
+                  />
+                </div>
+
+                {/* Enhanced Category field */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700">Category</Label>
+                  <Select
+                    value={category}
+                    onValueChange={setCategory}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ItemCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {category === "Others" && (
+                    <div className="mt-2">
+                      <Input
+                        value={otherCategory}
+                        onChange={(e) => setOtherCategory(e.target.value)}
+                        placeholder="Please specify category"
+                        className="bg-white border-gray-200"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Enhanced Location field */}
+                <div className="space-y-2">
+                  <Label className="text-gray-700">Last Seen Location</Label>
+                  <Input
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Enter Location"
+                    className="bg-white border-gray-200"
+                    required
+                  />
+                </div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-6">
+                <div>
+                  <label className="text-sm font-medium text-gray-600 mb-1.5 block">
+                    Description
+                  </label>
+                  <Textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Describe the Item"
+                    className="min-h-[120px] bg-white"
+                    required
+                  />
+                </div>
+
+                {/* Image Upload */}
+                {renderImageSection()}
+
+                {/* Additional Descriptions */}
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <Label>Additional Descriptions</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsAddingDescription(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Description
+                    </Button>
                   </div>
 
-                  {/* Image Upload */}
-                  {renderImageSection()}
-
-                  {/* Additional Descriptions */}
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <Label>Additional Descriptions</Label>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsAddingDescription(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Description
-                      </Button>
-                    </div>
-
-                    {isAddingDescription && (
-                      <Card className="border border-gray-200 shadow-[0_4px_12px_rgb(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.08)] transition-shadow duration-300">
-                        <CardContent className="p-4 space-y-4">
-                          <div className="space-y-2">
-                            <Label>Title</Label>
-                            <Input
-                              value={additionalDescriptionTitle}
-                              onChange={(e) => {
-                                setAdditionalDescriptionTitle(e.target.value)
-                                setShowEmptyDescriptionError(false)
-                              }}
-                              className={showEmptyDescriptionError && !additionalDescriptionTitle.trim() ? 
-                                "border-red-500" : ""}
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Description</Label>
-                            <Textarea
-                              value={additionalDescriptionText}
-                              onChange={(e) => {
-                                setAdditionalDescriptionText(e.target.value)
-                                setShowEmptyDescriptionError(false)
-                              }}
-                              className={showEmptyDescriptionError && !additionalDescriptionText.trim() ? 
-                                "border-red-500" : ""}
-                            />
-                          </div>
-                          {showEmptyDescriptionError && (
-                            <p className="text-sm text-red-500">
-                              Please fill in both title and description before adding
-                            </p>
-                          )}
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => {
-                                setIsAddingDescription(false)
-                                setAdditionalDescriptionTitle("")
-                                setAdditionalDescriptionText("")
-                                setShowEmptyDescriptionError(false)
-                              }}
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={handleAddDescription}
-                            >
-                              Add
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
-
-                    <div className="space-y-3">
-                      {additionalDescriptions.map((desc, index) => (
-                        <div key={index} className="relative bg-white p-3 rounded-lg border border-gray-200 shadow-[0_2px_8px_rgb(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgb(0,0,0,0.06)] transition-shadow duration-300">
+                  {isAddingDescription && (
+                    <Card className="border border-gray-200 shadow-[0_4px_12px_rgb(0,0,0,0.05)] hover:shadow-[0_8px_20px_rgb(0,0,0,0.08)] transition-shadow duration-300">
+                      <CardContent className="p-4 space-y-4">
+                        <div className="space-y-2">
+                          <Label>Title</Label>
+                          <Input
+                            value={additionalDescriptionTitle}
+                            onChange={(e) => {
+                              setAdditionalDescriptionTitle(e.target.value)
+                              setShowEmptyDescriptionError(false)
+                            }}
+                            className={showEmptyDescriptionError && !additionalDescriptionTitle.trim() ? 
+                              "border-red-500" : ""}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Description</Label>
+                          <Textarea
+                            value={additionalDescriptionText}
+                            onChange={(e) => {
+                              setAdditionalDescriptionText(e.target.value)
+                              setShowEmptyDescriptionError(false)
+                            }}
+                            className={showEmptyDescriptionError && !additionalDescriptionText.trim() ? 
+                              "border-red-500" : ""}
+                          />
+                        </div>
+                        {showEmptyDescriptionError && (
+                          <p className="text-sm text-red-500">
+                            Please fill in both title and description before adding
+                          </p>
+                        )}
+                        <div className="flex justify-end gap-2">
                           <Button
                             type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="absolute top-2 right-2 h-6 w-6"
-                            onClick={() => removeDescription(index)}
+                            variant="outline"
+                            onClick={() => {
+                              setIsAddingDescription(false)
+                              setAdditionalDescriptionTitle("")
+                              setAdditionalDescriptionText("")
+                              setShowEmptyDescriptionError(false)
+                            }}
                           >
-                            <X className="h-4 w-4" />
+                            Cancel
                           </Button>
-                          <div className="space-y-2">
-                            <Input
-                              value={desc.title}
-                              onChange={(e) => updateDescription(index, 'title', e.target.value)}
-                              placeholder="Title"
-                              className="bg-white"
-                            />
-                            <Textarea
-                              value={desc.description}
-                              onChange={(e) => updateDescription(index, 'description', e.target.value)}
-                              placeholder="Description"
-                              className="bg-white"
-                            />
-                          </div>
+                          <Button
+                            type="button"
+                            onClick={handleAddDescription}
+                          >
+                            Add
+                          </Button>
                         </div>
-                      ))}
-                    </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  <div className="space-y-3">
+                    {additionalDescriptions.map((desc, index) => (
+                      <div key={index} className="relative bg-white p-3 rounded-lg border border-gray-200 shadow-[0_2px_8px_rgb(0,0,0,0.04)] hover:shadow-[0_4px_12px_rgb(0,0,0,0.06)] transition-shadow duration-300">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute top-2 right-2 h-6 w-6"
+                          onClick={() => removeDescription(index)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                        <div className="space-y-2">
+                          <Input
+                            value={desc.title}
+                            onChange={(e) => updateDescription(index, 'title', e.target.value)}
+                            placeholder="Title"
+                            className="bg-white"
+                          />
+                          <Textarea
+                            value={desc.description}
+                            onChange={(e) => updateDescription(index, 'description', e.target.value)}
+                            placeholder="Description"
+                            className="bg-white"
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* Submit Button */}
-              <div className="flex justify-end pt-4">
-                <Button
-                  type="button"
-                  onClick={handlePreview}
-                  disabled={!isFormValid() || isSubmitting}
-                  className={`w-full sm:w-auto transition-all duration-200 ${
-                    isFormValid() && !isSubmitting
-                      ? "bg-[#0052cc] hover:bg-[#0747a6]"
-                      : "bg-gray-200 cursor-not-allowed"
-                  }`}
-                >
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview Report
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      </div>
+            {/* Submit Button */}
+            <div className="flex justify-end pt-4">
+              <Button
+                type="button"
+                onClick={handlePreview}
+                disabled={!isFormValid() || isSubmitting}
+                className={`w-full sm:w-auto transition-all duration-200 ${
+                  isFormValid() && !isSubmitting
+                    ? "bg-[#0052cc] hover:bg-[#0747a6]"
+                    : "bg-gray-200 cursor-not-allowed"
+                }`}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview Report
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Summary Dialog */}
       {showConfirmDialog && (

@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter, Info } from "lucide-react"
+import { X, Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter, Info, MapPin } from "lucide-react"
 import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -1076,137 +1076,137 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] p-6">
-      <div className="max-w-full mx-auto space-y-6">
-        {/* Header */}
-        <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_10px_15px_rgba(0,0,0,0.1)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
-              <p className="text-gray-600 mt-1">Track the status of your reported items</p>
+    <div className="max-w-full mx-auto space-y-6">
+      {/* Header */}
+      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_10px_15px_rgba(0,0,0,0.1)]">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
+            <p className="text-gray-600 mt-1">Track the status of your reported items</p>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* Type Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <Select
+                value={typeFilter}
+                onValueChange={setTypeFilter}
+              >
+                <SelectTrigger className="w-[150px]">
+                  <SelectValue placeholder="Filter by type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="lost">Lost Items</SelectItem>
+                  <SelectItem value="found">Found Items</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex items-center gap-4">
-              {/* Type Filter */}
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <Select
-                  value={typeFilter}
-                  onValueChange={setTypeFilter}
-                >
-                  <SelectTrigger className="w-[150px]">
-                    <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="lost">Lost Items</SelectItem>
-                    <SelectItem value="found">Found Items</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {/* Status Filter */}
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-500" />
-                <Select
-                  value={statusFilter}
-                  onValueChange={setStatusFilter}
-                >
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {getUniqueStatuses(validProcesses).map((status) => (
-                      <SelectItem key={status} value={status}>
-                        {formatStatus(status)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Status Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <Select
+                value={statusFilter}
+                onValueChange={setStatusFilter}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getUniqueStatuses(validProcesses).map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {formatStatus(status)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Process Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {!validProcesses || validProcesses.length === 0 ? (
-            <div className="col-span-full">
-              <Card className="border-0 shadow-sm bg-white">
-                <CardContent className="p-8 text-center">
-                  <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                    <Inbox className="h-8 w-8 text-gray-400" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Processes</h3>
-                  <p className="text-gray-500 max-w-sm mx-auto">
-                    You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-          ) : (
-            filterProcesses(validProcesses)
-              .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-              .map((process, index) => (
-                <Card 
-                  key={process.id} 
-                  className={`overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] 
-                    hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-300 
-                    animate-slideUp border-l-4 ${
-                      process.status === ProcessStatus.PENDING_APPROVAL ? "border-l-yellow-500" :
-                      process.status === ProcessStatus.IN_VERIFICATION ? "border-l-blue-500" :
-                      process.status === ProcessStatus.APPROVED ? "border-l-green-500" :
-                      process.status === ProcessStatus.VERIFICATION_FAILED ? "border-l-red-500" :
-                      process.status === ProcessStatus.PENDING_RETRIEVAL ? "border-l-orange-500" :
-                      process.status === ProcessStatus.HANDED_OVER ? "border-l-indigo-500" :
-                      "border-l-gray-500"
-                    }`}
-                  style={{
-                    animationDelay: `${index * 0.1}s`,
-                    animationFillMode: 'both',
-                    opacity: 0
-                  }}
-                >
-                  <CardContent className="p-6">
-                    {/* Status Header */}
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-full ${
-                          process.status === ProcessStatus.PENDING_APPROVAL ? "bg-yellow-100" :
-                          process.status === ProcessStatus.IN_VERIFICATION ? "bg-blue-100" :
-                          process.status === ProcessStatus.APPROVED ? "bg-green-100" :
-                          process.status === ProcessStatus.VERIFICATION_FAILED ? "bg-red-100" :
-                          process.status === ProcessStatus.PENDING_RETRIEVAL ? "bg-orange-100" :
-                          process.status === ProcessStatus.HANDED_OVER ? "bg-indigo-100" :
-                          "bg-gray-100"
-                        }`}>
-                          {/* Status Icon */}
-                          {process.status === ProcessStatus.PENDING_APPROVAL && <Clock className="h-5 w-5 text-yellow-600" />}
-                          {process.status === ProcessStatus.IN_VERIFICATION && <Eye className="h-5 w-5 text-blue-600" />}
-                          {process.status === ProcessStatus.APPROVED && <CheckCircle className="h-5 w-5 text-green-600" />}
-                          {process.status === ProcessStatus.VERIFICATION_FAILED && <XCircle className="h-5 w-5 text-red-600" />}
-                          {process.status === ProcessStatus.PENDING_RETRIEVAL && <Package className="h-5 w-5 text-orange-600" />}
-                          {process.status === ProcessStatus.HANDED_OVER && <CheckCircle className="h-5 w-5 text-indigo-600" />}
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{formatStatus(process.status)}</h3>
-                          <p className="text-sm text-gray-500">
-                            {formatDate(process.updatedAt)}
-                          </p>
-                        </div>
+      {/* Process Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {!validProcesses || validProcesses.length === 0 ? (
+          <div className="col-span-full">
+            <Card className="border-0 shadow-sm bg-white">
+              <CardContent className="p-8 text-center">
+                <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <Inbox className="h-8 w-8 text-gray-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Processes</h3>
+                <p className="text-gray-500 max-w-sm mx-auto">
+                  You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        ) : (
+          filterProcesses(validProcesses)
+            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+            .map((process, index) => (
+              <Card 
+                key={process.id} 
+                className={`overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] 
+                  hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-300 
+                  animate-slideUp border-l-4 ${
+                    process.status === ProcessStatus.PENDING_APPROVAL ? "border-l-yellow-500" :
+                    process.status === ProcessStatus.IN_VERIFICATION ? "border-l-blue-500" :
+                    process.status === ProcessStatus.APPROVED ? "border-l-green-500" :
+                    process.status === ProcessStatus.VERIFICATION_FAILED ? "border-l-red-500" :
+                    process.status === ProcessStatus.PENDING_RETRIEVAL ? "border-l-orange-500" :
+                    process.status === ProcessStatus.HANDED_OVER ? "border-l-indigo-500" :
+                    "border-l-gray-500"
+                  }`}
+                style={{
+                  animationDelay: `${index * 0.1}s`,
+                  animationFillMode: 'both',
+                  opacity: 0
+                }}
+              >
+                <CardContent className="p-6">
+                  {/* Status Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-full ${
+                        process.status === ProcessStatus.PENDING_APPROVAL ? "bg-yellow-100" :
+                        process.status === ProcessStatus.IN_VERIFICATION ? "bg-blue-100" :
+                        process.status === ProcessStatus.APPROVED ? "bg-green-100" :
+                        process.status === ProcessStatus.VERIFICATION_FAILED ? "bg-red-100" :
+                        process.status === ProcessStatus.PENDING_RETRIEVAL ? "bg-orange-100" :
+                        process.status === ProcessStatus.HANDED_OVER ? "bg-indigo-100" :
+                        "bg-gray-100"
+                      }`}>
+                        {/* Status Icon */}
+                        {process.status === ProcessStatus.PENDING_APPROVAL && <Clock className="h-5 w-5 text-yellow-600" />}
+                        {process.status === ProcessStatus.IN_VERIFICATION && <Eye className="h-5 w-5 text-blue-600" />}
+                        {process.status === ProcessStatus.APPROVED && <CheckCircle className="h-5 w-5 text-green-600" />}
+                        {process.status === ProcessStatus.VERIFICATION_FAILED && <XCircle className="h-5 w-5 text-red-600" />}
+                        {process.status === ProcessStatus.PENDING_RETRIEVAL && <Package className="h-5 w-5 text-orange-600" />}
+                        {process.status === ProcessStatus.HANDED_OVER && <CheckCircle className="h-5 w-5 text-indigo-600" />}
                       </div>
-                      <Badge variant="outline" className={`
-                        ${process.item?.status?.toLowerCase() === "lost" 
-                          ? "bg-red-50 text-red-700 border-red-200" 
-                          : "bg-green-50 text-green-700 border-green-200"
-                        } capitalize font-medium`}
-                      >
-                        {process.item?.status}
-                      </Badge>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">{formatStatus(process.status)}</h3>
+                        <p className="text-sm text-gray-500">
+                          {formatDate(process.updatedAt)}
+                        </p>
+                      </div>
                     </div>
+                    <Badge variant="outline" className={`
+                      ${process.item?.status?.toLowerCase() === "lost" 
+                        ? "bg-red-50 text-red-700 border-red-200" 
+                        : "bg-green-50 text-green-700 border-green-200"
+                      } capitalize font-medium`}
+                    >
+                      {process.item?.status}
+                    </Badge>
+                  </div>
 
-                    {/* Content Grid */}
-                    <div className="grid md:grid-cols-[auto,1fr] gap-4">
-                      {/* Item Image */}
-                      <div className="w-24 h-24 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 group">
+                  {/* Main Content */}
+                  <div className="flex gap-6">
+                    {/* Image Column */}
+                    <div className="flex-shrink-0">
+                      <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden group">
                         {process.item?.imageUrl ? (
                           <img
                             src={process.item.imageUrl}
@@ -1219,168 +1219,179 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                           </div>
                         )}
                       </div>
+                    </div>
 
-                      {/* Item Details */}
-                      <div className="space-y-3">
-                        <div>
-                          <h4 className="font-medium text-lg text-gray-900">
-                            {process.item?.name}
-                          </h4>
-                          <div className="grid grid-cols-2 gap-2 mt-2">
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Category:</span> {process.item?.category}
-                            </p>
-                            <p className="text-sm text-gray-600">
-                              <span className="font-medium">Location:</span> {process.item?.location}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Status Message */}
-                        {process.message && (
-                          <div className={`p-3 rounded-lg ${
-                            process.status === ProcessStatus.VERIFICATION_FAILED 
-                              ? "bg-red-50/50 text-red-700 border border-red-100"
-                              : "bg-blue-50/50 text-blue-700 border border-blue-100"
-                          }`}>
-                            <p className="text-sm">{process.message}</p>
-                            {process.verificationAttempts > 0 && (
-                              <p className="text-sm mt-1 font-medium">
-                                Attempts remaining: {3 - process.verificationAttempts}
-                              </p>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-3 border-t border-gray-100">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => onViewDetails(formatItemForDetails(process))}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Details
-                          </Button>
-                          
-                          {process.status === ProcessStatus.IN_VERIFICATION && (
-                            <Button
-                              size="sm"
-                              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                              onClick={() => handleAnswerQuestions(process)}
-                            >
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Answer Questions
-                            </Button>
-                          )}
-                          
-                          {process.status !== ProcessStatus.HANDED_OVER && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="flex-1"
-                              onClick={() => handleCancelRequest(process.item?.id)}
-                              disabled={cancelingItems.has(process.item?.id)}
-                            >
-                              {cancelingItems.has(process.item?.id) ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Canceling...
-                                </>
-                              ) : (
-                                <>
-                                  <Trash className="h-4 w-4 mr-2" />
-                                  Cancel Request
-                                </>
-                              )}
-                            </Button>
-                          )}
+                    {/* Details Column */}
+                    <div className="flex-1 min-w-0 space-y-3">
+                      {/* Item Title and Category */}
+                      <div>
+                        <h4 className="font-medium text-lg text-gray-900 truncate pr-2">
+                          {process.item?.name}
+                        </h4>
+                        <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
+                          <p className="flex items-center gap-1 truncate">
+                            <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                            <span className="truncate">{process.item?.location}</span>
+                          </p>
+                          <p className="flex-shrink-0">
+                            <span className="font-medium">Category:</span> {process.item?.category}
+                          </p>
                         </div>
                       </div>
+
+                      {/* Description */}
+                      {process.item?.description && (
+                        <div className="bg-gray-50/80 rounded-lg p-2.5">
+                          <p className="text-xs text-gray-700 line-clamp-2">
+                            {process.item.description}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Status Message */}
+                      {process.message && (
+                        <div className={`p-2.5 rounded-lg ${
+                          process.status === ProcessStatus.VERIFICATION_FAILED 
+                            ? "bg-red-50/50 text-red-700 border border-red-100"
+                            : "bg-blue-50/50 text-blue-700 border border-blue-100"
+                        }`}>
+                          <p className="text-xs line-clamp-2">{process.message}</p>
+                          {process.verificationAttempts > 0 && (
+                            <p className="text-xs mt-1 font-medium">
+                              Attempts remaining: {3 - process.verificationAttempts}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-          )}
-        </div>
+                  </div>
 
-        {/* Answer Questions Dialog */}
-        <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle className="text-[#0052cc]">Verification Questions</DialogTitle>
-              <DialogDescription>
-                Please answer the following questions to verify your ownership of{" "}
-                <span className="font-medium text-gray-700">
-                  {selectedProcess?.item?.name}
-                </span>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              {verificationQuestions.map((question, index) => (
-                <div key={index} className="space-y-2">
-                  <label className="text-sm font-medium text-gray-600">
-                    Question {index + 1}: {question}
-                  </label>
-                  <Input
-                    placeholder="Enter your answer..."
-                    value={answers[index] || ''}
-                    onChange={(e) => {
-                      const newAnswers = [...answers];
-                      newAnswers[index] = e.target.value;
-                      setAnswers(newAnswers);
-                    }}
-                    className="bg-white border-gray-200"
-                  />
-                </div>
-              ))}
-            </div>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowAnswerDialog(false);
-                  setSelectedProcess(null);
-                  setAnswers([]);
-                }}
-                className="border-gray-200"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleSubmitAnswers}
-                disabled={isSubmitting || answers.some(a => !a.trim())}
-                className="bg-[#0052cc] hover:bg-[#0052cc]/90 text-white"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit Answers"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Verification Dialog */}
-        <VerificationDialog
-          isOpen={showVerificationDialog}
-          onClose={() => setShowVerificationDialog(false)}
-          processId={selectedProcess?.id}
-          questions={verificationQuestions}
-          onVerificationComplete={handleVerificationComplete}
-        />
-
-        {/* Failed Verification Dialog */}
-        <FailedVerificationDialog
-          isOpen={showFailedDialog}
-          onClose={() => setShowFailedDialog(false)}
-        />
+                  {/* Action Buttons */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-gray-100">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 min-w-[90px] h-8 text-xs font-medium px-2.5"
+                      onClick={() => onViewDetails(formatItemForDetails(process))}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
+                      <span className="truncate">Details</span>
+                    </Button>
+                    
+                    {process.status === ProcessStatus.IN_VERIFICATION && (
+                      <Button
+                        size="sm"
+                        className="flex-1 min-w-[90px] h-8 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-2.5"
+                        onClick={() => handleAnswerQuestions(process)}
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
+                        <span className="truncate">Answer</span>
+                      </Button>
+                    )}
+                    
+                    {process.status !== ProcessStatus.HANDED_OVER && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="flex-1 min-w-[90px] h-8 text-xs font-medium px-2.5"
+                        onClick={() => handleCancelRequest(process.item?.id)}
+                        disabled={cancelingItems.has(process.item?.id)}
+                      >
+                        {cancelingItems.has(process.item?.id) ? (
+                          <>
+                            <Loader2 className="h-3.5 w-3.5 mr-1 flex-shrink-0 animate-spin" />
+                            <span className="truncate">Canceling</span>
+                          </>
+                        ) : (
+                          <>
+                            <Trash className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
+                            <span className="truncate">Cancel</span>
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+        )}
       </div>
+
+      {/* Answer Questions Dialog */}
+      <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-[#0052cc]">Verification Questions</DialogTitle>
+            <DialogDescription>
+              Please answer the following questions to verify your ownership of{" "}
+              <span className="font-medium text-gray-700">
+                {selectedProcess?.item?.name}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {verificationQuestions.map((question, index) => (
+              <div key={index} className="space-y-2">
+                <label className="text-sm font-medium text-gray-600">
+                  Question {index + 1}: {question}
+                </label>
+                <Input
+                  placeholder="Enter your answer..."
+                  value={answers[index] || ''}
+                  onChange={(e) => {
+                    const newAnswers = [...answers];
+                    newAnswers[index] = e.target.value;
+                    setAnswers(newAnswers);
+                  }}
+                  className="bg-white border-gray-200"
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowAnswerDialog(false);
+                setSelectedProcess(null);
+                setAnswers([]);
+              }}
+              className="border-gray-200"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitAnswers}
+              disabled={isSubmitting || answers.some(a => !a.trim())}
+              className="bg-[#0052cc] hover:bg-[#0052cc]/90 text-white"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Answers"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Verification Dialog */}
+      <VerificationDialog
+        isOpen={showVerificationDialog}
+        onClose={() => setShowVerificationDialog(false)}
+        processId={selectedProcess?.id}
+        questions={verificationQuestions}
+        onVerificationComplete={handleVerificationComplete}
+      />
+
+      {/* Failed Verification Dialog */}
+      <FailedVerificationDialog
+        isOpen={showFailedDialog}
+        onClose={() => setShowFailedDialog(false)}
+      />
     </div>
   );
 } 

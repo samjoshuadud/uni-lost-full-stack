@@ -181,9 +181,10 @@ export default function DashboardSection({
     setIsLoading(true);
     
     const filteredItems = items.filter(item => {
-      // Category filter
-      const matchesCategory = searchCategory === "all" || 
-          item.category?.toLowerCase() === searchCategory.toLowerCase();
+      // Category filter - Updated to handle "Others" category correctly
+      const matchesCategory = 
+        searchCategory === "all" || 
+        (item.category?.toLowerCase() === searchCategory.toLowerCase());
 
       // Claim status filter
       const process = processes.find(p => p.itemId === item.id);

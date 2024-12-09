@@ -42,14 +42,14 @@ export const ItemStatus = {
   CLAIM_REQUEST: "claim_request"
 };
 
-export const ItemCategories = {
-  ELECTRONICS: "Electronics",
-  DOCUMENTS: "Documents",
-  ACCESSORIES: "Accessories",
-  CLOTHING: "Clothing",
-  BOOKS: "Books",
-  OTHERS: "Others"
-};
+export const ItemCategories = [
+  "Books",
+  "Electronics", 
+  "Personal Items",
+  "Documents",
+  "Bags",
+  "Others"
+];
 
 export const ValidationMessages = {
   REQUIRED_FIELD: "This field is required",
