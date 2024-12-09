@@ -151,11 +151,11 @@ export default function ItemDetailSection({
               {/* Basic Details Grid */}
               <div className="grid grid-cols-2 gap-4 p-4 ">
                 <div className="space-y-3">
-                  <DetailItem label="Item Name" value={item.name} />
-                  <DetailItem label="Category" value={item.category} />
+                  <DetailItem label="Item Name" value={item.name} item={item} />
+                  <DetailItem label="Category" value={item.category} item={item} />
                 </div>
                 <div className="space-y-3">
-                  <DetailItem label="Status" value={item.status} />
+                  <DetailItem label="Status" value={item.status} item={item} />
                   <DetailItem 
                     label="Location" 
                     value={
@@ -164,6 +164,7 @@ export default function ItemDetailSection({
                         {item.location}
                       </span>
                     } 
+                    item={item}
                   />
                 </div>
               </div>
@@ -175,6 +176,7 @@ export default function ItemDetailSection({
                     label="Description" 
                     value={item.description} 
                     fullWidth 
+                    item={item}
                   />
                 </div>
               )}
@@ -194,6 +196,7 @@ export default function ItemDetailSection({
                             label={desc.title || "Additional Detail"} 
                             value={desc.description || "No description provided"} 
                             fullWidth 
+                            item={item}
                           />
                         </div>
                       ))}
@@ -298,18 +301,18 @@ export default function ItemDetailSection({
   );
 }
 
-const DetailItem = ({ label, value, fullWidth = false }) => {
+const DetailItem = ({ label, value, fullWidth = false, item }) => {
   const renderValue = () => {
-    if (label === "Category" && value === "Others" && item.specification) {
+    if (label === "Category" && value === "Others" && item?.specification) {
       return `Others - ${item.specification}`;
     }
     return value;
   };
 
   return (
-    <div className={fullWidth ? 'col-span-2' : ''}>
-      <dt className="text-sm font-medium text-gray-600">{label}</dt>
-      <dd className="mt-1 text-sm text-gray-900">{renderValue()}</dd>
+    <div className={`${fullWidth ? 'col-span-2' : ''} space-y-1.5`}>
+      <p className="text-sm font-medium text-gray-500">{label}</p>
+      <p className="text-base">{renderValue()}</p>
     </div>
   );
 }; 
