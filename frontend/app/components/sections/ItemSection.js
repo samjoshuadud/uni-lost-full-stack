@@ -16,6 +16,7 @@ import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import { toast } from "react-hot-toast"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
 import { itemApi } from "@/lib/api-client"
+import ClaimInstructionsDialog from "../dialogs/ClaimInstructionsDialog"
 
 const staggerDelay = (index) => ({
   animationDelay: `${index * 0.1}s`
@@ -45,6 +46,7 @@ export default function ItemSection({
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
   const [processes, setProcesses] = useState([]);
+  const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
 
   useEffect(() => {
     const fetchProcesses = async () => {
@@ -164,8 +166,7 @@ export default function ItemSection({
       setShowAuthDialog(true);
       return;
     }
-    setSelectedClaimItem(item);
-    setShowClaimDialog(true);
+    setShowInstructionsDialog(true);
   };
 
   const handleClaimSubmit = async (answers, additionalInfo) => {
@@ -616,15 +617,10 @@ export default function ItemSection({
         onOpenChange={setShowAuthDialog}
       />
 
-      {/* Claim Verification Dialog */}
-      <ClaimVerificationDialog
-        isOpen={showClaimDialog}
-        onClose={() => {
-          setShowClaimDialog(false);
-          setSelectedClaimItem(null);
-        }}
-        item={selectedClaimItem}
-        onSubmit={handleClaimSubmit}
+      {/* Claim Instructions Dialog */}
+      <ClaimInstructionsDialog
+        isOpen={showInstructionsDialog}
+        onClose={() => setShowInstructionsDialog(false)}
       />
     </div>
   );
