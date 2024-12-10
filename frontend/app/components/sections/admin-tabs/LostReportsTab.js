@@ -284,6 +284,11 @@ const LostReportsTab = memo(function LostReportsTab({
 
   const handleMatchItem = async (foundItem) => {
     try {
+      console.log('Matching items:', {
+        lostProcessId: selectedItemForVerification.processId,
+        foundProcessId: foundItem.id
+      });
+
       const response = await fetch(
         `${API_BASE_URL}/api/Item/process/match`,
         {
@@ -298,6 +303,9 @@ const LostReportsTab = memo(function LostReportsTab({
         }
       );
 
+      const responseData = await response.clone().json();
+      console.log('Match response:', responseData);
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to match items");
@@ -307,11 +315,9 @@ const LostReportsTab = memo(function LostReportsTab({
       setShowFoundItemsDialog(false);
       setSelectedFoundItem(null);
       
-      // Update counts if needed
       if (typeof onUpdateCounts === 'function') {
         onUpdateCounts();
       }
-
     } catch (error) {
       console.error("Error matching items:", error);
       toast.error(error.message || 'Failed to match items');

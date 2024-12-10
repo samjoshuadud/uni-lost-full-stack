@@ -1232,55 +1232,66 @@ public class ItemController : ControllerBase
     {
         try
         {
-            // Get the lost item process
+            _logger.LogInformation($"Starting item match process. Lost Process ID: {dto.LostProcessId}, Found Process ID: {dto.FoundProcessId}");
+            
             var lostProcess = await _processService.GetProcessByIdAsync(dto.LostProcessId);
+            _logger.LogInformation($"Lost process found: {lostProcess != null}, UserId: {lostProcess?.UserId}, ItemId: {lostProcess?.ItemId}");
+            
             if (lostProcess == null)
-            {
                 return NotFound(new ApiResponse<bool> 
                 { 
                     Success = false, 
                     Message = "Lost item process not found" 
                 });
-            }
 
-            // Get the found item process
             var foundProcess = await _processService.GetProcessByIdAsync(dto.FoundProcessId);
+            _logger.LogInformation($"Found process found: {foundProcess != null}");
+            
             if (foundProcess == null)
-            {
                 return NotFound(new ApiResponse<bool> 
                 { 
                     Success = false, 
                     Message = "Found item process not found" 
                 });
-            }
 
-            // Update found item process status
             foundProcess.status = ProcessMessages.Status.PENDING_RETRIEVAL;
             foundProcess.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
             await _processService.UpdateProcessAsync(foundProcess);
+            _logger.LogInformation("Found process updated successfully");
 
-            // Delete the lost item and its process
-            await _processService.DeleteProcessAndItemAsync(dto.LostProcessId);
-
-            // Get the reporter's email for notification
+            // Get reporter info BEFORE deleting the lost item
             var lostItem = await _itemService.GetItemAsync(lostProcess.ItemId);
             var reporter = await _userService.GetUserByIdAsync(lostProcess.UserId);
+
+            _logger.LogInformation($"Lost item found: {lostItem != null}, Reporter found: {reporter != null}");
+            _logger.LogInformation($"Reporter email: {reporter?.Email}, Item name: {lostItem?.Name}");
 
             if (reporter != null && lostItem != null)
             {
                 try
                 {
+                    _logger.LogInformation($"Attempting to send email to {reporter.Email}");
                     await _emailService.SendReadyForPickupEmailAsync(
                         reporter.Email,
                         lostItem.Name
                     );
+                    _logger.LogInformation("Email sent successfully");
                 }
                 catch (Exception emailEx)
                 {
                     _logger.LogError($"Failed to send pickup notification email: {emailEx.Message}");
-                    // Continue even if email fails
+                    _logger.LogError($"Stack trace: {emailEx.StackTrace}");
+                    // Consider adding email error details to the response
                 }
             }
+            else
+            {
+                _logger.LogWarning($"Cannot send email - Reporter or item missing. Reporter: {reporter != null}, Item: {lostItem != null}");
+            }
+
+            // Delete the lost item and its process AFTER sending email
+            await _processService.DeleteProcessAndItemAsync(dto.LostProcessId);
+            _logger.LogInformation("Lost process and item deleted successfully");
 
             return Ok(new ApiResponse<bool>
             {
@@ -1292,6 +1303,7 @@ public class ItemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError($"Error matching items: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return StatusCode(500, new ApiResponse<bool>
             {
                 Success = false,
