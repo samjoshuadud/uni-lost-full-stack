@@ -404,7 +404,7 @@ const LostReportsTab = memo(function LostReportsTab({
                                 onClick={() => handleItemInPossession(process)}
                               >
                                 <Package className="h-4 w-4 mr-2" />
-                                Set Verification Questions
+                                Item in Possession
                               </Button>
                               <Button
                                 variant="destructive"
@@ -442,76 +442,20 @@ const LostReportsTab = memo(function LostReportsTab({
       <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Set Verification Questions</DialogTitle>
+            <DialogTitle>Item in Possession</DialogTitle>
             <DialogDescription>
-              Enter questions that will help verify the ownership of{" "}
-              <span className="font-medium">
-                {selectedItemForVerification?.item?.name}
-              </span>
+              Are you sure this item is in your inventory? This will notify the person who reported the lost item.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleGenerateQuestions}
-                disabled={isGeneratingQuestions}
-                className="mb-4"
-              >
-                {isGeneratingQuestions ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <span className="mr-2">✨</span>
-                    Generate Automatically
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {verificationQuestions.map((q, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium">
-                    Question {index + 1}
-                  </label>
-                  {index > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const newQuestions = verificationQuestions.filter((_, i) => i !== index);
-                        setVerificationQuestions(newQuestions);
-                      }}
-                    >
-                      Remove
-                    </Button>
-                  )}
-                </div>
-                <Textarea
-                  placeholder="Enter a verification question..."
-                  value={q.question}
-                  onChange={(e) => handleQuestionChange(index, e.target.value)}
-                  className="min-h-[80px]"
-                />
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="flex items-center gap-2 text-blue-700">
+                <Package className="h-5 w-5" />
+                <p>
+                  <span className="font-semibold">Item Details:</span> {selectedItemForVerification?.item?.name}
+                </p>
               </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAddQuestion}
-              className="w-full"
-            >
-              Add Another Question
-            </Button>
-            <p className="text-sm text-muted-foreground">
-              Add specific questions that only the true owner would know.
-              You can generate questions automatically or add/edit them manually.
-            </p>
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -519,23 +463,18 @@ const LostReportsTab = memo(function LostReportsTab({
               onClick={() => {
                 setShowVerificationDialog(false);
                 setSelectedItemForVerification(null);
-                setVerificationQuestions([{ question: '' }]);
               }}
             >
               Cancel
             </Button>
             <Button
-              onClick={handleSubmitVerificationQuestions}
-              disabled={isSubmittingQuestions || !verificationQuestions.some(q => q.question.trim())}
+              onClick={() => {
+                // Handle confirmation
+                setShowVerificationDialog(false);
+                setSelectedItemForVerification(null);
+              }}
             >
-              {isSubmittingQuestions ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Questions"
-              )}
+              Confirm
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -663,7 +602,7 @@ const LostReportsTab = memo(function LostReportsTab({
                   className="bg-gradient-to-r from-[#1E293B] to-[#334155] hover:from-[#334155] hover:to-[#1E293B] text-white shadow-sm transition-all duration-200"
                 >
                   <Package className="h-4 w-4 mr-2" />
-                  Set Verification Questions
+                  Item in Possession
                 </Button>
                 <Button
                   variant="destructive"
