@@ -559,11 +559,19 @@ export default function ReportSection({
 
                 {/* Enhanced Location field */}
                 <div className="space-y-2">
-                  <Label className="text-gray-700">Last Seen Location</Label>
+                  <Label className="text-gray-700">
+                    {itemStatus === ItemStatus.FOUND || adminMode 
+                      ? "Where Item Was Found"
+                      : "Last Known Location"}
+                  </Label>
                   <Input
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    placeholder="Enter Location"
+                    placeholder={
+                      itemStatus === ItemStatus.FOUND || adminMode
+                        ? "Enter where you found the item"
+                        : "Enter last place you remember having the item"
+                    }
                     className="bg-white border-gray-200"
                     required
                   />
@@ -579,7 +587,11 @@ export default function ReportSection({
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe the Item"
+                    placeholder={
+                      itemStatus === ItemStatus.FOUND || adminMode
+                        ? "Describe the item in detail (color, brand, size, any distinctive features)"
+                        : "Describe your item in detail (color, brand, size, identifying marks or features)"
+                    }
                     className="min-h-[120px] bg-white"
                     required
                   />
