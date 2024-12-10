@@ -26,6 +26,39 @@ namespace UniLostAndFound.API.Services
             _emailSettings = emailSettings.Value;
         }
 
+        private async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(toEmail));
+                email.Subject = subject;
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = htmlBody
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Email sent successfully to {toEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send email: {ex.Message}");
+                throw;
+            }
+        }
+
         public async Task SendItemReportedEmailAsync(string userEmail, string itemName, string processId)
         {
             try
@@ -540,75 +573,47 @@ namespace UniLostAndFound.API.Services
             }
         }
 
-        public async Task SendReadyForPickupEmailAsync(string userEmail, string itemName)
+        public async Task SendReadyForPickupEmailAsync(string email, string itemName)
         {
-            try
-            {
-                var email = new MimeMessage();
-                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
-                email.To.Add(MailboxAddress.Parse(userEmail));
-                email.Subject = "Your Lost Item Has Been Found and Ready for Pickup!";
+            var subject = "Your Lost Item Has Been Found! 🎉";
+            
+            var body = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
+                    <h2 style='color: #0052cc;'>Good News! Your Item Has Been Found</h2>
+                    
+                    <p>Dear Student,</p>
+                    
+                    <p>We are pleased to inform you that your lost item (<strong>{itemName}</strong>) has been found and is now ready for pickup!</p>
 
-                var builder = new BodyBuilder
-                {
-                    HtmlBody = $@"
-                        <h2>Your Lost Item Has Been Found!</h2>
-                        <p>Dear Student,</p>
-                        <p>Great news! Your lost item ""{itemName}"" has been turned in to the Lost & Found office.</p>
-                        
-                        <div style='background-color: #ECFDF5; padding: 15px; border-radius: 8px; margin: 20px 0;'>
-                            <h3 style='margin-top: 0; color: #065F46;'>Next Steps:</h3>
-                            <ul style='color: #065F46; margin-bottom: 0;'>
-                                <li>Visit the Lost & Found office during business hours</li>
-                                <li>Bring your student ID for verification</li>
-                                <li>The item will be handed over after identity verification</li>
-                                <li>Please collect your item within 7 days</li>
-                            </ul>
-                        </div>
+                    <div style='background-color: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                        <h3 style='color: #1e293b; margin-top: 0;'>📋 Next Steps:</h3>
+                        <ol style='color: #334155;'>
+                            <li>Visit the OHSO (Occupational Health Services Office) in the basement of the Admin Building</li>
+                            <li>Bring your valid school ID for verification</li>
+                            <li>You may be asked additional verification questions to confirm ownership</li>
+                            <li>Once verified, you can claim your item</li>
+                        </ol>
+                    </div>
 
-                        <div style='margin: 20px 0;'>
-                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
-                                <p style='margin: 0; color: #495057;'>
-                                    <strong>Office Hours:</strong> Monday-Friday, 9:00 AM - 5:00 PM<br>
-                                    <strong>Location:</strong> Student Services Building, Room 101<br>
-                                    <strong>Important:</strong> Please bring your student ID
-                                </p>
-                            </div>
-                        </div>
+                    <div style='background-color: #fff8f0; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+                        <h3 style='color: #9a3412; margin-top: 0;'>⚠️ Important Notes:</h3>
+                        <ul style='color: #9a3412;'>
+                            <li>Please claim your item within 3 working days</li>
+                            <li>OHSO office hours: Monday to Friday, 8:00 AM to 5:00 PM</li>
+                            <li>If you cannot come within this period, please contact OHSO to make arrangements</li>
+                        </ul>
+                    </div>
 
-                        <div style='margin: 20px 0;'>
-                            <a href='http://localhost:3000' 
-                               style='background-color: #0066cc; 
-                                      color: white; 
-                                      padding: 10px 20px; 
-                                      text-decoration: none; 
-                                      border-radius: 5px;
-                                      display: inline-block;'>
-                                Track Status
-                            </a>
-                        </div>
+                    <p>If you have any questions or concerns, please don't hesitate to contact the OHSO office.</p>
 
-                        <p>Thank you for using UNI Lost and Found System.</p>
-                    "
-                };
+                    <p style='color: #64748b; font-size: 0.9em;'>
+                        Best regards,<br>
+                        Lost and Found System Team
+                    </p>
+                </div>
+            ";
 
-                email.Body = builder.ToMessageBody();
-
-                using var smtp = new SmtpClient();
-                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
-
-                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
-                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
-                await smtp.SendAsync(email);
-                await smtp.DisconnectAsync(true);
-
-                _logger.LogInformation($"Item ready for pickup notification sent to {userEmail}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"Failed to send item ready for pickup notification: {ex.Message}");
-                throw;
-            }
+            await SendEmailAsync(email, subject, body);
         }
 
         public async Task SendAnswersSubmittedEmailAsync(string userEmail, string itemName, List<VerificationAnswerDto> answers)
