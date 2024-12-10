@@ -100,14 +100,6 @@ export default function UniLostAndFound() {
   // Add new state for claim status filter
   const [claimStatus, setClaimStatus] = useState("all");
 
-  // Add state for verification counts
-  const [verificationCounts, setVerificationCounts] = useState({
-    inProgress: 0,
-    underReview: 0,
-    failed: 0,
-    claims: 0
-  });
-
   // Add useEffect for fetching claim processes
   useEffect(() => {
     const fetchClaimProcesses = async () => {
@@ -527,7 +519,6 @@ export default function UniLostAndFound() {
           onAssignAdmin={handleAssignAdmin}
           onUpdateItemStatus={handleUpdateItemStatus}
           handleViewDetails={handleViewDetails}
-          verificationCounts={verificationCounts}
         />
       case "profile":
         return <ProfileSection user={user} />
@@ -1005,74 +996,57 @@ export default function UniLostAndFound() {
                 ).length;
 
                 if (isAdmin) {
+                    // Define excluded statuses at the start
+                    const excludedStatuses = [
+                        ProcessStatus.APPROVED,
+                        ProcessStatus.AWAITING_SURRENDER,
+                        ProcessStatus.HANDED_OVER,
+                        ProcessStatus.NO_SHOW,
+                        ProcessStatus.IN_VERIFICATION,
+                        ProcessStatus.VERIFIED,
+                        ProcessStatus.VERIFICATION_FAILED,
+                        ProcessStatus.AWAITING_REVIEW
+                    ];
+
                     // Count items that need admin attention in specific tabs
                     const adminCounts = data.$values.reduce((counts, process) => {
+                        const status = process.status;
                         const item = process.item || process.Item;
                         
                         // Lost Items tab - items pending approval with status "lost"
-                        if (process.status === ProcessStatus.PENDING_APPROVAL && 
+                        if (status === ProcessStatus.PENDING_APPROVAL && 
                             item?.status?.toLowerCase() === "lost") {
                             counts.lostItems++;
                         }
                         
                         // Found Items tab - items pending approval with status "found"
-                        if (process.status === ProcessStatus.PENDING_APPROVAL && 
+                        if (status === ProcessStatus.PENDING_APPROVAL && 
                             item?.status?.toLowerCase() === "found") {
                             counts.foundItems++;
                         }
                         
-                        // Verifications tab - count each sub-status
-                        if (process.status === ProcessStatus.VERIFICATION_NEEDED || 
-                            process.status === ProcessStatus.IN_VERIFICATION) {
-                            counts.verifications.inProgress++;
-                        }
-                        if (process.status === ProcessStatus.PENDING_VERIFICATION || 
-                            process.status === ProcessStatus.AWAITING_REVIEW) {
-                            counts.verifications.underReview++;
-                        }
-                        if (process.status === ProcessStatus.VERIFICATION_FAILED) {
-                            counts.verifications.failed++;
-                        }
-                        if (process.status === ProcessStatus.CLAIM_REQUEST) {
-                            counts.verifications.claims++;
-                        }
-                        
                         // Ready for Pickup tab - items pending retrieval
-                        if (process.status === ProcessStatus.PENDING_RETRIEVAL) {
+                        if (status === ProcessStatus.PENDING_RETRIEVAL) {
                             counts.readyForPickup++;
                         }
-                        
+
+                        // Count items that need attention
+                        if (!excludedStatuses.includes(status)) {
+                            counts.totalAttention++;
+                        }
+
                         return counts;
                     }, {
                         lostItems: 0,
                         foundItems: 0,
-                        verifications: {
-                            inProgress: 0,
-                            underReview: 0,
-                            failed: 0,
-                            claims: 0
-                        },
-                        readyForPickup: 0
+                        readyForPickup: 0,
+                        totalAttention: 0
                     });
 
-                    // Total count is the sum of all items needing attention
-                    const totalPending = 
-                        adminCounts.lostItems + 
-                        adminCounts.foundItems + 
-                        (adminCounts.verifications.inProgress + 
-                         adminCounts.verifications.underReview + 
-                         adminCounts.verifications.claims) + // Don't count failed in total
-                        adminCounts.readyForPickup;
-
-                    setTotalPendingCount(totalPending);
+                    console.log('Final counts:', adminCounts);
+                    setTotalPendingCount(adminCounts.totalAttention);
                     
-                    // Store the verification counts in state for use in VerificationsTab
-                    setVerificationCounts({
-                        inProgress: adminCounts.verifications.inProgress,
-                        underReview: adminCounts.verifications.underReview,
-                        failed: adminCounts.verifications.failed,
-                        claims: adminCounts.verifications.claims
-                    });
+                    setPendingProcessCount(newCount);
                 } else {
                     setPendingProcessCount(newCount);
                     setTotalPendingCount(newCount);

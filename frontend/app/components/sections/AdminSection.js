@@ -39,7 +39,6 @@ import {
   Loader2,
   BarChart,
   PieChart,
-  Activity,
   TrendingUp,
   AlertTriangle,
   History,
@@ -49,16 +48,15 @@ import { useAuth } from "@/lib/AuthContext";
 import StatisticsSection from "./admin-tabs/StatisticsSection";
 import LostReportsTab from "./admin-tabs/LostReportsTab";
 import FoundItemsTab from "./admin-tabs/FoundItemsTab";
-import VerificationsTab from "./admin-tabs/VerificationsTab";
 import PendingRetrievalTab from "./admin-tabs/PendingRetrievalTab";
 import { itemApi } from "@/lib/api-client";
-import { ProcessStatus, ProcessMessages } from '@/lib/constants';
 import UserManagementTab from "./admin-tabs/UserManagementTab";
 import { debounce } from "lodash";
 import { API_BASE_URL } from '@/lib/api-config';
 import HistoryTab from "./admin-tabs/HistoryTab";
 import { QRScannerDialog } from "../dialogs/QRScannerDialog";
 import { toast } from "react-hot-toast";
+import { ProcessStatus, ProcessMessages } from "@/lib/constants";
 
 export default function AdminSection({
   items = [],
@@ -69,7 +67,6 @@ export default function AdminSection({
   onDelete,
   onUpdateItemStatus,
   handleViewDetails,
-  verificationCounts,
 }) {
   const { user, isAdmin, makeAuthenticatedRequest } = useAuth();
   const [approvingItems, setApprovingItems] = useState(new Set());
@@ -107,17 +104,11 @@ export default function AdminSection({
   const [isLoadingVisible, setIsLoadingVisible] = useState(false);
   const [showApprovalSuccessDialog, setShowApprovalSuccessDialog] = useState(false);
   const [approvedItemName, setApprovedItemName] = useState("");
-  const [inVerificationCount, setInVerificationCount] = useState(0);
-  const [awaitingReviewCount, setAwaitingReviewCount] = useState(0);
-  const [failedVerificationCount, setFailedVerificationCount] = useState(0);
-  const [allProcessesCount, setAllProcessesCount] = useState(0);
   const [readyForPickupCount, setReadyForPickupCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
   const [showQRScanner, setShowQRScanner] = useState(false);
-  const [claimCount, setClaimCount] = useState(0);
   const [pendingLostCount, setPendingLostCount] = useState(0);
   const [pendingFoundCount, setPendingFoundCount] = useState(0);
-  const [verificationCount, setVerificationCount] = useState(0);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -150,13 +141,6 @@ export default function AdminSection({
   }, [isAdmin]);
 
   // Memoize the counts
-  const getInVerificationCount = useCallback(() => {
-    if (!memoizedPendingProcesses) return 0;
-    return memoizedPendingProcesses.filter(process => 
-      process.status === ProcessStatus.IN_VERIFICATION
-    ).length;
-  }, [memoizedPendingProcesses]);
-
   const getPendingRetrievalCount = useCallback(() => {
     if (!memoizedPendingProcesses) return 0;
     return memoizedPendingProcesses.filter(process => 
@@ -351,7 +335,7 @@ export default function AdminSection({
     setActiveTab(value);
     
     // Only fetch data for tabs that need it
-    if (["reports", "found", "pending", "verifications", "retrieval"].includes(value)) {
+    if (["reports", "found", "pending", "retrieval", "history"].includes(value)) {
       try {
         setIsLoadingVisible(true);
         setIsCountsLoading(true);
@@ -379,19 +363,6 @@ export default function AdminSection({
     console.log('Current pendingProcesses:', pendingProcesses);
     console.log('Current allItems:', allItems);
   }, [pendingProcesses, allItems]);
-
-  const handleVerificationResult = (notificationId, isCorrect, itemId) => {
-    setSelectedItem(itemId);
-    if (isCorrect) {
-      setShowSuccessDialog(true);
-      onUpdateItemStatus(itemId, ProcessStatus.VERIFIED);
-      onResolveNotification(notificationId);
-    } else {
-      setShowFailDialog(true);
-      onUpdateItemStatus(itemId, ProcessStatus.PENDING_APPROVAL);
-      onResolveNotification(notificationId);
-    }
-  };
 
   const handleNoShow = (itemId) => {
     setNoShowItemId(itemId);
@@ -499,41 +470,6 @@ export default function AdminSection({
     }
   `;
 
-  // Update the calculateCounts function
-  const calculateCounts = useCallback(() => {
-    if (!items) return;
-    
-    // Count verification processes
-    const verificationCount = items.filter(process => 
-      process.status === ProcessStatus.IN_VERIFICATION
-    ).length;
-
-    const awaitingCount = items.filter(process => 
-      process.status === ProcessStatus.AWAITING_REVIEW
-    ).length;
-
-    const failedCount = items.filter(process => 
-      process.status === ProcessStatus.VERIFICATION_FAILED
-    ).length;
-
-    const claimCount = items.filter(process => 
-      process.status === ProcessStatus.CLAIM_REQUEST
-    ).length;
-
-    // Update all verification-related states
-    setInVerificationCount(verificationCount);
-    setAwaitingReviewCount(awaitingCount);
-    setFailedVerificationCount(failedCount);
-    setClaimCount(claimCount);
-
-    // Rest of your counting logic...
-  }, [items]);
-
-  // Add useEffect to update counts
-  useEffect(() => {
-    calculateCounts();
-  }, [items, calculateCounts]);
-
   // Add debug logging
   useEffect(() => {
     console.log("Current ready for pickup count:", readyForPickupCount);
@@ -564,23 +500,16 @@ export default function AdminSection({
         if (itemStatus === "found" && !isApproved) acc.found++;
       }
       
-      if (status === ProcessStatus.IN_VERIFICATION ||
-          status === ProcessStatus.AWAITING_REVIEW ||
-          status === ProcessStatus.CLAIM_REQUEST) {
-        acc.verification++;
-      }
-
       if (status === ProcessStatus.PENDING_RETRIEVAL) {
         acc.pickup++;
       }
 
       return acc;
-    }, { lost: 0, found: 0, verification: 0, pickup: 0 });
+    }, { lost: 0, found: 0, pickup: 0 });
 
     // Update all states at once
     setPendingLostCount(counts.lost);
     setPendingFoundCount(counts.found);
-    setVerificationCount(counts.verification);
     setReadyForPickupCount(counts.pickup);
 
   }, [pendingProcesses]);
@@ -589,10 +518,9 @@ export default function AdminSection({
     console.log('Current counts:', {
       lostItems: pendingLostCount,
       foundItems: pendingFoundCount,
-      verifications: verificationCount,
       readyForPickup: readyForPickupCount
     });
-  }, [pendingLostCount, pendingFoundCount, verificationCount, readyForPickupCount]);
+  }, [pendingLostCount, pendingFoundCount, readyForPickupCount]);
 
   if (!isAdmin) {
     return (
@@ -641,7 +569,7 @@ export default function AdminSection({
       <Card className="border-0 shadow-sm bg-white relative drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
         <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full grid grid-cols-6 gap-4 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px]">
+            <TabsList className="w-full grid grid-cols-5 gap-4 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px]">
               {/* Overview Tab */}
               <TabsTrigger 
                 value="statistics"
@@ -681,22 +609,6 @@ export default function AdminSection({
                 {pendingFoundCount > 0 && (
                   <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
                     {pendingFoundCount}
-                  </Badge>
-                )}
-              </TabsTrigger>
-
-              {/* Verifications Tab */}
-              <TabsTrigger 
-                value="verifications"
-                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                  hover:bg-white/10"
-              >
-                <Activity className="h-4 w-4" />
-                <span className="font-medium">Verifications</span>
-                {verificationCount > 0 && (
-                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-blue-500 text-white border-2 border-[#2E3F65] shadow-md">
-                    {verificationCount}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -747,7 +659,6 @@ export default function AdminSection({
                 handleDelete={handleDelete}
                 onApprove={onApprove}
                 handleViewDetails={handleViewDetails}
-                onUpdateCounts={calculateCounts}
               />
             </TabsContent>
 
@@ -758,14 +669,6 @@ export default function AdminSection({
                 onDelete={handleDelete}
                 onViewDetails={handleViewDetails}
                 onApprove={onApprove}
-              />
-            </TabsContent>
-
-            <TabsContent value="verifications">
-              <VerificationsTab 
-                processes={pendingProcesses} 
-                handleViewDetails={handleViewDetails} 
-                verificationCounts={verificationCounts}
               />
             </TabsContent>
 
