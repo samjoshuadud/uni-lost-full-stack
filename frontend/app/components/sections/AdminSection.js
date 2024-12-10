@@ -522,6 +522,15 @@ export default function AdminSection({
     });
   }, [pendingLostCount, pendingFoundCount, readyForPickupCount]);
 
+  const handleUpdateCounts = (updatedItems) => {
+    // If updatedItems is provided, update the items state
+    if (updatedItems) {
+      setItems(updatedItems);
+    }
+    // Refresh the data
+    fetchItems();
+  };
+
   if (!isAdmin) {
     return (
       <Card>
