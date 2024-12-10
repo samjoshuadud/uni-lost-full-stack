@@ -13,7 +13,10 @@ import {
   Inbox,
   AlertCircle,
   CalendarIcon,
-  MapPinIcon
+  MapPinIcon,
+  Search,
+  X,
+  ArrowUpDown
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -30,9 +33,29 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { API_BASE_URL } from "@/lib/api-config"
-import { generateVerificationQuestions } from "@/lib/gemini";
+import { generateVerificationQuestions, rankItemSimilarity } from "@/lib/gemini";
 import { toast } from "react-hot-toast";
-import { format } from "date-fns";
+import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  SelectSeparator,
+  SelectLabel,
+  SelectGroup
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const LostReportsTab = memo(function LostReportsTab({
   items = [],
@@ -51,6 +74,48 @@ const LostReportsTab = memo(function LostReportsTab({
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
+  const [foundItems, setFoundItems] = useState([]);
+  const [isLoadingFoundItems, setIsLoadingFoundItems] = useState(false);
+  const [showFoundItemsDialog, setShowFoundItemsDialog] = useState(false);
+  const [selectedFoundItem, setSelectedFoundItem] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortOption, setSortOption] = useState('newest');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [dateRange, setDateRange] = useState({
+    from: null,
+    to: null
+  });
+  const [customDate, setCustomDate] = useState(null);
+  const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
+  const [calendarMode, setCalendarMode] = useState('single');
+  const [selectedMonth, setSelectedMonth] = useState(null);
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [isRankingItems, setIsRankingItems] = useState(false);
+
+  const mainCategories = [
+    "books", 
+    "electronics", 
+    "personal items", 
+    "documents", 
+    "bags",
+    "others"
+  ];
+
+  const capitalizeFirstLetter = (string) => {
+    if (!string) return '';
+    return string.split(' ').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+    ).join(' ');
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'Date not available';
+    try {
+      return format(new Date(date), 'MMMM d, yyyy');
+    } catch (error) {
+      return 'Invalid date';
+    }
+  };
 
   const handleApproveClick = async (itemId) => {
     try {
@@ -78,12 +143,27 @@ const LostReportsTab = memo(function LostReportsTab({
     }
   };
 
-  const handleItemInPossession = (process) => {
+  const handleItemInPossession = async (process) => {
     setSelectedItemForVerification({
       processId: process.id,
       item: process.item
     });
-    setShowVerificationDialog(true);
+    setShowFoundItemsDialog(true);
+
+    if (foundItems.length === 0) {
+      await fetchFoundItems();
+    }
+
+    try {
+      setIsRankingItems(true);
+      const rankedItems = await rankItemSimilarity(process.item, foundItems);
+      setFoundItems(rankedItems);
+    } catch (error) {
+      console.error('Error ranking items:', error);
+      toast.error('Failed to rank items by similarity');
+    } finally {
+      setIsRankingItems(false);
+    }
   };
 
   const handleAddQuestion = () => {
@@ -176,6 +256,152 @@ const LostReportsTab = memo(function LostReportsTab({
     setShowDetailsDialog(true);
   };
 
+  const fetchFoundItems = async () => {
+    try {
+      setIsLoadingFoundItems(true);
+      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+      if (!response.ok) throw new Error('Failed to fetch found items');
+      const data = await response.json();
+      
+      // Filter only approved found items
+      const foundItems = data.$values.filter(process => 
+        process.item?.status?.toLowerCase() === 'found' && 
+        process.item?.approved === true
+      );
+      
+      setFoundItems(foundItems);
+    } catch (error) {
+      console.error('Error fetching found items:', error);
+      toast.error('Failed to load found items');
+    } finally {
+      setIsLoadingFoundItems(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFoundItems();
+  }, []);
+
+  const handleMatchItem = async (foundItem) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/Item/process/match`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            lostProcessId: selectedItemForVerification.processId,
+            foundProcessId: foundItem.id
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to match items");
+      }
+
+      toast.success('Successfully matched items');
+      setShowFoundItemsDialog(false);
+      setSelectedFoundItem(null);
+      
+      // Update counts if needed
+      if (typeof onUpdateCounts === 'function') {
+        onUpdateCounts();
+      }
+
+    } catch (error) {
+      console.error("Error matching items:", error);
+      toast.error(error.message || 'Failed to match items');
+    }
+  };
+
+  const isWithinDateRange = (date, range) => {
+    if (!date) return false;
+    const itemDate = new Date(date);
+    const today = new Date();
+    
+    switch (range) {
+      case 'today':
+        return itemDate.toDateString() === today.toDateString();
+      case 'yesterday': {
+        const yesterday = new Date();
+        yesterday.setDate(today.getDate() - 1);
+        return itemDate.toDateString() === yesterday.toDateString();
+      }
+      case 'last7days': {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        return itemDate >= sevenDaysAgo;
+      }
+      case 'last30days': {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(today.getDate() - 30);
+        return itemDate >= thirtyDaysAgo;
+      }
+      case 'thisMonth': {
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        return itemDate >= firstDayOfMonth;
+      }
+      case 'custom':
+        if (!dateRange.from) return true;
+        if (!dateRange.to) return itemDate >= dateRange.from;
+        return itemDate >= dateRange.from && itemDate <= dateRange.to;
+      case 'all':
+        return true;
+      default:
+        return true;
+    }
+  };
+
+  const sortedAndFilteredFoundItems = useMemo(() => {
+    const filtered = foundItems.filter(item => {
+      const searchStr = searchQuery.toLowerCase();
+      const matchesSearch = (
+        item.item?.name?.toLowerCase().includes(searchStr) ||
+        item.item?.category?.toLowerCase().includes(searchStr) ||
+        item.item?.description?.toLowerCase().includes(searchStr) ||
+        item.item?.location?.toLowerCase().includes(searchStr) ||
+        item.item?.studentId?.toLowerCase().includes(searchStr)
+      );
+
+      const matchesDate = isWithinDateRange(item.item?.dateReported, dateFilter);
+      const matchesCategory = categoryFilter === 'all' || 
+        item.item?.category?.toLowerCase() === categoryFilter.toLowerCase();
+
+      return matchesSearch && matchesDate && matchesCategory;
+    });
+
+    return [...filtered].sort((a, b) => {
+      // First prioritize similarity score if sorting option is 'newest' (default)
+      if (sortOption === 'newest') {
+        // If both items have similarity scores, sort by score
+        if (a.similarityScore && b.similarityScore) {
+          return b.similarityScore - a.similarityScore;
+        }
+        // If only one has a similarity score, prioritize it
+        if (a.similarityScore) return -1;
+        if (b.similarityScore) return 1;
+        // If neither has a similarity score, fall back to date
+        return new Date(b.item?.dateReported) - new Date(a.item?.dateReported);
+      }
+
+      // Other sorting options remain unchanged
+      switch (sortOption) {
+        case 'oldest':
+          return new Date(a.item?.dateReported) - new Date(b.item?.dateReported);
+        case 'a-z':
+          return (a.item?.name || '').localeCompare(b.item?.name || '');
+        case 'z-a':
+          return (b.item?.name || '').localeCompare(a.item?.name || '');
+        default:
+          return 0;
+      }
+    });
+  }, [foundItems, searchQuery, sortOption, dateFilter, categoryFilter]);
+
   return (
     <div className="space-y-6">
       <div className="min-h-[600px]">
@@ -185,7 +411,7 @@ const LostReportsTab = memo(function LostReportsTab({
         </h3>
         <p className="text-gray-600 mt-2">
           Process lost item reports and manage student claims. Review item details, 
-          approve posts to make them visible, or handle verification processes.
+          approve posts to make them visible, or find a matching item for a found item.
         </p>
 
         {/* Status Cards */}
@@ -404,7 +630,7 @@ const LostReportsTab = memo(function LostReportsTab({
                                 onClick={() => handleItemInPossession(process)}
                               >
                                 <Package className="h-4 w-4 mr-2" />
-                                Item in Possession
+                                Match with Found Item
                               </Button>
                               <Button
                                 variant="destructive"
@@ -442,22 +668,14 @@ const LostReportsTab = memo(function LostReportsTab({
       <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
-            <DialogTitle>Item in Possession</DialogTitle>
-            <DialogDescription>
-              Are you sure this item is in your inventory? This will notify the person who reported the lost item.
+            <DialogTitle className="text-xl font-semibold text-blue-700">
+              Item Match Found for {selectedItemForVerification?.item?.name}
+            </DialogTitle>
+            <DialogDescription className="pt-2.5 text-gray-600 leading-relaxed">
+              This will notify the reporter that a matching item has been found in our storage. They will be instructed to visit the OHSO (Occupational Health Services Office) in the basement of the Admin Building to claim their item.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="flex items-center gap-2 text-blue-700">
-                <Package className="h-5 w-5" />
-                <p>
-                  <span className="font-semibold">Item Details:</span> {selectedItemForVerification?.item?.name}
-                </p>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => {
@@ -468,13 +686,42 @@ const LostReportsTab = memo(function LostReportsTab({
               Cancel
             </Button>
             <Button
-              onClick={() => {
-                // Handle confirmation
-                setShowVerificationDialog(false);
-                setSelectedItemForVerification(null);
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+              onClick={async () => {
+                try {
+                  const response = await fetch(
+                    `${API_BASE_URL}/api/Item/process/${selectedItemForVerification?.processId}/status`,
+                    {
+                      method: "PUT",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify({
+                        status: ProcessStatus.PENDING_RETRIEVAL,
+                        message: "Item is ready for pickup at OHSO"
+                      }),
+                    }
+                  );
+
+                  if (!response.ok) {
+                    throw new Error("Failed to update process status");
+                  }
+
+                  // Close dialog and reset state
+                  setShowVerificationDialog(false);
+                  setSelectedItemForVerification(null);
+
+                  // Update counts if needed
+                  if (typeof onUpdateCounts === 'function') {
+                    onUpdateCounts();
+                  }
+                } catch (error) {
+                  console.error("Error updating process status:", error);
+                  // You might want to show an error toast here
+                }
               }}
             >
-              Confirm
+              Notify Reporter
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -602,7 +849,7 @@ const LostReportsTab = memo(function LostReportsTab({
                   className="bg-gradient-to-r from-[#1E293B] to-[#334155] hover:from-[#334155] hover:to-[#1E293B] text-white shadow-sm transition-all duration-200"
                 >
                   <Package className="h-4 w-4 mr-2" />
-                  Item in Possession
+                  Match with Found Item
                 </Button>
                 <Button
                   variant="destructive"
@@ -627,6 +874,504 @@ const LostReportsTab = memo(function LostReportsTab({
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showFoundItemsDialog} onOpenChange={setShowFoundItemsDialog}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold text-blue-700 flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Select Matching Found Item
+            </DialogTitle>
+            <DialogDescription className="space-y-2">
+              <p>
+                Select the found item that matches the reported lost item. Items are automatically ranked by similarity.
+              </p>
+              <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+                <h4 className="font-medium text-blue-800">Lost Item Details:</h4>
+                <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-blue-700">
+                  <div><span className="font-medium">Name:</span> {selectedItemForVerification?.item?.name}</div>
+                  <div><span className="font-medium">Category:</span> {selectedItemForVerification?.item?.category}</div>
+                  <div><span className="font-medium">Location:</span> {selectedItemForVerification?.item?.location}</div>
+                  <div>
+                    <span className="font-medium">Date Reported:</span>{" "}
+                    {selectedItemForVerification?.item?.dateReported ? 
+                      formatDate(selectedItemForVerification.item.dateReported) : 'N/A'}
+                  </div>
+                </div>
+              </div>
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Add Search Bar */}
+          <div className="space-y-4">
+            {/* Search and Filter Controls */}
+            <div className="flex gap-4">
+              {/* Search Bar */}
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search by name, category, location, or student ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10"
+                />
+                <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-2 h-6 w-6 p-0"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              {/* Category Filter */}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    <SelectValue placeholder="All Categories" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectSeparator />
+                  {mainCategories.map((category) => (
+                    <SelectItem 
+                      key={category} 
+                      value={category.toLowerCase()}
+                      className="capitalize"
+                    >
+                      {capitalizeFirstLetter(category)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {/* Date Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="min-w-[200px] justify-start text-left font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateFilter === 'all' ? (
+                      "All Time"
+                    ) : dateFilter === 'custom' ? (
+                      dateRange.from ? (
+                        dateRange.to ? (
+                          `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`
+                        ) : (
+                          `From ${format(dateRange.from, 'MMM d')}`
+                        )
+                      ) : (
+                        "Select dates"
+                      )
+                    ) : (
+                      {
+                        'today': 'Today',
+                        'yesterday': 'Yesterday',
+                        'last7days': 'Last 7 days',
+                        'last30days': 'Last 30 days',
+                        'thisMonth': 'This month',
+                      }[dateFilter]
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <ScrollArea className="h-[400px]">
+                    <div className="p-4 space-y-4">
+                      {/* Quick Filters */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button
+                          variant={dateFilter === 'all' ? 'default' : 'outline'}
+                          size="sm"
+                          className="justify-start text-left font-normal h-9"
+                          onClick={() => {
+                            setDateFilter('all');
+                            setDateRange({ from: null, to: null });
+                          }}
+                        >
+                          All Time
+                        </Button>
+                        <Button
+                          variant={dateFilter === 'today' ? 'default' : 'outline'}
+                          size="sm"
+                          className="justify-start text-left font-normal h-9"
+                          onClick={() => {
+                            setDateFilter('today');
+                            setDateRange({ from: null, to: null });
+                          }}
+                        >
+                          Today
+                        </Button>
+                        <Button
+                          variant={dateFilter === 'yesterday' ? 'default' : 'outline'}
+                          size="sm"
+                          className="justify-start text-left font-normal h-9"
+                          onClick={() => {
+                            setDateFilter('yesterday');
+                            setDateRange({ from: null, to: null });
+                          }}
+                        >
+                          Yesterday
+                        </Button>
+                        <Button
+                          variant={dateFilter === 'last7days' ? 'default' : 'outline'}
+                          size="sm"
+                          className="justify-start text-left font-normal h-9"
+                          onClick={() => {
+                            setDateFilter('last7days');
+                            setDateRange({ from: null, to: null });
+                          }}
+                        >
+                          Last 7 days
+                        </Button>
+                        <Button
+                          variant={dateFilter === 'last30days' ? 'default' : 'outline'}
+                          size="sm"
+                          className="justify-start text-left font-normal h-9"
+                          onClick={() => {
+                            setDateFilter('last30days');
+                            setDateRange({ from: null, to: null });
+                          }}
+                        >
+                          Last 30 days
+                        </Button>
+                        <Button
+                          variant={dateFilter === 'thisMonth' ? 'default' : 'outline'}
+                          size="sm"
+                          className="justify-start text-left font-normal h-9"
+                          onClick={() => {
+                            setDateFilter('thisMonth');
+                            setDateRange({ from: null, to: null });
+                          }}
+                        >
+                          This month
+                        </Button>
+                      </div>
+
+                      {/* Divider */}
+                      <div className="border-t border-border" />
+
+                      {/* Calendar */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">Custom Range</span>
+                          {dateRange.from && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-2"
+                              onClick={() => {
+                                setDateRange({ from: null, to: null });
+                                setDateFilter('all');
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <div className="rounded-md border">
+                          <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={dateRange.from}
+                            selected={{
+                              from: dateRange.from,
+                              to: dateRange.to,
+                            }}
+                            onSelect={(range) => {
+                              setDateRange(range || { from: null, to: null });
+                              if (range?.from) {
+                                setDateFilter('custom');
+                              } else {
+                                setDateFilter('all');
+                              }
+                            }}
+                            numberOfMonths={1}
+                            className="rounded-md"
+                            disabled={(date) => date > new Date()}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
+
+              {/* Sort Dropdown */}
+              <Select value={sortOption} onValueChange={setSortOption}>
+                <SelectTrigger className="w-[180px]">
+                  <div className="flex items-center gap-2">
+                    <ArrowUpDown className="h-4 w-4" />
+                    <SelectValue placeholder="Sort by..." />
+                  </div>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Best Match</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="a-z">Name (A to Z)</SelectItem>
+                  <SelectItem value="z-a">Name (Z to A)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Results Count with Filters Info */}
+            {sortedAndFilteredFoundItems.length > 0 && (
+              <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
+                <span>
+                  Showing {sortedAndFilteredFoundItems.length} {sortedAndFilteredFoundItems.length === 1 ? 'item' : 'items'}
+                  {searchQuery && ' matching your search'}
+                </span>
+                <span className="text-gray-300">|</span>
+                <span className="text-gray-600">
+                  Sorted by: {
+                    sortOption === 'newest' ? 'Best Match' :
+                    sortOption === 'oldest' ? 'Oldest First' :
+                    sortOption === 'a-z' ? 'Name (A to Z)' :
+                    'Name (Z to A)'
+                  }
+                </span>
+                {categoryFilter !== 'all' && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-gray-600">
+                      Category: {capitalizeFirstLetter(categoryFilter)}
+                    </span>
+                  </>
+                )}
+                {dateFilter !== 'all' && (
+                  <>
+                    <span className="text-gray-300">|</span>
+                    <span className="text-gray-600">
+                      Date range: {
+                        dateFilter === 'today' ? 'Today' :
+                        dateFilter === '7days' ? 'Last 7 Days' :
+                        dateFilter === '30days' ? 'Last 30 Days' :
+                        dateFilter === 'this-month' ? 'This Month' :
+                        dateFilter === 'custom-date' ? 
+                          (customDate ? formatDate(customDate) : 'Custom Date') :
+                        dateFilter === 'custom-month' ?
+                          (selectedMonth ? format(selectedMonth, 'MMMM yyyy') : 'Select Month') :
+                        'All Time'
+                      }
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {isLoadingFoundItems || isRankingItems ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="mt-2 text-sm text-gray-500">
+                  {isLoadingFoundItems ? 'Loading found items...' : 'Ranking items by similarity...'}
+                </p>
+              </div>
+            </div>
+          ) : sortedAndFilteredFoundItems.length === 0 ? (
+            <div className="text-center p-8">
+              <div className="p-4 bg-gray-50 rounded-full w-fit mx-auto">
+                <Package className="h-12 w-12 text-gray-400" />
+              </div>
+              <p className="mt-4 text-gray-600 font-medium">
+                {searchQuery 
+                  ? 'No items match your search'
+                  : 'No Found Items Available'
+                }
+              </p>
+              <p className="mt-1 text-sm text-gray-500">
+                {searchQuery 
+                  ? 'Try adjusting your search terms'
+                  : 'There are currently no approved found items in the system.'
+                }
+              </p>
+            </div>
+          ) : (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-6 p-1">
+                {sortedAndFilteredFoundItems.map((foundItem, index) => (
+                  <div
+                    key={foundItem.id}
+                    className={`relative rounded-lg border transition-all duration-200 cursor-pointer 
+                      ${selectedFoundItem?.id === foundItem.id 
+                        ? 'border-blue-500 bg-blue-50/50 shadow-md transform scale-[1.01] z-10' 
+                        : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50/50'
+                      }`}
+                  >
+                    {/* Add similarity score badge */}
+                    <div className="absolute -top-2 -left-2 flex items-center gap-1.5">
+                      {/* Match Rank Badge */}
+                     
+                      {/* Similarity Score Badge */}
+                      <div className={cn(
+                        "px-2 py-0.5 rounded-full text-xs font-medium",
+                        foundItem.similarityScore >= 80 ? "bg-green-100 text-green-800" :
+                        foundItem.similarityScore >= 60 ? "bg-yellow-100 text-yellow-800" :
+                        "bg-gray-100 text-gray-800"
+                      )}>
+                        {foundItem.similarityScore}% Match
+                      </div>
+                    </div>
+
+                    {selectedFoundItem?.id === foundItem.id && (
+                      <div className="absolute -top-2 -right-2 bg-blue-500 text-white p-1.5 rounded-full shadow-lg z-20">
+                        <CheckCircle className="h-4 w-4" />
+                      </div>
+                    )}
+                    
+                    <div 
+                      className="p-4"
+                      onClick={() => setSelectedFoundItem(foundItem)}
+                    >
+                      <div className="flex gap-6">
+                        {/* Image Section */}
+                        <div className={`w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border transition-colors duration-200
+                          ${selectedFoundItem?.id === foundItem.id 
+                            ? 'border-blue-200 shadow-sm' 
+                            : 'border-gray-200'
+                          }`}
+                        >
+                          {foundItem.item?.imageUrl ? (
+                            <img
+                              src={foundItem.item.imageUrl}
+                              alt={foundItem.item.name}
+                              className={`w-full h-full object-cover transition-transform duration-200
+                                ${selectedFoundItem?.id === foundItem.id 
+                                  ? 'scale-105' 
+                                  : 'scale-100'
+                                }`}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center">
+                              <Package className={`h-8 w-8 transition-colors duration-200
+                                ${selectedFoundItem?.id === foundItem.id 
+                                  ? 'text-blue-400' 
+                                  : 'text-gray-400'
+                                }`}
+                              />
+                              <span className={`text-xs mt-1 transition-colors duration-200
+                                ${selectedFoundItem?.id === foundItem.id 
+                                  ? 'text-blue-400' 
+                                  : 'text-gray-400'
+                                }`}
+                              >
+                                No Image
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Details Section */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <div>
+                              <h4 className={`font-semibold text-lg transition-colors duration-200
+                                ${selectedFoundItem?.id === foundItem.id 
+                                  ? 'text-blue-700' 
+                                  : 'text-gray-900'
+                                }`}
+                              >
+                                {foundItem.item?.name}
+                              </h4>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className="text-sm text-gray-600">
+                                  <CalendarIcon className="h-4 w-4 inline mr-1" />
+                                  {formatDate(foundItem.item?.dateReported)}
+                                </div>
+                                {foundItem.similarityScore > 0 && (
+                                  <div className="text-sm">
+                                    <span className={cn(
+                                      "font-medium",
+                                      foundItem.similarityScore >= 80 ? "text-green-600" :
+                                      foundItem.similarityScore >= 60 ? "text-yellow-600" :
+                                      "text-gray-600"
+                                    )}>
+                                      {foundItem.similarityScore}% Similarity
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <Badge 
+                              variant="secondary" 
+                              className={`transition-colors duration-200
+                                ${selectedFoundItem?.id === foundItem.id 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                                }`}
+                            >
+                              Found Item
+                            </Badge>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-3 text-sm">
+                            <div>
+                              <span className="font-medium text-gray-700">Category:</span>{" "}
+                              <span className="text-gray-600">{capitalizeFirstLetter(foundItem.item?.category)}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Location:</span>{" "}
+                              <span className="text-gray-600">{foundItem.item?.location}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Student ID:</span>{" "}
+                              <span className="text-gray-600">{foundItem.item?.studentId || 'N/A'}</span>
+                            </div>
+                            <div>
+                              <span className="font-medium text-gray-700">Status:</span>{" "}
+                              <span className="text-gray-600 capitalize">{foundItem.item?.status}</span>
+                            </div>
+                          </div>
+
+                          <div className="mt-3">
+                            <span className="font-medium text-gray-700 text-sm">Description:</span>
+                            <p className="mt-1 text-sm text-gray-600 line-clamp-2">
+                              {foundItem.item?.description}
+                            </p>
+                          </div>
+
+                          {foundItem.item?.additionalDescriptions?.$values?.length > 0 && (
+                            <div className="mt-2">
+                              <span className="text-xs text-gray-500">
+                                +{foundItem.item.additionalDescriptions.$values.length} additional details
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFoundItemsDialog(false);
+                setSelectedFoundItem(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => handleMatchItem(selectedFoundItem)}
+              disabled={!selectedFoundItem}
+              className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Confirm Match
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
