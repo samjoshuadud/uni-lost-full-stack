@@ -678,7 +678,7 @@ public class ItemController : ControllerBase
             // Clear verification questions since they're no longer needed
             await _verificationQuestionService.DeleteQuestionsByProcessIdAsync(processId);
 
-            // Send success email notification
+            // Send email notification
             if (user != null && item != null)
             {
                 try
@@ -872,7 +872,7 @@ public class ItemController : ControllerBase
             }
 
             // Check if already in pending_retrieval
-            if (process.status == ProcessMessages.Status.PENDING_RETRIEVAL)
+            if (process.status.ToLower() != ProcessMessages.Status.PENDING_RETRIEVAL.ToLower())
             {
                 return Ok(new ApiResponse<object>
                 {
@@ -1309,6 +1309,60 @@ public class ItemController : ControllerBase
                 Success = false,
                 Message = "Failed to match items"
             });
+        }
+    }
+
+    [HttpPut("process/{id}/undo-retrieval")]
+    public async Task<ActionResult> UndoRetrieval(string id)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(id);
+            if (process == null)
+                return NotFound(new { error = "Process not found" });
+
+            if (process.status.ToLower() != ProcessMessages.Status.PENDING_RETRIEVAL.ToLower())
+                return BadRequest(new { error = "Process is not in pending retrieval status" });
+
+            await _processService.UpdateStatusAsync(
+                id,
+                ProcessMessages.Status.APPROVED,
+                ProcessMessages.Messages.ITEM_APPROVED
+            );
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error undoing retrieval status: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("process/{id}/mark-handed-over")]
+    public async Task<ActionResult> MarkAsHandedOver(string id)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(id);
+            if (process == null)
+                return NotFound(new { error = "Process not found" });
+
+            if (process.status.ToLower() != ProcessMessages.Status.NO_SHOW.ToLower())
+                return BadRequest(new { error = "Process is not in no-show status" });
+
+            await _processService.UpdateStatusAsync(
+                id,
+                ProcessMessages.Status.HANDED_OVER,
+                ProcessMessages.Messages.HANDED_OVER
+            );
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error marking as handed over: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 } 
