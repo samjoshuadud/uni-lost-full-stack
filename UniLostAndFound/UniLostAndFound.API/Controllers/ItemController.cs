@@ -872,7 +872,7 @@ public class ItemController : ControllerBase
             }
 
             // Check if already in pending_retrieval
-            if (process.status.ToLower() == ProcessMessages.Status.PENDING_RETRIEVAL.ToLower())
+            if (process.status.ToLower() != ProcessMessages.Status.PENDING_RETRIEVAL.ToLower())
             {
                 return Ok(new ApiResponse<object>
                 {
@@ -1335,6 +1335,33 @@ public class ItemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError($"Error undoing retrieval status: {ex.Message}");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    [HttpPut("process/{id}/mark-handed-over")]
+    public async Task<ActionResult> MarkAsHandedOver(string id)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(id);
+            if (process == null)
+                return NotFound(new { error = "Process not found" });
+
+            if (process.status.ToLower() != ProcessMessages.Status.NO_SHOW.ToLower())
+                return BadRequest(new { error = "Process is not in no-show status" });
+
+            await _processService.UpdateStatusAsync(
+                id,
+                ProcessMessages.Status.HANDED_OVER,
+                ProcessMessages.Messages.HANDED_OVER
+            );
+
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error marking as handed over: {ex.Message}");
             return StatusCode(500, new { error = ex.Message });
         }
     }
