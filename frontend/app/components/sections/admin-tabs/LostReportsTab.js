@@ -91,6 +91,8 @@ const LostReportsTab = memo(function LostReportsTab({
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [isRankingItems, setIsRankingItems] = useState(false);
+  const [processingItems, setProcessingItems] = useState(new Set());
+  const [isMatchingItem, setIsMatchingItem] = useState(false);
 
   const mainCategories = [
     "books", 
@@ -283,7 +285,11 @@ const LostReportsTab = memo(function LostReportsTab({
   }, []);
 
   const handleMatchItem = async (foundItem) => {
+    if (!foundItem || isMatchingItem) return;
+    
     try {
+      setIsMatchingItem(true);
+      
       console.log('Matching items:', {
         lostProcessId: selectedItemForVerification.processId,
         foundProcessId: foundItem.id
@@ -321,6 +327,9 @@ const LostReportsTab = memo(function LostReportsTab({
     } catch (error) {
       console.error("Error matching items:", error);
       toast.error(error.message || 'Failed to match items');
+    } finally {
+      setIsMatchingItem(false);
+      setShowFoundItemsDialog(false);
     }
   };
 
@@ -1205,11 +1214,11 @@ const LostReportsTab = memo(function LostReportsTab({
                 {sortedAndFilteredFoundItems.map((foundItem, index) => (
                   <div
                     key={foundItem.id}
-                    className={`relative rounded-lg border transition-all duration-200 cursor-pointer 
+                    className={`relative rounded-lg border transition-all duration-200 
                       ${selectedFoundItem?.id === foundItem.id 
                         ? 'border-blue-500 bg-blue-50/50 shadow-md transform scale-[1.01] z-10' 
                         : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50/50'
-                      }`}
+                      } ${processingItems.has(foundItem.id) ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                   >
                     {/* Add similarity score badge */}
                     <div className="absolute -top-2 -left-2 flex items-center gap-1.5">
@@ -1233,9 +1242,33 @@ const LostReportsTab = memo(function LostReportsTab({
                     )}
                     
                     <div 
-                      className="p-4"
-                      onClick={() => setSelectedFoundItem(foundItem)}
+                      className="p-4 relative"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (processingItems.has(foundItem.id)) return;
+                        
+                        setProcessingItems(prev => new Set([...prev, foundItem.id]));
+                        setSelectedFoundItem(foundItem);
+                        
+                        // Add a small delay to show loading state
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                        
+                        setProcessingItems(prev => {
+                          const next = new Set(prev);
+                          next.delete(foundItem.id);
+                          return next;
+                        });
+                      }}
                     >
+                      {processingItems.has(foundItem.id) && (
+                        <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full shadow-sm border">
+                            <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                            <span className="text-sm text-blue-600 font-medium">Processing...</span>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex gap-6">
                         {/* Image Section */}
                         <div className={`w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border transition-colors duration-200
@@ -1366,16 +1399,23 @@ const LostReportsTab = memo(function LostReportsTab({
                 setShowFoundItemsDialog(false);
                 setSelectedFoundItem(null);
               }}
+              disabled={isMatchingItem}
             >
               Cancel
             </Button>
             <Button
               onClick={() => handleMatchItem(selectedFoundItem)}
-              disabled={!selectedFoundItem}
+              disabled={!selectedFoundItem || isMatchingItem}
               className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white"
             >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Confirm Match
+              {isMatchingItem ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Matching...
+                </>
+              ) : (
+                'Confirm Match'
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

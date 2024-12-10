@@ -21,6 +21,7 @@ export default function PendingRetrievalTab({
 }) {
   const [handingOverItems, setHandingOverItems] = useState(new Set());
   const [noShowItems, setNoShowItems] = useState(new Set());
+  const [undoingItems, setUndoingItems] = useState(new Set());
   const [error, setError] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
@@ -94,6 +95,43 @@ export default function PendingRetrievalTab({
       setError('Failed to process no show. Please try again.');
     } finally {
       setNoShowItems(prev => {
+        const next = new Set(prev);
+        next.delete(processId);
+        return next;
+      });
+    }
+  };
+
+  const handleUndoRetrieval = async (process) => {
+    const processId = getProcessId(process);
+    try {
+      setUndoingItems(prev => new Set(prev).add(processId));
+      setError(null);
+
+      console.log("Undoing retrieval for process:", processId);
+
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/undo-retrieval`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error('Failed to undo retrieval status');
+      }
+
+      if (onHandOver) {
+        await onHandOver(process.item?.id || process.Item?.Id);
+      }
+
+    } catch (err) {
+      console.error('Error undoing retrieval:', err);
+      setError('Failed to undo retrieval. Please try again.');
+    } finally {
+      setUndoingItems(prev => {
         const next = new Set(prev);
         next.delete(processId);
         return next;
@@ -179,13 +217,13 @@ export default function PendingRetrievalTab({
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-2 justify-start min-w-[140px]">
+                  <div className="flex flex-col gap-2 justify-start min-w-[140px]" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       variant="default" 
                       size="sm"
                       className="w-full bg-gradient-to-r from-green-600 to-green-500 hover:from-green-700 hover:to-green-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
                       onClick={() => handleHandOver(process)}
-                      disabled={handingOverItems.has(getProcessId(process))}
+                      disabled={handingOverItems.has(getProcessId(process)) || undoingItems.has(getProcessId(process))}
                     >
                       {handingOverItems.has(getProcessId(process)) ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -199,7 +237,7 @@ export default function PendingRetrievalTab({
                       size="sm"
                       className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
                       onClick={() => handleNoShow(process)}
-                      disabled={noShowItems.has(getProcessId(process))}
+                      disabled={noShowItems.has(getProcessId(process)) || undoingItems.has(getProcessId(process))}
                     >
                       {noShowItems.has(getProcessId(process)) ? (
                         <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -207,6 +245,20 @@ export default function PendingRetrievalTab({
                         <XCircle className="h-4 w-4 mr-2" />
                       )}
                       {noShowItems.has(getProcessId(process)) ? 'Processing...' : 'No Show'}
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      className="w-full border-blue-200 hover:bg-blue-50 text-blue-600"
+                      onClick={() => handleUndoRetrieval(process)}
+                      disabled={undoingItems.has(getProcessId(process))}
+                    >
+                      {undoingItems.has(getProcessId(process)) ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 mr-2" />
+                      )}
+                      {undoingItems.has(getProcessId(process)) ? 'Undoing...' : 'Undo'}
                     </Button>
                   </div>
                 </div>
