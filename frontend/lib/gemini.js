@@ -95,4 +95,65 @@ export async function generateVerificationQuestions(itemInfo) {
     console.error('Error generating questions:', error);
     throw error;
   }
+}
+
+// Add this new function
+export async function rankItemSimilarity(lostItem, foundItems) {
+  try {
+    if (!process.env.NEXT_PUBLIC_GEMINI_API_KEY) {
+      throw new Error('Gemini API key is not configured');
+    }
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash" 
+    });
+
+    const promptText = `
+    Compare this lost item with a list of found items and rank them by similarity.
+    Consider matching these attributes: name, category, description, and location.
+    
+    Lost Item:
+    Name: ${lostItem.name}
+    Category: ${lostItem.category}
+    Description: ${lostItem.description}
+    Location: ${lostItem.location}
+
+    Found Items:
+    ${foundItems.map((item, index) => `
+    Item ${index + 1}:
+    Name: ${item.item?.name}
+    Category: ${item.item?.category}
+    Description: ${item.item?.description}
+    Location: ${item.item?.location}
+    `).join('\n')}
+
+    Return a JSON array of objects containing the item index and similarity percentage.
+    Example: [{"index": 2, "similarity": 85}, {"index": 1, "similarity": 60}]
+    Important: Return ONLY the array, no markdown formatting or additional text.
+    Ensure similarity is a number between 0-100.
+    `;
+
+    const result = await model.generateContent(promptText);
+    const response = await result.response;
+    
+    // Clean up the response text
+    const cleanedResponse = response.text()
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    
+    // Parse the cleaned response as JSON array
+    const rankings = JSON.parse(cleanedResponse);
+    
+    // Map the rankings to the original items with similarity scores
+    return rankings.map(ranking => ({
+      ...foundItems[ranking.index - 1],
+      similarityScore: ranking.similarity
+    }));
+
+  } catch (error) {
+    console.error('Error ranking items:', error);
+    // Return original items with 0 similarity if ranking fails
+    return foundItems.map(item => ({ ...item, similarityScore: 0 }));
+  }
 } 
