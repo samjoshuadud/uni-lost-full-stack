@@ -21,6 +21,7 @@ import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
 import { itemApi } from "@/lib/api-client"
 import { motion, AnimatePresence } from "framer-motion";
+import ClaimInstructionsDialog from "../dialogs/ClaimInstructionsDialog"
 
 const staggerDelay = (index) => ({
   animationDelay: `${index * 0.1}s`
@@ -111,6 +112,7 @@ export default function DashboardSection({
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
   const [processes, setProcesses] = useState([]);
+  const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
 
   // Move the highlight effect here, before other useEffects
   useEffect(() => {
@@ -415,8 +417,7 @@ export default function DashboardSection({
       setShowAuthDialog(true);
       return;
     }
-    setSelectedClaimItem(item);
-    setShowClaimDialog(true);
+    setShowInstructionsDialog(true);
   };
 
   const handleClaimSubmit = async (answers, additionalInfo) => {
@@ -969,15 +970,10 @@ export default function DashboardSection({
         onOpenChange={setShowAuthDialog}
       />
 
-      {/* Add the ClaimVerificationDialog */}
-      <ClaimVerificationDialog
-        isOpen={showClaimDialog}
-        onClose={() => {
-          setShowClaimDialog(false);
-          setSelectedClaimItem(null);
-        }}
-        item={selectedClaimItem}
-        onSubmit={handleClaimSubmit}
+      {/* Add ClaimInstructionsDialog */}
+      <ClaimInstructionsDialog
+        isOpen={showInstructionsDialog}
+        onClose={() => setShowInstructionsDialog(false)}
       />
     </div>
   );
