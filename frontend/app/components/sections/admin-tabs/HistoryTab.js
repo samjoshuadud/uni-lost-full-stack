@@ -21,12 +21,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Loader2 } from "lucide-react";
 
 export default function HistoryTab({ handleViewDetails }) {
   const [items, setItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // all, handed_over, no_show
   const [searchTerm, setSearchTerm] = useState("");
+  const [markingHandedOverItems, setMarkingHandedOverItems] = useState(new Set());
 
   // Fetch history items (both handed over and no-show)
   useEffect(() => {
@@ -85,6 +87,41 @@ export default function HistoryTab({ handleViewDetails }) {
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  const handleMarkAsHandedOver = async (process) => {
+    const processId = process.id;
+    try {
+      setMarkingHandedOverItems(prev => new Set(prev).add(processId));
+
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/mark-handed-over`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        throw new Error('Failed to mark as handed over');
+      }
+
+      // Update the item status locally
+      setItems(prevItems => prevItems.map(item => 
+        item.id === processId ? { ...item, status: ProcessStatus.HANDED_OVER } : item
+      ));
+
+    } catch (err) {
+      console.error('Error marking as handed over:', err);
+      alert('Failed to mark as handed over. Please try again.');
+    } finally {
+      setMarkingHandedOverItems(prev => {
+        const next = new Set(prev);
+        next.delete(processId);
+        return next;
+      });
+    }
   };
 
   if (isLoading) {
@@ -180,8 +217,14 @@ export default function HistoryTab({ handleViewDetails }) {
                       variant="outline"
                       size="sm"
                       className="bg-green-500 text-white hover:bg-green-600 border-0"
+                      onClick={() => handleMarkAsHandedOver(process)}
+                      disabled={markingHandedOverItems.has(process.id)}
                     >
-                      Mark as Handed Over
+                      {markingHandedOverItems.has(process.id) ? (
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      ) : (
+                        'Mark as Handed Over'
+                      )}
                     </Button>
                   )}
                 </td>
