@@ -62,4 +62,16 @@ export const ValidationMessages = {
 export const RefreshIntervals = {
   DASHBOARD: 10000, // 10 seconds
   PENDING_PROCESSES: 5000 // 5 seconds
-}; 
+};
+
+export const CATEGORIES = [
+    "electronics",
+    "clothing",
+    "accessories",
+    "books",
+    "documents",
+    "keys",
+    "wallets",
+    "bags",
+    // ... any other categories
+]; 
