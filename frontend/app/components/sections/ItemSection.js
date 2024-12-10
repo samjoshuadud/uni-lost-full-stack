@@ -66,9 +66,12 @@ export default function ItemSection({
     setIsLoading(true);
     
     const filteredItems = items.filter(item => {
-        // Category filter
-        const matchesCategory = searchCategory === "all" || 
-            item.category?.toLowerCase() === searchCategory.toLowerCase();
+        // Category filter - Updated logic for "others" category
+        const matchesCategory = 
+            searchCategory === "all" ? true :
+            searchCategory === "others" ? 
+                !CATEGORIES.includes(item.category?.toLowerCase()) :
+                item.category?.toLowerCase() === searchCategory.toLowerCase();
 
         // Search terms - only filter if there's a search query
         if (searchQuery.trim()) {
