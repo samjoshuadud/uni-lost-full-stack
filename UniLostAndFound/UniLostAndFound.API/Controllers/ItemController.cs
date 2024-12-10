@@ -1226,4 +1226,77 @@ public class ItemController : ControllerBase
             });
         }
     }
+
+    [HttpPost("process/match")]
+    public async Task<ActionResult<ApiResponse<bool>>> MatchItems([FromBody] MatchItemsDto dto)
+    {
+        try
+        {
+            // Get the lost item process
+            var lostProcess = await _processService.GetProcessByIdAsync(dto.LostProcessId);
+            if (lostProcess == null)
+            {
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Lost item process not found" 
+                });
+            }
+
+            // Get the found item process
+            var foundProcess = await _processService.GetProcessByIdAsync(dto.FoundProcessId);
+            if (foundProcess == null)
+            {
+                return NotFound(new ApiResponse<bool> 
+                { 
+                    Success = false, 
+                    Message = "Found item process not found" 
+                });
+            }
+
+            // Update found item process status
+            foundProcess.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            foundProcess.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
+            await _processService.UpdateProcessAsync(foundProcess);
+
+            // Delete the lost item and its process
+            await _processService.DeleteProcessAndItemAsync(dto.LostProcessId);
+
+            // Get the reporter's email for notification
+            var lostItem = await _itemService.GetItemAsync(lostProcess.ItemId);
+            var reporter = await _userService.GetUserByIdAsync(lostProcess.UserId);
+
+            if (reporter != null && lostItem != null)
+            {
+                try
+                {
+                    await _emailService.SendReadyForPickupEmailAsync(
+                        reporter.Email,
+                        lostItem.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send pickup notification email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Items matched successfully",
+                Data = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error matching items: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to match items"
+            });
+        }
+    }
 } 
