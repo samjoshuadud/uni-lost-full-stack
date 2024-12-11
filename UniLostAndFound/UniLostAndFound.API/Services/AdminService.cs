@@ -163,47 +163,4 @@ public class AdminService
             throw;
         }
     }
-
-    public async Task<IEnumerable<PendingProcess>> GetFailedVerificationsAsync()
-    {
-        try
-        {
-            return await _processService.GetFailedVerifications();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error getting failed verifications: {ex.Message}");
-            throw;
-        }
-    }
-
-    public async Task HandleFailedVerificationAsync(string processId, bool deleteItem)
-    {
-        try
-        {
-            var process = await _processService.GetProcessByIdAsync(processId);
-            if (process == null)
-            {
-                throw new KeyNotFoundException("Process not found");
-            }
-
-            if (deleteItem)
-            {
-                // Delete both process and item
-                await _processService.DeleteProcessAndItemAsync(processId);
-            }
-            else
-            {
-                // Just update the process status to indicate manual verification is needed
-                process.status = ProcessMessages.Status.VERIFICATION_FAILED;
-                process.Message = ProcessMessages.Messages.ADMIN_VERIFICATION_FAILED;
-                await _processService.UpdateProcessAsync(process);
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error handling failed verification: {ex.Message}");
-            throw;
-        }
-    }
 } 
