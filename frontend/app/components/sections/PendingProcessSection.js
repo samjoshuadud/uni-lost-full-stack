@@ -1322,7 +1322,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                       hover:bg-white
                       hover:text-[#003D99]
                       group
-                      ${status === 'handed_over' ? 'bg-[#FFD43B] text-[#2E3F65]' : ''}
                     `}
                   >
                     <div className="flex items-center justify-center gap-2">
