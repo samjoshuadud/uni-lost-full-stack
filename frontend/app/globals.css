@@ -92,36 +92,6 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
-/* Add these custom styles for the tabs */
-.tabs-trigger {
-  @apply relative px-4 py-2 text-sm font-medium transition-all
-  data-[state=active]:text-primary
-  data-[state=active]:shadow-sm
-  data-[state=active]:bg-white
-  hover:bg-gray-50
-  focus-visible:outline-none
-  focus-visible:ring-2
-  focus-visible:ring-offset-2
-  focus-visible:ring-primary;
-}
-
-.tabs-content {
-  @apply mt-6 ring-offset-background
-  focus-visible:outline-none
-  focus-visible:ring-2
-  focus-visible:ring-offset-2
-  focus-visible:ring-primary;
-} 
-
-/* Add noise texture */
-.bg-noise-pattern {
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
-}
-
-/* Add radial gradient utility */
-.bg-radial-gradient {
-  background-image: radial-gradient(circle at center, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
-} 
 
 /* Custom styles for the tabs */
 .tabs-root {
@@ -191,3 +161,34 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Remove unused styles */ 
+
+/* Add these custom styles for the tabs */
+.tabs-trigger {
+  @apply relative px-4 py-2 text-sm font-medium transition-all
+  data-[state=active]:text-primary
+  data-[state=active]:shadow-sm
+  data-[state=active]:bg-white
+  hover:bg-gray-50
+  focus-visible:outline-none
+  focus-visible:ring-2
+  focus-visible:ring-offset-2
+  focus-visible:ring-primary;
+}
+
+.tabs-content {
+  @apply mt-6 ring-offset-background
+  focus-visible:outline-none
+  focus-visible:ring-2
+  focus-visible:ring-offset-2
+  focus-visible:ring-primary;
+} 
+
+/* Add noise texture */
+.bg-noise-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Add radial gradient utility */
+.bg-radial-gradient {
+  background-image: radial-gradient(circle at center, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
+} 
