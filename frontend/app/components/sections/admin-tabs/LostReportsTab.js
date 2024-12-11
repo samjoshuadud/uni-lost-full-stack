@@ -781,7 +781,7 @@ const LostReportsTab = memo(function LostReportsTab({
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                      <div className="w-full h-full flex flex-col items-center justify-center">
                         <Package className="h-12 w-12 mb-2" />
                         <p className="text-sm">No Image</p>
                       </div>
@@ -899,24 +899,28 @@ const LostReportsTab = memo(function LostReportsTab({
               <Package className="h-5 w-5" />
               Select Matching Found Item
             </DialogTitle>
-            <DialogDescription className="space-y-2">
-              <p>
-                Select the found item that matches the reported lost item. Items are automatically ranked by similarity.
-              </p>
-              <div className="mt-2 p-3 bg-blue-50 rounded-lg">
+            <DialogDescription className="text-sm text-muted-foreground">
+              Please select the found item that matches with the lost item report.
+            </DialogDescription>
+            <div className="mt-4">
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
                 <h4 className="font-medium text-blue-800">Lost Item Details:</h4>
-                <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-blue-700">
-                  <div><span className="font-medium">Name:</span> {selectedItemForVerification?.item?.name}</div>
-                  <div><span className="font-medium">Category:</span> {selectedItemForVerification?.item?.category}</div>
-                  <div><span className="font-medium">Location:</span> {selectedItemForVerification?.item?.location}</div>
+                <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-blue-700">
                   <div>
-                    <span className="font-medium">Date Reported:</span>{" "}
-                    {selectedItemForVerification?.item?.dateReported ? 
-                      formatDate(selectedItemForVerification.item.dateReported) : 'N/A'}
+                    <span className="font-medium">Category:</span>{" "}
+                    {selectedItemForVerification?.item?.category || "N/A"}
+                  </div>
+                  <div>
+                    <span className="font-medium">Location:</span>{" "}
+                    {selectedItemForVerification?.item?.location || "N/A"}
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium">Description:</span>{" "}
+                    {selectedItemForVerification?.item?.description || "N/A"}
                   </div>
                 </div>
               </div>
-            </DialogDescription>
+            </div>
           </DialogHeader>
 
           {/* Add Search Bar */}
