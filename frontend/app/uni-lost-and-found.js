@@ -1132,12 +1132,13 @@ export default function UniLostAndFound() {
   };
 
   return (
-    <div className="relative min-h-screen">
-      {/* Fixed background that covers entire viewport */}
-      <div 
-        className="absolute inset-0 w-full h-full bg-[linear-gradient(130deg,#F8FAFF_0%,#EDF5FF_25%,#E6F0FF_50%,#E3EDFF_75%,#DCE8FF_100%)]"
-        style={{ minHeight: '100%' }}
-      />
+    <div 
+      className="min-h-screen relative before:content-[''] before:absolute before:inset-0 before:bg-[url('/images/ohso-bg.png')] before:bg-cover before:bg-center before:bg-fixed before:opacity-90 before:blur-[0.5px] before:transition-all before:duration-500"
+    >
+      {/* Even lighter semi-transparent overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/40 to-white/50 backdrop-blur-[1px]" />
+      
+      {/* Content container - make it relative to appear above overlay */}
       <div className="relative z-10">
         <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
           <DialogContent>
