@@ -819,13 +819,13 @@ const LostReportsTab = memo(function LostReportsTab({
                     </div>
 
                     {/* Additional Details if any */}
-                    {selectedItemForDetails.additionalDescriptions?.$values?.length > 0 && (
+                    {selectedItemForDetails?.additionalDescriptions?.length > 0 && (
                       <div className="space-y-2">
                         <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
                         <div className="space-y-2">
-                          {selectedItemForDetails.additionalDescriptions.$values.map((desc, index) => (
+                          {selectedItemForDetails.additionalDescriptions.map((desc, index) => (
                             <p key={index} className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200">
-                              {desc}
+                              <strong>{desc.title}:</strong> {desc.description}
                             </p>
                           ))}
                         </div>

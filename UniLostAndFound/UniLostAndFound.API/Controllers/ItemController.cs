@@ -649,4 +649,106 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
+
+    [HttpPost("scan")]
+    public async Task<ActionResult<ApiResponse<object>>> HandleQRCodeScan([FromBody] QRCodeScanDto dto)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(dto.ItemId) || string.IsNullOrEmpty(dto.AdminId))
+            {
+                _logger.LogWarning($"Invalid request data. ItemId: {dto.ItemId}, AdminId: {dto.AdminId}");
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "ItemId and AdminId are required"
+                });
+            }
+
+            _logger.LogInformation($"Received scan request. ItemId: {dto.ItemId}, AdminId: {dto.AdminId}");
+
+            // Get the original lost item to copy its details
+            var originalItem = await _itemService.GetItemAsync(dto.ItemId);
+            if (originalItem == null)
+            {
+                _logger.LogWarning($"Original item not found. ItemId: {dto.ItemId}");
+                return NotFound(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Original item not found"
+                });
+            }
+
+            // Get admin user details
+            var adminUser = await _userService.GetUserByIdAsync(dto.AdminId);
+            if (adminUser == null)
+            {
+                _logger.LogWarning($"Admin user not found. AdminId: {dto.AdminId}");
+                return BadRequest(new ApiResponse<object>
+                {
+                    Success = false,
+                    Message = "Admin user not found"
+                });
+            }
+
+            _logger.LogInformation($"Creating new found item. Original item name: {originalItem.Name}, Admin: {adminUser.Email}");
+
+            // Create new found item
+            var createItemDto = new CreateItemDto
+            {
+                Name = originalItem.Name,
+                Description = originalItem.Description,
+                Category = originalItem.Category,
+                Location = originalItem.Location,
+                Status = ItemStatus.FOUND,
+                ReporterId = dto.AdminId,  // Use admin's ID
+                StudentId = adminUser.StudentId,  // Use admin's student ID
+                ProcessStatus = ProcessMessages.Status.PENDING_APPROVAL,
+                Message = ProcessMessages.Messages.WAITING_APPROVAL
+            };
+
+            // Create the found item and its process
+            var itemId = await _itemService.CreateItemAsync(createItemDto, originalItem.ImageUrl);
+
+            _logger.LogInformation($"Successfully created found item with ID: {itemId}");
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = "Found item report created successfully",
+                Data = new
+                {
+                    itemId
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error processing QR code: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new ApiResponse<object>
+            {
+                Success = false,
+                Message = "Failed to process QR code"
+            });
+        }
+    }
+
+    [HttpGet("pending/{processId}")]
+    public async Task<ActionResult<PendingProcess>> GetProcessById(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            return Ok(process);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting process: {ex.Message}");
+            return StatusCode(500, new { message = "Error getting process", error = ex.Message });
+        }
+    }
 } 
