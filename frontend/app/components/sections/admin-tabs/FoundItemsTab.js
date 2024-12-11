@@ -18,7 +18,7 @@ import {
   CalendarIcon,
   MapPinIcon
 } from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import ReportSection from "../ReportSection"
 import { useState, useEffect, memo, useRef, useCallback } from "react"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -53,6 +53,12 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
 
+  const [lostItems, setLostItems] = useState([]);
+  const [isLoadingLostItems, setIsLoadingLostItems] = useState(false);
+  const [showMatchDialog, setShowMatchDialog] = useState(false);
+  const [selectedItemForMatching, setSelectedItemForMatching] = useState(null);
+  const [isMatchingItem, setIsMatchingItem] = useState(false);
+
   useEffect(() => {
     console.log('Raw items received:', items);
     console.log('All items state:', allItems);
@@ -82,6 +88,71 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
     updateCount();
   }, [allItems]);
+
+  const fetchLostItems = async () => {
+    try {
+      setIsLoadingLostItems(true);
+      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+      if (!response.ok) throw new Error('Failed to fetch lost items');
+      const data = await response.json();
+
+      // Filter only lost items
+      const lostItems = data.$values.filter(process => 
+        process.item?.status?.toLowerCase() === 'lost' && 
+        process.item?.approved == true
+      );
+
+      setLostItems(lostItems);
+    } catch (error) {
+      console.error('Error fetching lost items:', error);
+      toast.error('Failed to load lost items');
+    } finally {
+      setIsLoadingLostItems(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLostItems();
+  }, []);
+
+  const handleMatchItem = async (lostItem) => {
+  if (!lostItem || isMatchingItem) return;
+  
+  try {
+    setIsMatchingItem(true);
+    
+    const response = await fetch(
+      `${API_BASE_URL}/api/Item/process/match`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          lostProcessId: lostItem.id,
+          foundProcessId: selectedItemForMatching.processId
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to match items");
+    }
+
+    toast.success('Successfully matched items');
+    setShowMatchDialog(false);
+    
+    if (typeof onUpdateCounts === 'function') {
+      onUpdateCounts();
+    }
+  } catch (error) {
+    console.error("Error matching items:", error);
+    toast.error(error.message || 'Failed to match items');
+  } finally {
+    setIsMatchingItem(false);
+  }
+};
 
   const handleApprove = async (itemId) => {
     try {
@@ -586,6 +657,18 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                   </>
                                 )}
                               </Button>
+                              <Button
+                                variant="secondary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedItemForMatching(process.item);
+                                  setShowMatchDialog(true);
+                                }}
+                                className="bg-gradient-to-r from-[#1E293B] to-[#334155] text-white shadow-sm transition-all duration-200"
+                              >
+                                <Package className="h-4 w-4 mr-2" />
+                                Match with Lost Item
+                              </Button>
                             </div>
                           </div>
                         </CardContent>
@@ -887,6 +970,17 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     )}
                   </Button>
                   <Button
+                    variant="secondary"
+                    onClick={() => {
+                      setSelectedItemForMatching(selectedItemForDetails);
+                      setShowMatchDialog(true);
+                    }}
+                    className="bg-gradient-to-r from-[#1E293B] to-[#334155] text-white shadow-sm transition-all duration-200"
+                  >
+                    <Package className="h-4 w-4 mr-2" />
+                    Match with Lost Item
+                  </Button>
+                  <Button
                     variant="destructive"
                     onClick={() => {
                       handleDeleteClick(selectedItemForDetails.id);
@@ -909,6 +1003,78 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 </div>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Match Dialog */}
+        <Dialog open={showMatchDialog} onOpenChange={setShowMatchDialog}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold">
+                Match with Lost Item Reports
+              </DialogTitle>
+              <DialogDescription>
+                Select a lost item report to match with this found item
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              {/* Lost Items List */}
+              <div className="h-[500px] overflow-y-auto pr-4">
+                {isLoadingLostItems ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin" />
+                  </div>
+                ) : lostItems.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">No lost item reports available</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {lostItems.map((process) => (
+                      <Card
+                        key={process.id}
+                        className="cursor-pointer hover:shadow-md transition-shadow"
+                        onClick={() => handleMatchItem(process)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex gap-4">
+                            {/* Image */}
+                            <div className="w-24 h-24 bg-gray-50 rounded-lg overflow-hidden">
+                              {process.item?.imageUrl ? (
+                                <img 
+                                  src={process.item.imageUrl}
+                                  alt={process.item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <Package className="h-8 w-8 text-gray-400" />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Details */}
+                            <div className="flex-1">
+                              <h4 className="font-medium">{process.item?.name}</h4>
+                              <p className="text-sm text-gray-500">{process.item?.description}</p>
+                              <div className="mt-2 flex items-center gap-2">
+                                <Badge variant="outline">
+                                  {process.item?.category}
+                                </Badge>
+                                <span className="text-sm text-gray-500">
+                                  {format(new Date(process.item?.dateReported), 'MMM d, yyyy')}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
