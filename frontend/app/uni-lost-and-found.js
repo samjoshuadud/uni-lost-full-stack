@@ -1133,10 +1133,19 @@ export default function UniLostAndFound() {
 
   return (
     <div 
-      className="min-h-screen relative before:content-[''] before:absolute before:inset-0 before:bg-[url('/images/ohso-bg.png')] before:bg-cover before:bg-center before:bg-fixed before:opacity-90 before:blur-[0.5px] before:transition-all before:duration-500"
+      className="min-h-screen relative before:content-[''] before:absolute before:inset-0 before:bg-[url('/images/ohso-bg.png')] before:bg-cover before:bg-bottom before:bg-fixed before:opacity-85 before:transition-all before:duration-500"
     >
-      {/* Even lighter semi-transparent overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/50 via-white/40 to-white/50 backdrop-blur-[1px]" />
+      {/* Warm blue gradient overlay with improved design */}
+      <div className="absolute inset-0">
+        {/* Primary gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#E6F3FF]/95 via-[#F0F8FF]/85 to-transparent" />
+        
+        {/* Subtle radial gradient for depth */}
+        <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#E8F4FF]/30 to-[#E8F4FF]/50" />
+        
+        {/* Very subtle texture overlay */}
+        <div className="absolute inset-0 opacity-5 bg-noise-pattern mix-blend-overlay" />
+      </div>
       
       {/* Content container - make it relative to appear above overlay */}
       <div className="relative z-10">
