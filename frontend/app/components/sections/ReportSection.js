@@ -76,7 +76,7 @@ export default function ReportSection({
           const response = await makeAuthenticatedRequest(`/api/Item/${initialData.id}`);
           if (response) {
             setOriginalItem(response);
-            setStudentId(response.studentId || "Not Available");
+            setStudentId(userData?.studentId || "Not Available");
           }
         } catch (error) {
           console.error("Error fetching original item:", error);
@@ -208,6 +208,7 @@ export default function ReportSection({
         formData.append("Location", location);
         formData.append("Category", category);
         formData.append("StudentId", studentId);
+        formData.append("ReporterId", user.uid);
         
         // Add additional descriptions as a JSON array
         if (additionalDescriptions && additionalDescriptions.length > 0) {
@@ -243,7 +244,8 @@ export default function ReportSection({
           },
           body: JSON.stringify({
             Status: ProcessStatus.PENDING_APPROVAL,
-            Message: ProcessMessages.WAITING_APPROVAL
+            Message: ProcessMessages.WAITING_APPROVAL,
+            UserId: user.uid
           }),
         });
 

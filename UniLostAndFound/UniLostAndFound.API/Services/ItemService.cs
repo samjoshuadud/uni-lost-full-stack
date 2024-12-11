@@ -177,6 +177,11 @@ public class ItemService
         item.Location = dto.Location;
         item.Category = dto.Category;
         item.StudentId = dto.StudentId;
+
+        if (!string.IsNullOrEmpty(dto.ReporterId))
+        {
+            item.ReporterId = dto.ReporterId;
+        }
         
         // Only update ImageUrl if a new image was uploaded
         if (!string.IsNullOrEmpty(imageUrl))

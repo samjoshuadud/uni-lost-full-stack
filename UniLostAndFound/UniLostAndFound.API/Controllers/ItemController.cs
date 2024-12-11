@@ -286,6 +286,10 @@ public class ItemController : ControllerBase
 
             process.status = dto.Status;
             
+            if (!string.IsNullOrEmpty(dto.UserId))
+            {
+                process.UserId = dto.UserId;
+            }
             // If status is changing to in_verification
             if (dto.Status == "in_verification")
             {
