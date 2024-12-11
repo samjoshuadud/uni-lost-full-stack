@@ -1132,22 +1132,23 @@ export default function UniLostAndFound() {
   };
 
   return (
-    <div 
-      className="min-h-screen relative before:content-[''] before:absolute before:inset-0 before:bg-[url('/images/ohso-bg.png')] before:bg-cover before:bg-bottom before:bg-fixed before:opacity-85 before:transition-all before:duration-500"
-    >
-      {/* Warm blue gradient overlay with improved design */}
+    <div className="min-h-screen relative">
+      {/* Enhanced gradient overlay with multiple layers for depth */}
       <div className="absolute inset-0">
-        {/* Primary gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#E6F3FF]/95 via-[#F0F8FF]/85 to-transparent" />
+        {/* Primary warm gradient background - reversed direction */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#E6F3FF] via-[#F0F8FF] to-[#B7D9FF]" />
         
-        {/* Subtle radial gradient for depth */}
+        {/* Subtle warm overlay gradient - adjusted direction */}
+        <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-[#FFE5B4]/5 to-transparent" />
+        
+        {/* Radial gradient for depth */}
         <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#E8F4FF]/30 to-[#E8F4FF]/50" />
         
         {/* Very subtle texture overlay */}
         <div className="absolute inset-0 opacity-5 bg-noise-pattern mix-blend-overlay" />
       </div>
       
-      {/* Content container - make it relative to appear above overlay */}
+      {/* Content container */}
       <div className="relative z-10">
         <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
           <DialogContent>
