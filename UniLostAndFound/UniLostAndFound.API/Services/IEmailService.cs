@@ -8,6 +8,5 @@ public interface IEmailService
     Task SendItemHandedOverEmailAsync(string userEmail, string itemName);
     Task SendNoShowEmailAsync(string userEmail, string itemName);
     Task SendFoundItemReportedEmailAsync(string userEmail, string itemName, string processId, string qrCodeBase64);
-    Task SendFoundItemApprovedEmailAsync(string userEmail, string itemName, string itemId, string processId);
     Task SendItemMatchedEmailAsync(string userEmail, string foundItemName, string lostItemName);
 } 

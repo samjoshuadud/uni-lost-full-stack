@@ -225,17 +225,8 @@ public class ItemController : ControllerBase
                     {
                         try
                         {
-                            // Send different emails based on item type
-                            if (item.Status == ItemStatus.FOUND)
-                            {
-                                await _emailService.SendFoundItemApprovedEmailAsync(
-                                    reporter.Email,
-                                    item.Name,
-                                    item.Id,
-                                    process.Id
-                                );
-                            }
-                            else
+                            // Only send approval email for lost items
+                            if (item.Status != ItemStatus.FOUND)
                             {
                                 await _emailService.SendItemApprovedEmailAsync(
                                     reporter.Email,
@@ -551,6 +542,111 @@ public class ItemController : ControllerBase
                 Success = false,
                 Message = "Failed to match items"
             });
+        }
+    }
+
+    [HttpPut("process/{processId}/hand-over")]
+    public async Task<IActionResult> HandleHandOver(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
+            // Update process status
+            process.status = ProcessMessages.Status.HANDED_OVER;
+            process.Message = ProcessMessages.Messages.HANDED_OVER;
+
+            // Update item's approved status to false
+            if (item != null)
+            {
+                item.Approved = false;
+                await _itemService.UpdateItemAsync(item);
+            }
+
+            // Send email notification
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendItemHandedOverEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send hand over email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new { message = "Process updated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling hand over: {ex.Message}");
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
+        }
+    }
+
+    [HttpPut("process/{processId}/no-show")]
+    public async Task<IActionResult> HandleNoShow(string processId)
+    {
+        try
+        {
+            var process = await _processService.GetProcessByIdAsync(processId);
+            if (process == null)
+                return NotFound("Process not found");
+
+            // Get the item and user for email
+            var item = await _itemService.GetItemAsync(process.ItemId);
+            var user = await _userService.GetUserByIdAsync(process.UserId);
+
+            // Update process status
+            process.status = ProcessMessages.Status.NO_SHOW;
+            process.Message = ProcessMessages.Messages.NO_SHOW;
+
+            // Update item status back to pending approval
+            if (process.Item != null)
+            {
+                process.Item.Status = process.Item.Status; // Keeps original lost/found status
+                process.Item.Approved = false;
+                await _itemService.UpdateItemAsync(process.Item);
+            }
+
+            // Send email notification
+            if (user != null && item != null)
+            {
+                try
+                {
+                    await _emailService.SendNoShowEmailAsync(
+                        user.Email,
+                        item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send no-show email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
+            await _processService.UpdateProcessAsync(process);
+
+            return Ok(new { message = "Process updated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error handling no-show: {ex.Message}");
+            return StatusCode(500, new { message = "Error updating process", error = ex.Message });
         }
     }
 } 
