@@ -34,18 +34,35 @@ ChartJS.register(
 const pulseAnimation = "animate-pulse";
 const shimmerAnimation = "before:absolute before:inset-0 before:-translate-x-full before:animate-[shimmer_2s_infinite] before:bg-gradient-to-r before:from-transparent before:via-white/60 before:to-transparent";
 
+// Add consistent category colors
+const categoryColors = {
+  'Electronics': '#3B82F6',    // Blue
+  'Documents': '#10B981',      // Green
+  'Personal Items': '#F59E0B', // Amber
+  'Clothing': '#8B5CF6',       // Purple
+  'Accessories': '#EC4899',    // Pink
+  'Books': '#F97316',          // Orange
+  'Others': '#6B7280'          // Gray
+};
+
 export default function StatisticsSection() {
   const [stats, setStats] = useState({
     totalReports: 0,
     foundItems: 0,
+    lostItems: 0,
     activeCases: 0,
     retrievedItems: 0,
     noShowItems: 0,
+    pendingApproval: 0,
+    pendingRetrieval: 0,
     categoryDistribution: {},
     recentActivity: [],
     weeklyChange: 0
   });
   const [isLoading, setIsLoading] = useState(true);
+
+  // Add new state for processes
+  const [processes, setProcesses] = useState([]);
 
   // Add new state for chart data
   const [chartData, setChartData] = useState({
@@ -63,32 +80,45 @@ export default function StatisticsSection() {
         if (!response.ok) throw new Error("Failed to fetch statistics");
         const data = await response.json();
         
-        const processes = data.$values || [];
+        const fetchedProcesses = data.$values || [];
+        // Store processes in state
+        setProcesses(fetchedProcesses);
 
         // Calculate statistics
-        const totalReports = processes.length;
+        const totalReports = fetchedProcesses.length;
 
-        const foundItems = processes.filter(process => 
+        const foundItems = fetchedProcesses.filter(process => 
           process.item?.status?.toLowerCase() === "found"
         ).length;
 
-        const activeCases = processes.filter(process => 
+        const lostItems = fetchedProcesses.filter(process => 
+          process.item?.status?.toLowerCase() === "lost"
+        ).length;
+
+        const activeCases = fetchedProcesses.filter(process => 
           process.status === ProcessStatus.PENDING_APPROVAL ||
           process.status === ProcessStatus.IN_VERIFICATION ||
           process.status === ProcessStatus.PENDING_RETRIEVAL
         ).length;
 
-        const retrievedItems = processes.filter(process => 
+        const retrievedItems = fetchedProcesses.filter(process => 
           process.status === ProcessStatus.HANDED_OVER
         ).length;
 
-        // Add No Show count
-        const noShowItems = processes.filter(process => 
+        const noShowItems = fetchedProcesses.filter(process => 
           process.status === ProcessStatus.NO_SHOW
         ).length;
 
+        const pendingApproval = fetchedProcesses.filter(process => 
+          process.status === ProcessStatus.PENDING_APPROVAL
+        ).length;
+
+        const pendingRetrieval = fetchedProcesses.filter(process => 
+          process.status === ProcessStatus.PENDING_RETRIEVAL
+        ).length;
+
         // Calculate category distribution
-        const categoryDistribution = processes.reduce((acc, process) => {
+        const categoryDistribution = fetchedProcesses.reduce((acc, process) => {
           const category = process.item?.category?.toLowerCase() || '';
           
           // Skip if no category
@@ -113,7 +143,7 @@ export default function StatisticsSection() {
         }, {});
 
         // Get recent activity
-        const recentActivity = processes
+        const recentActivity = fetchedProcesses
           .filter(process => 
             process.status === ProcessStatus.HANDED_OVER || 
             process.status === ProcessStatus.PENDING_APPROVAL
@@ -121,7 +151,7 @@ export default function StatisticsSection() {
           .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
           .slice(0, 5)
           .map(process => ({
-            type: process.status === ProcessStatus.HANDED_OVER ? 'retrieved' : 'new',
+            type: process.status === ProcessStatus.HANDED_OVER ? 'retrieved' : 'New Report',
             itemName: process.item?.name,
             studentId: process.item?.studentId,
             timestamp: process.updatedAt
@@ -130,7 +160,7 @@ export default function StatisticsSection() {
         // Calculate weekly change
         const lastWeek = new Date();
         lastWeek.setDate(lastWeek.getDate() - 7);
-        const recentReports = processes.filter(process => 
+        const recentReports = fetchedProcesses.filter(process => 
           new Date(process.createdAt) > lastWeek
         ).length;
 
@@ -147,7 +177,7 @@ export default function StatisticsSection() {
           const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
           const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
-          const monthProcesses = processes.filter(process => {
+          const monthProcesses = fetchedProcesses.filter(process => {
             const processDate = new Date(process.createdAt);
             return processDate >= monthStart && processDate <= monthEnd;
           });
@@ -157,7 +187,14 @@ export default function StatisticsSection() {
             lost: monthProcesses.filter(p => p.item?.status?.toLowerCase() === 'lost').length,
             found: monthProcesses.filter(p => p.item?.status?.toLowerCase() === 'found').length,
             retrieved: monthProcesses.filter(p => p.status === ProcessStatus.HANDED_OVER).length,
-            noShow: monthProcesses.filter(p => p.status === ProcessStatus.NO_SHOW).length
+            noShow: monthProcesses.filter(p => p.status === ProcessStatus.NO_SHOW).length,
+            pendingApproval: monthProcesses.filter(p => p.status === ProcessStatus.PENDING_APPROVAL).length,
+            pendingRetrieval: monthProcesses.filter(p => p.status === ProcessStatus.PENDING_RETRIEVAL).length,
+            activeCases: monthProcesses.filter(p => 
+              p.status === ProcessStatus.PENDING_APPROVAL ||
+              p.status === ProcessStatus.IN_VERIFICATION ||
+              p.status === ProcessStatus.PENDING_RETRIEVAL
+            ).length
           };
         });
 
@@ -168,29 +205,50 @@ export default function StatisticsSection() {
             {
               label: 'Lost Items',
               data: monthlyStats.map(stat => stat.lost),
-              backgroundColor: 'rgba(239, 68, 68, 0.5)', // red
+              backgroundColor: 'rgba(239, 68, 68, 0.5)', // Red
               borderColor: 'rgb(239, 68, 68)',
               borderWidth: 1
             },
             {
               label: 'Found Items',
               data: monthlyStats.map(stat => stat.found),
-              backgroundColor: 'rgba(34, 197, 94, 0.5)', // green
-              borderColor: 'rgb(34, 197, 94)',
+              backgroundColor: categoryColors['Electronics'].replace(')', ', 0.5)').replace('rgb', 'rgba'),
+              borderColor: categoryColors['Electronics'],
               borderWidth: 1
             },
             {
               label: 'Retrieved Items',
               data: monthlyStats.map(stat => stat.retrieved),
-              backgroundColor: 'rgba(59, 130, 246, 0.5)', // blue
-              borderColor: 'rgb(59, 130, 246)',
+              backgroundColor: categoryColors['Documents'].replace(')', ', 0.5)').replace('rgb', 'rgba'),
+              borderColor: categoryColors['Documents'],
               borderWidth: 1
             },
             {
               label: 'No Show',
               data: monthlyStats.map(stat => stat.noShow),
-              backgroundColor: 'rgba(239, 68, 68, 0.5)', // red
-              borderColor: 'rgb(239, 68, 68)',
+              backgroundColor: categoryColors['Others'].replace(')', ', 0.5)').replace('rgb', 'rgba'),
+              borderColor: categoryColors['Others'],
+              borderWidth: 1
+            },
+            {
+              label: 'Pending Approval',
+              data: monthlyStats.map(stat => stat.pendingApproval),
+              backgroundColor: categoryColors['Accessories'].replace(')', ', 0.5)').replace('rgb', 'rgba'),
+              borderColor: categoryColors['Accessories'],
+              borderWidth: 1
+            },
+            {
+              label: 'Pending Retrieval',
+              data: monthlyStats.map(stat => stat.pendingRetrieval),
+              backgroundColor: categoryColors['Books'].replace(')', ', 0.5)').replace('rgb', 'rgba'),
+              borderColor: categoryColors['Books'],
+              borderWidth: 1
+            },
+            {
+              label: 'Active Cases',
+              data: monthlyStats.map(stat => stat.activeCases),
+              backgroundColor: 'rgba(147, 51, 234, 0.5)', // Purple
+              borderColor: 'rgb(147, 51, 234)',
               borderWidth: 1
             }
           ]
@@ -199,9 +257,12 @@ export default function StatisticsSection() {
         setStats({
           totalReports,
           foundItems,
+          lostItems,
           activeCases,
           retrievedItems,
           noShowItems,
+          pendingApproval,
+          pendingRetrieval,
           weeklyChange: recentReports,
           categoryDistribution: categoryPercentages,
           recentActivity
@@ -390,89 +451,136 @@ export default function StatisticsSection() {
   return (
     <div className="space-y-8">
       {/* Overview Cards */}
-      <div className="grid grid-cols-5 gap-6">
-        {/* Total Reports Card */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center">
-                <Search className="h-5 w-5 text-blue-600" />
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-muted-foreground">Total Reports</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.totalReports}</p>
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
-                  +{stats.weeklyChange} from last week
+      <div className="space-y-4">
+        {/* First Row */}
+        <div className="grid grid-cols-4 gap-4">
+          {/* Total Reports Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <Search className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Total Reports</p>
+                  <p className="text-xl font-bold text-blue-600">{stats.totalReports}</p>
+                  <div className="flex items-center text-xs text-muted-foreground">
+                    <TrendingUp className="h-3 w-3 mr-1 text-green-500" />
+                    +{stats.weeklyChange}
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Found Items Card */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
-                <Package className="h-5 w-5 text-green-600" />
+          {/* Found Items Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <Package className="h-4 w-4 text-blue-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Found Items</p>
+                  <p className="text-xl font-bold text-blue-600">{stats.foundItems}</p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-muted-foreground">Found Items</p>
-                <p className="text-2xl font-bold text-green-600">{stats.foundItems}</p>
-                <p className="text-xs text-muted-foreground">Total found</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Active Cases Card */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-yellow-100 rounded-full w-12 h-12 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-yellow-600" />
+          {/* Lost Items Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <Search className="h-4 w-4 text-red-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Lost Items</p>
+                  <p className="text-xl font-bold text-red-600">{stats.lostItems}</p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-muted-foreground">Active Cases</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.activeCases}</p>
-                <p className="text-xs text-muted-foreground">Currently processing</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Retrieved Items Card */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-100 rounded-full w-12 h-12 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-green-600" />
+          {/* Retrieved Items Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Retrieved</p>
+                  <p className="text-xl font-bold text-green-600">{stats.retrievedItems}</p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-muted-foreground">Retrieved</p>
-                <p className="text-2xl font-bold text-green-600">{stats.retrievedItems}</p>
-                <p className="text-xs text-muted-foreground">Successfully returned</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
-        {/* No Show Card */}
-        <Card className="hover:shadow-md transition-shadow">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-red-100 rounded-full w-12 h-12 flex items-center justify-center">
-                <X className="h-5 w-5 text-red-600" />
+        {/* Second Row */}
+        <div className="grid grid-cols-4 gap-4">
+          {/* Pending Approval Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-pink-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <Activity className="h-4 w-4 text-pink-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Pending Approval</p>
+                  <p className="text-xl font-bold text-pink-600">{stats.pendingApproval}</p>
+                </div>
               </div>
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium text-muted-foreground">No Show</p>
-                <p className="text-2xl font-bold text-red-600">{stats.noShowItems}</p>
-                <p className="text-xs text-muted-foreground">Failed to retrieve</p>
+            </CardContent>
+          </Card>
+
+          {/* Pending Retrieval Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <Package className="h-4 w-4 text-orange-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Pending Retrieval</p>
+                  <p className="text-xl font-bold text-orange-600">{stats.pendingRetrieval}</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {/* No Show Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <X className="h-4 w-4 text-gray-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">No Show</p>
+                  <p className="text-xl font-bold text-gray-600">{stats.noShowItems}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Active Cases Card */}
+          <Card className="hover:shadow-md transition-shadow">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-full w-10 h-10 flex items-center justify-center">
+                  <Activity className="h-4 w-4 text-purple-600" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium text-muted-foreground">Active Cases</p>
+                  <p className="text-xl font-bold text-purple-600">{stats.activeCases}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Charts and Data Section */}
@@ -496,7 +604,9 @@ export default function StatisticsSection() {
                   <DropdownMenuItem 
                     onClick={() => exportStatistics.toExcel({
                       ...stats,
-                      chartData
+                      chartData,
+                      allProcesses: processes, // Include all processes data
+                      categoryColors          // Include category colors
                     })}
                   >
                     Export to Excel
@@ -504,7 +614,14 @@ export default function StatisticsSection() {
                   <DropdownMenuItem 
                     onClick={() => exportStatistics.toPdf({
                       ...stats,
-                      chartData
+                      chartData,
+                      allProcesses: processes,
+                      categoryColors,
+                      additionalStats: {
+                        lostItems: stats.lostItems,
+                        pendingRetrieval: stats.pendingRetrieval,
+                        pendingApproval: stats.pendingApproval
+                      }
                     }, chartRef)}
                   >
                     Export to PDF
@@ -550,10 +667,7 @@ export default function StatisticsSection() {
                       className="h-full transition-all duration-500 ease-in-out"
                       style={{ 
                         width: `${typeof data === 'number' ? data : data.count}%`,
-                        backgroundColor: category === 'Electronics' ? '#3B82F6' :
-                                      category === 'Documents' ? '#10B981' :
-                                      category === 'Personal Items' ? '#F59E0B' :
-                                      '#6B7280'
+                        backgroundColor: categoryColors[category] || categoryColors['Others']
                       }}
                     />
                   </div>

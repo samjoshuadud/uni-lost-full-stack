@@ -84,9 +84,12 @@ export const exportStatistics = {
         body: [
           ['Total Reports', data.totalReports],
           ['Found Items', data.foundItems],
+          ['Lost Items', data.additionalStats.lostItems],
           ['Active Cases', data.activeCases],
           ['Retrieved Items', data.retrievedItems],
           ['No Show', data.noShowItems],
+          ['Pending Approval', data.additionalStats.pendingApproval],
+          ['Pending Retrieval', data.additionalStats.pendingRetrieval],
           ['Weekly Change', `+${data.weeklyChange}`],
         ],
         columnStyles: {
