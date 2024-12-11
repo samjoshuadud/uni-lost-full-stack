@@ -1040,5 +1040,57 @@ namespace UniLostAndFound.API.Services
                 throw;
             }
         }
+
+        public async Task SendItemMatchedEmailAsync(string userEmail, string foundItemName, string lostItemName)
+        {
+            try
+            {
+                var email = new MimeMessage();
+                email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
+                email.To.Add(MailboxAddress.Parse(userEmail));
+                email.Subject = "Item Match Found - Action Required";
+
+                var builder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <h2>Match Found for Your Reported Item</h2>
+                        <p>Dear Student,</p>
+                        <p>Great news! The item you reported (""{foundItemName}"") has been matched with a lost item report (""{lostItemName}"").</p>
+                        
+                        <div style='margin: 20px 0;'>
+                            <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
+                                <p style='margin: 0; color: #495057;'>
+                                    <strong>Next Steps:</strong>
+                                    <ul>
+                                        <li>The item's owner has been notified</li>
+                                        <li>They will visit the OHSO to claim their item</li>
+                                        <li>Thank you for helping return this item to its owner!</li>
+                                    </ul>
+                                </p>
+                            </div>
+                        </div>
+
+                        <p>Thank you for using the UNI Lost and Found System and helping return lost items to their owners.</p>
+                    "
+                };
+
+                email.Body = builder.ToMessageBody();
+
+                using var smtp = new SmtpClient();
+                smtp.ServerCertificateValidationCallback = (s, c, h, e) => true;
+
+                await smtp.ConnectAsync(_emailSettings.Host, _emailSettings.Port, SecureSocketOptions.StartTls);
+                await smtp.AuthenticateAsync(_emailSettings.FromEmail, _emailSettings.Password);
+                await smtp.SendAsync(email);
+                await smtp.DisconnectAsync(true);
+
+                _logger.LogInformation($"Match notification sent to found item reporter: {userEmail}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Failed to send match notification: {ex.Message}");
+                throw;
+            }
+        }
     }
 } 

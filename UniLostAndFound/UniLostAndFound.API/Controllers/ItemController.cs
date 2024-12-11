@@ -1359,4 +1359,89 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    [HttpPost("process/match-found")]
+    public async Task<ActionResult<ApiResponse<bool>>> MatchFoundItems([FromBody] MatchItemsDto dto)
+    {
+        try
+        {
+            _logger.LogInformation($"Starting found item match process. Found Process ID: {dto.FoundProcessId}, Lost Process ID: {dto.LostProcessId}");
+            
+            // Get both processes first
+            var foundProcess = await _processService.GetProcessByIdAsync(dto.FoundProcessId);
+            var lostProcess = await _processService.GetProcessByIdAsync(dto.LostProcessId);
+            
+            // Validate processes exist
+            if (foundProcess == null)
+                return NotFound(new ApiResponse<bool> { Success = false, Message = "Found item process not found" });
+            if (lostProcess == null)
+                return NotFound(new ApiResponse<bool> { Success = false, Message = "Lost item process not found" });
+
+            // Get all necessary data before making any changes
+            var lostItem = await _itemService.GetItemAsync(lostProcess.ItemId);
+            var foundItem = await _itemService.GetItemAsync(foundProcess.ItemId);
+            var lostItemReporter = await _userService.GetUserByIdAsync(lostProcess.UserId);
+            var foundItemReporter = await _userService.GetUserByIdAsync(foundProcess.UserId);
+
+            _logger.LogInformation($"Found item: {foundItem?.Name}, Lost item: {lostItem?.Name}");
+            _logger.LogInformation($"Found reporter: {foundItemReporter?.Email}, Lost reporter: {lostItemReporter?.Email}");
+
+            // Send notifications first
+            try
+            {
+                // Notify lost item reporter
+                if (lostItemReporter != null && lostItem != null)
+                {
+                    await _emailService.SendReadyForPickupEmailAsync(
+                        lostItemReporter.Email,
+                        lostItem.Name
+                    );
+                    _logger.LogInformation($"Pickup notification sent to lost item reporter: {lostItemReporter.Email}");
+                }
+
+                // Notify found item reporter
+                if (foundItemReporter != null && foundItem != null)
+                {
+                    await _emailService.SendItemMatchedEmailAsync(
+                        foundItemReporter.Email,
+                        foundItem.Name,
+                        lostItem?.Name ?? "Unknown Item"
+                    );
+                    _logger.LogInformation($"Match notification sent to found item reporter: {foundItemReporter.Email}");
+                }
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError($"Failed to send notification emails: {emailEx.Message}");
+                // Continue even if email fails
+            }
+
+            // Update found process status
+            foundProcess.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            foundProcess.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
+            await _processService.UpdateProcessAsync(foundProcess);
+            _logger.LogInformation("Found process updated successfully");
+
+            // Delete the lost item and its process last
+            await _processService.DeleteProcessAndItemAsync(dto.LostProcessId);
+            _logger.LogInformation("Lost process and item deleted successfully");
+
+            return Ok(new ApiResponse<bool>
+            {
+                Success = true,
+                Message = "Items matched successfully",
+                Data = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error matching items: {ex.Message}");
+            _logger.LogError($"Stack trace: {ex.StackTrace}");
+            return StatusCode(500, new ApiResponse<bool>
+            {
+                Success = false,
+                Message = "Failed to match items"
+            });
+        }
+    }
 } 
