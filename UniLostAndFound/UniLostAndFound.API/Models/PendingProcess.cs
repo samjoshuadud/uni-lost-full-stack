@@ -17,16 +17,7 @@ public class PendingProcess : BaseEntity
 
     public string Message { get; set; } = string.Empty;
 
-    public int VerificationAttempts { get; set; } = 0;
-
-    [ForeignKey("RequestorUser")]
-    public string? RequestorUserId { get; set; }
-
     // Navigation properties
     public virtual Item? Item { get; set; }
     public virtual User? User { get; set; }
-    public virtual User? RequestorUser { get; set; }
-
-    // Helper property
-    public bool HasExceededVerificationAttempts => VerificationAttempts >= 2;
 } 

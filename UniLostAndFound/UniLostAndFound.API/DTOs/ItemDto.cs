@@ -14,7 +14,6 @@ public class ItemDto
     public string ImageUrl { get; set; } = string.Empty;
     public string ReporterId { get; set; } = string.Empty;
     public bool Approved { get; set; }
-    public List<string> VerificationQuestions { get; set; } = new();
 }
 
 public class AdditionalDescriptionDto

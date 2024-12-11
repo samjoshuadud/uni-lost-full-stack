@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniLostAndFound.API.Data;
 
@@ -10,9 +11,11 @@ using UniLostAndFound.API.Data;
 namespace UniLostAndFound.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241211094425_RemoveVerificationTable")]
+    partial class RemoveVerificationTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -129,6 +132,9 @@ namespace UniLostAndFound.API.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
+                    b.Property<string>("RequestorUserId")
+                        .HasColumnType("varchar(255)");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -144,6 +150,8 @@ namespace UniLostAndFound.API.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ItemId");
+
+                    b.HasIndex("RequestorUserId");
 
                     b.HasIndex("UserId");
 
@@ -236,6 +244,11 @@ namespace UniLostAndFound.API.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("UniLostAndFound.API.Models.User", "RequestorUser")
+                        .WithMany()
+                        .HasForeignKey("RequestorUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("UniLostAndFound.API.Models.User", "User")
                         .WithMany("PendingProcesses")
                         .HasForeignKey("UserId")
@@ -243,6 +256,8 @@ namespace UniLostAndFound.API.Migrations
                         .IsRequired();
 
                     b.Navigation("Item");
+
+                    b.Navigation("RequestorUser");
 
                     b.Navigation("User");
                 });
