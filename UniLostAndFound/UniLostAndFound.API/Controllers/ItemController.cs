@@ -93,18 +93,8 @@ public class ItemController : ControllerBase
                 _logger.LogInformation($"Attempting to send email. User: {user.Email}, Item: {createDto.Name}, Process: {process.Id}");
                 try
                 {
-                    if (createDto.Status == ItemStatus.FOUND)
+                    if (createDto.Status != ItemStatus.FOUND)
                     {
-                        await _emailService.SendFoundItemReportedEmailAsync(
-                            user.Email,
-                            createDto.Name,
-                            process.Id,
-                            ""  // Empty string since we're not using QR code anymore
-                        );
-                    }
-                    else
-                    {
-                        // Send regular lost item email
                         await _emailService.SendItemReportedEmailAsync(
                             user.Email,
                             createDto.Name,

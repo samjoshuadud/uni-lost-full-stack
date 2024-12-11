@@ -9,5 +9,5 @@ public class UpdateItemDetailsDto
     public string StudentId { get; set; }
     public IFormFile? Image { get; set; }
     public string? AdditionalDescriptions { get; set; }
-    public string ReporterId { get; set; }
+    public string? ReporterId { get; set; }
 } 
