@@ -478,8 +478,22 @@ export default function AdminSection({
     ));
   }, [readyForPickupCount, items]);
 
-  const handleScanComplete = (data) => {
-    toast.success("QR code scanned successfully");
+  const handleScanComplete = async (result) => {
+    if (result.status === 'found_item_created') {
+      // Switch to found items tab
+      setActiveTab('found');
+      
+      // Wait for state update and data refresh
+      await fetchInitialData();
+      
+      // Find the newly created item
+      const newItem = pendingProcesses.find(p => p.itemId === result.data.itemId);
+      if (newItem) {
+        // Open match dialog for this item
+        setSelectedItemForMatching(newItem);
+        setShowMatchDialog(true);
+      }
+    }
   };
 
   // Add this useEffect to handle counting

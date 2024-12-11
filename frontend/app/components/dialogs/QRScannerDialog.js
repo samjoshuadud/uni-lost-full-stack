@@ -12,7 +12,7 @@ export function QRScannerDialog({
   onOpenChange,
   onScanComplete
 }) {
-  const { userData } = useAuth();
+  const { user } = useAuth();
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const scannerRef = useRef(null);
@@ -54,56 +54,74 @@ export function QRScannerDialog({
                 const parsedData = JSON.parse(decodedText);
                 console.log('Parsed data:', parsedData);
 
-                if (!parsedData || !parsedData.p || parsedData.t !== 'surrender') {
+                // Get the item ID - either directly or from the process
+                let itemId;
+                if (parsedData.itemId) {
+                  // New format
+                  itemId = parsedData.itemId;
+                } else if (parsedData.p) {
+                  // Old format with process ID
+                  // First get the process to find the item ID
+                  const processResponse = await fetch(`${API_BASE_URL}/api/Item/pending/${parsedData.p}`);
+                  if (!processResponse.ok) {
+                    throw new Error('Process not found');
+                  }
+                  const processData = await processResponse.json();
+                  itemId = processData.itemId || processData.ItemId;
+                  
+                  if (!itemId) {
+                    console.error('Process data:', processData);
+                    throw new Error('Could not find item ID in process data');
+                  }
+                } else {
                   throw new Error('Invalid QR code format');
                 }
 
-                // Update the process with the scan
-                const processResponse = await fetch(`${API_BASE_URL}/api/Item/process/scan`, {
+                // Validate we have both required fields
+                if (!itemId || !user?.uid) {
+                  console.error('Missing required data:', { itemId, adminId: user?.uid });
+                  throw new Error('Missing required data for scan');
+                }
+
+                // Update to use new scan endpoint
+                console.log('Sending scan request with data:', {
+                  itemId: itemId,
+                  adminId: user.uid
+                });
+
+                const scanResponse = await fetch(`${API_BASE_URL}/api/Item/scan`, {
                   method: 'POST',
                   headers: { 
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                   },
                   body: JSON.stringify({
-                    processId: parsedData.p,
-                    type: 'found_item_surrender'
+                    itemId: itemId,
+                    adminId: user.uid
                   })
                 });
 
-                if (!processResponse.ok) {
-                  const errorData = await processResponse.json();
-                  // Check if it's already in pending_retrieval status
-                  if (errorData.message?.includes('pending_retrieval')) {
-                    toast.success('QR code already scanned. Process is pending retrieval.');
-                    onOpenChange(false);
-                    if (onScanComplete) {
-                      onScanComplete({ status: 'pending_retrieval' });
-                    }
-                    return;
-                  }
-                  console.error('Process scan error:', errorData);
-                  throw new Error(errorData.message || 'Failed to update process');
+                if (!scanResponse.ok) {
+                  const errorData = await scanResponse.json();
+                  console.log('Scan response error:', errorData);
+                  throw new Error(errorData.message || 'Failed to process QR code');
                 }
 
-                const processData = await processResponse.json();
-                if (!processData.success) {
-                  // Check if it's already in pending_retrieval status
-                  if (processData.message?.includes('pending_retrieval')) {
-                    toast.success('QR code already scanned. Process is pending retrieval.');
-                    onOpenChange(false);
-                    if (onScanComplete) {
-                      onScanComplete({ status: 'pending_retrieval' });
-                    }
-                    return;
-                  }
-                  throw new Error(processData.message || 'Failed to update process');
-                }
-
-                toast.success('QR code scanned successfully. Process updated.');
+                const scanData = await scanResponse.json();
+                
+                toast.success('QR code scanned successfully. New found item created.');
                 onOpenChange(false);
+                
+                // Trigger found items tab and match dialog
                 if (onScanComplete) {
-                  onScanComplete(processData.data);
+                  onScanComplete({
+                    status: 'found_item_created',
+                    data: {
+                      itemId: scanData.data.itemId,
+                      openFoundTab: true,
+                      openMatchDialog: true
+                    }
+                  });
                 }
 
                 // Stop scanning after successful scan
@@ -159,10 +177,19 @@ export function QRScannerDialog({
         scannerInitializedRef.current = false;
       }
     };
-  }, [open, onOpenChange, onScanComplete, userData?.id]);
+  }, [open, onOpenChange, onScanComplete, user?.uid]);
 
   const processQRFile = async (file) => {
     try {
+      // Validate file type and size
+      if (!file.type.startsWith('image/')) {
+        throw new Error('Please upload an image file');
+      }
+      
+      if (file.size > 10 * 1024 * 1024) { // 10MB limit
+        throw new Error('File size should be less than 10MB');
+      }
+
       // Create a temporary div for the scanner
       const tempDiv = document.createElement('div');
       tempDiv.id = 'qr-reader-temp';
@@ -172,61 +199,79 @@ export function QRScannerDialog({
       const html5QrCode = new Html5Qrcode("qr-reader-temp");
 
       try {
-        const decodedText = await html5QrCode.scanFileV2(file);
-        console.log('Scanned QR code data:', decodedText.decodedText);
-        const parsedData = JSON.parse(decodedText.decodedText);
+        const decodedText = await html5QrCode.scanFile(file, true);
+        console.log('Scanned QR code data:', decodedText);
+        const parsedData = JSON.parse(decodedText);
         console.log('Parsed data:', parsedData);
 
-        if (!parsedData || !parsedData.p || parsedData.t !== 'surrender') {
+        // Get the item ID - either directly or from the process
+        let itemId;
+        if (parsedData.itemId) {
+          // New format
+          itemId = parsedData.itemId;
+        } else if (parsedData.p) {
+          // Old format with process ID
+          // First get the process to find the item ID
+          const processResponse = await fetch(`${API_BASE_URL}/api/Item/pending/${parsedData.p}`);
+          if (!processResponse.ok) {
+            throw new Error('Process not found');
+          }
+          const processData = await processResponse.json();
+          itemId = processData.itemId || processData.ItemId;
+          
+          if (!itemId) {
+            console.error('Process data:', processData);
+            throw new Error('Could not find item ID in process data');
+          }
+        } else {
           throw new Error('Invalid QR code format');
         }
 
-        // Update the process with the scan
-        const processResponse = await fetch(`${API_BASE_URL}/api/Item/process/scan`, {
+        // Validate we have both required fields
+        if (!itemId || !user?.uid) {
+          console.error('Missing required data:', { itemId, adminId: user?.uid });
+          throw new Error('Missing required data for scan');
+        }
+
+        // Update to use new scan endpoint
+        console.log('Sending scan request with data:', {
+          itemId: itemId,
+          adminId: user.uid
+        });
+
+        const scanResponse = await fetch(`${API_BASE_URL}/api/Item/scan`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
           body: JSON.stringify({
-            processId: parsedData.p,
-            type: 'found_item_surrender'
+            itemId: itemId,
+            adminId: user.uid
           })
         });
 
-        if (!processResponse.ok) {
-          const errorData = await processResponse.json();
-          // Check if it's already in pending_retrieval status
-          if (errorData.message?.includes('pending_retrieval')) {
-            toast.success('QR code already scanned. Process is pending retrieval.');
-            onOpenChange(false);
-            if (onScanComplete) {
-              onScanComplete({ status: 'pending_retrieval' });
-            }
-            return;
-          }
-          console.error('Process scan error:', errorData);
-          throw new Error(errorData.message || 'Failed to update process');
+        if (!scanResponse.ok) {
+          const errorData = await scanResponse.json();
+          console.log('Scan response error:', errorData);
+          throw new Error(errorData.message || 'Failed to process QR code');
         }
 
-        const processData = await processResponse.json();
-        if (!processData.success) {
-          // Check if it's already in pending_retrieval status
-          if (processData.message?.includes('pending_retrieval')) {
-            toast.success('QR code already scanned. Process is pending retrieval.');
-            onOpenChange(false);
-            if (onScanComplete) {
-              onScanComplete({ status: 'pending_retrieval' });
-            }
-            return;
-          }
-          throw new Error(processData.message || 'Failed to update process');
-        }
-
-        toast.success('QR code scanned successfully. Process updated.');
+        const scanData = await scanResponse.json();
+        
+        toast.success('QR code scanned successfully. New found item created.');
         onOpenChange(false);
+        
+        // Trigger found items tab and match dialog
         if (onScanComplete) {
-          onScanComplete(processData.data);
+          onScanComplete({
+            status: 'found_item_created',
+            data: {
+              itemId: scanData.data.itemId,
+              openFoundTab: true,
+              openMatchDialog: true
+            }
+          });
         }
 
         // Stop scanning after successful scan
@@ -239,6 +284,8 @@ export function QRScannerDialog({
           scannerRef.current = null;
           scannerInitializedRef.current = false;
         }
+      } catch (error) {
+        throw error;
       } finally {
         // Clean up
         if (html5QrCode) {
@@ -250,7 +297,11 @@ export function QRScannerDialog({
       }
     } catch (error) {
       console.error('Error processing QR code:', error);
-      toast.error(error.message || 'Could not read QR code from this image');
+      if (error.message.includes('QR code parse error')) {
+        toast.error('Could not find a valid QR code in the image');
+      } else {
+        toast.error(error.message || 'Could not read QR code from this image');
+      }
     }
   };
 
@@ -327,8 +378,8 @@ export function QRScannerDialog({
           <div className="text-center mt-4">
             <p className="text-sm text-muted-foreground mb-2">Or upload a QR code image</p>
             <div
-              className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-                isDragging ? "border-[#0052cc] bg-[#0052cc]/5" : "border-gray-200"
+              className={`border-2 border-dashed rounded-lg p-6 transition-colors cursor-pointer ${
+                isDragging ? "border-[#0052cc] bg-[#0052cc]/5" : "border-gray-200 hover:border-[#0052cc] hover:bg-[#0052cc]/5"
               }`}
               onDragOver={(e) => {
                 e.preventDefault();
@@ -351,7 +402,7 @@ export function QRScannerDialog({
                 setIsDragging(false);
                 
                 const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('image/')) {
+                if (file) {
                   await processQRFile(file);
                 }
               }}
@@ -362,10 +413,10 @@ export function QRScannerDialog({
                 accept="image/*"
                 ref={fileInputRef}
                 className="hidden"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (file) {
-                    processQRFile(file);
+                    await processQRFile(file);
                   }
                 }}
               />
