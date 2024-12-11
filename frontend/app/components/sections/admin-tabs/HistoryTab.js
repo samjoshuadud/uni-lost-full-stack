@@ -22,6 +22,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Loader2 } from "lucide-react";
+import { format } from 'date-fns';
+
+const getMonthYear = (date) => {
+  return format(new Date(date), 'MMMM yyyy');
+};
+
+const groupItemsByMonth = (items) => {
+  return items.reduce((groups, item) => {
+    const monthYear = getMonthYear(item.updatedAt);
+    if (!groups[monthYear]) {
+      groups[monthYear] = [];
+    }
+    groups[monthYear].push(item);
+    return groups;
+  }, {});
+};
 
 export default function HistoryTab({ handleViewDetails }) {
   const [items, setItems] = useState([]);
@@ -29,6 +45,9 @@ export default function HistoryTab({ handleViewDetails }) {
   const [filter, setFilter] = useState("all"); // all, handed_over, no_show
   const [searchTerm, setSearchTerm] = useState("");
   const [markingHandedOverItems, setMarkingHandedOverItems] = useState(new Set());
+  const [selectedMonth, setSelectedMonth] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 6;
 
   // Fetch history items (both handed over and no-show)
   useEffect(() => {
@@ -44,7 +63,30 @@ export default function HistoryTab({ handleViewDetails }) {
           process.status === ProcessStatus.NO_SHOW
         ) || [];
         
-        setItems(historyItems);
+        // Add test items for November 2024
+        const testItems = [
+          {
+            id: 'test-nov-2024-1',
+            status: ProcessStatus.HANDED_OVER,
+            updatedAt: '2024-11-15T10:00:00',
+            item: {
+              name: 'Test Item 1 - November 2024',
+              studentId: 'TEST123',
+            }
+          },
+          {
+            id: 'test-nov-2024-2',
+            status: ProcessStatus.NO_SHOW,
+            updatedAt: '2024-11-20T14:30:00',
+            item: {
+              name: 'Test Item 2 - November 2024',
+              studentId: 'TEST456',
+            }
+          }
+        ];
+        
+        // Combine real items with test items
+        setItems([...historyItems, ...testItems]);
       } catch (error) {
         console.error("Error fetching history:", error);
       } finally {
@@ -65,8 +107,15 @@ export default function HistoryTab({ handleViewDetails }) {
       item.item?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.item?.studentId?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    return matchesFilter && matchesSearch;
+    const matchesMonth = 
+      selectedMonth === "all" || 
+      getMonthYear(item.updatedAt) === selectedMonth;
+
+    return matchesFilter && matchesSearch && matchesMonth;
   });
+
+  const groupedItems = groupItemsByMonth(filteredItems);
+  const availableMonths = [...new Set(items.map(item => getMonthYear(item.updatedAt)))].sort().reverse();
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -124,6 +173,26 @@ export default function HistoryTab({ handleViewDetails }) {
     }
   };
 
+  const totalItems = filteredItems.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE);
+
+  // Get current page items
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+  const currentItems = filteredItems.slice(indexOfFirstItem, indexOfLastItem);
+
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
+
+  const handlePrevPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchTerm, selectedMonth]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -143,7 +212,7 @@ export default function HistoryTab({ handleViewDetails }) {
       </div>
 
       {/* Filters and Search */}
-      <div className="flex gap-4 items-center">
+      <div className="flex gap-4 items-center flex-wrap">
         <div className="flex-1 max-w-sm">
           <div className="relative">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -163,6 +232,19 @@ export default function HistoryTab({ handleViewDetails }) {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value={ProcessStatus.HANDED_OVER}>Handed Over</SelectItem>
             <SelectItem value={ProcessStatus.NO_SHOW}>No Show</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by month" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {availableMonths.map(month => (
+              <SelectItem key={month} value={month}>
+                {month}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
         <DropdownMenu>
@@ -185,6 +267,11 @@ export default function HistoryTab({ handleViewDetails }) {
 
       {/* History Table */}
       <div className="border rounded-lg">
+        {selectedMonth !== "all" && (
+          <div className="bg-gray-100 px-4 py-2 font-semibold text-gray-700">
+            {selectedMonth} ({filteredItems.length} items)
+          </div>
+        )}
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
@@ -196,7 +283,7 @@ export default function HistoryTab({ handleViewDetails }) {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {filteredItems.map((process) => (
+            {currentItems.map((process) => (
               <tr key={process.id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 text-sm">{process.item?.name}</td>
                 <td className="px-4 py-3 text-sm">{process.item?.studentId}</td>
@@ -244,11 +331,28 @@ export default function HistoryTab({ handleViewDetails }) {
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-3 border-t">
           <div className="text-sm text-gray-600">
-            Showing {filteredItems.length} items
+            Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, totalItems)} of {totalItems} items
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" disabled>Previous</Button>
-            <Button variant="outline" size="sm">Next</Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handlePrevPage}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="flex items-center px-3 text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleNextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
           </div>
         </div>
       </div>
