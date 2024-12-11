@@ -21,6 +21,42 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/lib/AuthContext";
 import { itemApi } from "@/lib/api-client"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { motion, AnimatePresence } from "framer-motion"
+
+// Add these animation variants at the top of the file
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { 
+    opacity: 0,
+    y: 20
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 260,
+      damping: 20
+    }
+  },
+  exit: {
+    opacity: 0,
+    y: 20,
+    transition: {
+      duration: 0.2
+    }
+  }
+};
 
 // Add this helper function
 const formatDate = (dateString) => {
@@ -41,6 +77,109 @@ const canDelete = (process) => {
          (process.userId === user?.uid || // User's reported items
           process.requestorUserId === user?.uid || // User's claim requests
           process.item?.reporterId === user?.uid); // Claims on user's items
+};
+
+// Simplified grouping helper
+const groupProcesses = (processes) => {
+  const groups = {
+    pending_retrieval: [],
+    claim_request: [],
+    pending_approval: [],
+    approved: [],
+    handed_over: []
+  };
+
+  processes.forEach(process => {
+    const status = process.status?.toLowerCase();
+    if (groups.hasOwnProperty(status)) {
+      groups[status].push(process);
+    }
+  });
+
+  return groups;
+};
+
+// Simplified section title helper
+const getSectionTitle = (status) => {
+  switch (status) {
+    case 'pending_retrieval':
+      return 'Ready for Pickup';
+    case 'claim_request':
+      return 'Claim Requests';
+    case 'pending_approval':
+      return 'Pending Approval';
+    case 'approved':
+      return 'Posted Items';
+    case 'handed_over':
+      return 'Handed Over';
+    default:
+      return status.split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+  }
+};
+
+// Add this new function to render Ready for Pickup cards
+const renderPickupCard = (process) => {
+  const isLost = process.item?.status?.toLowerCase() === 'lost';
+  
+  return (
+    <Card key={process.id} className={`overflow-hidden border-l-4 ${
+      isLost ? 'border-l-red-500' : 'border-l-green-500'
+    }`}>
+      <CardContent className="p-4">
+        {/* Title and Status Badges */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-medium">{process.item?.name}</h3>
+            <Badge variant="secondary" className={`${
+              isLost ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+            }`}>
+              {isLost ? 'Lost' : 'Found'}
+            </Badge>
+          </div>
+          <Badge variant="secondary" className="bg-orange-50 text-orange-700 ml-auto">
+            Pending Retrieval
+          </Badge>
+        </div>
+
+        {/* Pickup Status Message */}
+        <div className="bg-orange-50/50 rounded-lg p-3 mb-4">
+          <div className="flex items-start gap-2">
+            <Package className="h-5 w-5 text-orange-500 mt-0.5" />
+            <div>
+              <p className="text-orange-800 font-medium">Waiting for item retrieval</p>
+              <p className="text-sm text-orange-600">
+                Ready for pickup since {formatDate(process.updatedAt)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Item Details */}
+        <div className="space-y-2 mb-4">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Category:</span>
+            <span>{process.item?.category || '-'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-medium">Location:</span>
+            <span>{process.item?.location}</span>
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <Button 
+          variant="outline" 
+          className="w-full"
+          onClick={() => onViewDetails(formatItemForDetails(process))}
+        >
+          <ExternalLink className="h-4 w-4 mr-2" />
+          View Details
+        </Button>
+      </CardContent>
+    </Card>
+  );
 };
 
 export default function PendingProcessSection({ pendingProcesses = [], onViewDetails, handleDelete, onViewPost }) {
@@ -1075,10 +1214,29 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     }
   };
 
+  // Filter processes based on selected filters
+  const filteredProcesses = validProcesses.filter(process => {
+    const matchesStatus = statusFilter === "all" || process.status === statusFilter;
+    const matchesType = typeFilter === "all" || process.item?.status?.toLowerCase() === typeFilter;
+    return matchesStatus && matchesType;
+  });
+
+  // Group filtered processes
+  const groupedProcesses = groupProcesses(filteredProcesses);
+
+  // Define section order
+  const sectionOrder = [
+    'pending_retrieval',    // Ready for Pickup (leftmost)
+    'claim_request',        // Claim Requests
+    'pending_approval',     // Pending Approval (center)
+    'approved',            // Posted Items
+    'handed_over'          // Handed Over (rightmost)
+  ];
+
   return (
     <div className="max-w-full mx-auto space-y-6">
       {/* Header */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm drop-shadow-[0_10px_15px_rgba(0,0,0,0.1)]">
+      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
@@ -1126,196 +1284,132 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       </div>
 
       {/* Process Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {!validProcesses || validProcesses.length === 0 ? (
-          <div className="col-span-full">
-            <Card className="border-0 shadow-sm bg-white">
-              <CardContent className="p-8 text-center">
-                <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                  <Inbox className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Processes</h3>
-                <p className="text-gray-500 max-w-sm mx-auto">
-                  You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
-                </p>
-              </CardContent>
-            </Card>
+      {!filteredProcesses || filteredProcesses.length === 0 ? (
+        <div className="col-span-full">
+          <Card className="border-0 shadow-sm bg-white">
+            <CardContent className="p-8 text-center">
+              <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                <Inbox className="h-8 w-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Processes</h3>
+              <p className="text-gray-500 max-w-sm mx-auto">
+                You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <Tabs defaultValue="pending_retrieval" className="w-full">
+          <div className="bg-[#2E3F65] rounded-full shadow-lg h-14">
+            <TabsList className="flex w-full bg-transparent h-full px-1 justify-between">
+              {sectionOrder.map(status => {
+                const count = groupedProcesses[status]?.length || 0;
+                if (count === 0) return null;
+                
+                return (
+                  <TabsTrigger
+                    key={status}
+                    value={status}
+                    className={`
+                      flex-1 mx-1 px-6 py-2 rounded-full
+                      data-[state=active]:bg-[#FFD43B]
+                      data-[state=active]:text-[#2E3F65]
+                      data-[state=active]:shadow-sm
+                      data-[state=active]:scale-95
+                      data-[state=active]:hover:bg-[#F5B800]
+                      text-white/90
+                      transition-all duration-200
+                      hover:bg-white
+                      hover:text-[#003D99]
+                      group
+                    `}
+                  >
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="font-medium text-sm group-hover:text-inherit">
+                        {getSectionTitle(status)}
+                      </span>
+                      {count > 0 && (
+                        <Badge 
+                          variant="secondary" 
+                          className={`
+                            px-2 py-0.5 rounded-full text-xs font-medium
+                            ${status === 'pending_retrieval' 
+                              ? 'bg-red-500 text-white group-hover:bg-red-600'
+                              : status === 'claim_request'
+                              ? 'bg-blue-500 text-white group-hover:bg-blue-600'
+                              : status === 'pending_approval'
+                              ? 'bg-[#FFD43B] text-[#2E3F65] group-hover:bg-[#FFB800]'
+                              : status === 'approved'
+                              ? 'bg-emerald-500 text-white group-hover:bg-emerald-600'
+                              : 'bg-blue-500 text-white group-hover:bg-blue-600'
+                            }
+                            transition-colors duration-200
+                          `}
+                        >
+                          {count}
+                        </Badge>
+                      )}
+                    </div>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
           </div>
-        ) : (
-          filterProcesses(validProcesses)
-            .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-            .map((process, index) => (
-              <Card 
-                key={process.id} 
-                className={`overflow-hidden bg-white shadow-[0_2px_8px_rgba(0,0,0,0.08)] 
-                  hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-300 
-                  animate-slideUp border-l-4 ${
-                    process.status === ProcessStatus.PENDING_APPROVAL ? "border-l-yellow-500" :
-                    process.status === ProcessStatus.IN_VERIFICATION ? "border-l-blue-500" :
-                    process.status === ProcessStatus.APPROVED ? "border-l-green-500" :
-                    process.status === ProcessStatus.VERIFICATION_FAILED ? "border-l-red-500" :
-                    process.status === ProcessStatus.PENDING_RETRIEVAL ? "border-l-orange-500" :
-                    process.status === ProcessStatus.HANDED_OVER ? "border-l-indigo-500" :
-                    "border-l-gray-500"
-                  }`}
-                style={{
-                  animationDelay: `${index * 0.1}s`,
-                  animationFillMode: 'both',
-                  opacity: 0
-                }}
+
+          {sectionOrder.map(status => {
+            const processes = groupedProcesses[status];
+            if (!processes || processes.length === 0) return null;
+
+            return (
+              <TabsContent 
+                key={status} 
+                value={status} 
+                className="mt-8 focus-visible:outline-none"
               >
-                <CardContent className="p-6">
-                  {/* Status Header */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-full ${
-                        process.status === ProcessStatus.PENDING_APPROVAL ? "bg-yellow-100" :
-                        process.status === ProcessStatus.IN_VERIFICATION ? "bg-blue-100" :
-                        process.status === ProcessStatus.APPROVED ? "bg-green-100" :
-                        process.status === ProcessStatus.VERIFICATION_FAILED ? "bg-red-100" :
-                        process.status === ProcessStatus.PENDING_RETRIEVAL ? "bg-orange-100" :
-                        process.status === ProcessStatus.HANDED_OVER ? "bg-indigo-100" :
-                        "bg-gray-100"
-                      }`}>
-                        {/* Status Icon */}
-                        {process.status === ProcessStatus.PENDING_APPROVAL && <Clock className="h-5 w-5 text-yellow-600" />}
-                        {process.status === ProcessStatus.IN_VERIFICATION && <Eye className="h-5 w-5 text-blue-600" />}
-                        {process.status === ProcessStatus.APPROVED && <CheckCircle className="h-5 w-5 text-green-600" />}
-                        {process.status === ProcessStatus.VERIFICATION_FAILED && <XCircle className="h-5 w-5 text-red-600" />}
-                        {process.status === ProcessStatus.PENDING_RETRIEVAL && <Package className="h-5 w-5 text-orange-600" />}
-                        {process.status === ProcessStatus.HANDED_OVER && <CheckCircle className="h-5 w-5 text-indigo-600" />}
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{formatStatus(process.status)}</h3>
-                        <p className="text-sm text-gray-500">
-                          {formatDate(process.updatedAt)}
-                        </p>
-                      </div>
-                    </div>
-                    <Badge variant="outline" className={`
-                      ${process.item?.status?.toLowerCase() === "lost" 
-                        ? "bg-red-50 text-red-700 border-red-200" 
-                        : "bg-green-50 text-green-700 border-green-200"
-                      } capitalize font-medium`}
-                    >
-                      {process.item?.status}
-                    </Badge>
-                  </div>
-
-                  {/* Main Content */}
-                  <div className="flex gap-6">
-                    {/* Image Column */}
-                    <div className="flex-shrink-0">
-                      <div className="w-32 h-32 bg-gray-100 rounded-lg overflow-hidden group">
-                        {process.item?.imageUrl ? (
-                          <img
-                            src={process.item.imageUrl}
-                            alt={process.item.name}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Package className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Details Column */}
-                    <div className="flex-1 min-w-0 space-y-3">
-                      {/* Item Title and Category */}
-                      <div>
-                        <h4 className="font-medium text-lg text-gray-900 truncate pr-2">
-                          {process.item?.name}
-                        </h4>
-                        <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
-                          <p className="flex items-center gap-1 truncate">
-                            <MapPin className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                            <span className="truncate">{process.item?.location}</span>
-                          </p>
-                          <p className="flex-shrink-0">
-                            <span className="font-medium">Category:</span> {process.item?.category}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Description */}
-                      {process.item?.description && (
-                        <div className="bg-gray-50/80 rounded-lg p-2.5">
-                          <p className="text-xs text-gray-700 line-clamp-2">
-                            {process.item.description}
-                          </p>
-                        </div>
-                      )}
-
-                      {/* Status Message */}
-                      {process.message && (
-                        <div className={`p-2.5 rounded-lg ${
-                          process.status === ProcessStatus.VERIFICATION_FAILED 
-                            ? "bg-red-50/50 text-red-700 border border-red-100"
-                            : "bg-blue-50/50 text-blue-700 border border-blue-100"
-                        }`}>
-                          <p className="text-xs line-clamp-2">{process.message}</p>
-                          {process.verificationAttempts > 0 && (
-                            <p className="text-xs mt-1 font-medium">
-                              Attempts remaining: {3 - process.verificationAttempts}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-wrap items-center gap-1.5 mt-4 pt-3 border-t border-gray-100">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 min-w-[90px] h-8 text-xs font-medium px-2.5"
-                      onClick={() => onViewDetails(formatItemForDetails(process))}
-                    >
-                      <ExternalLink className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
-                      <span className="truncate">Details</span>
-                    </Button>
-                    
-                    {process.status === ProcessStatus.IN_VERIFICATION && (
-                      <Button
-                        size="sm"
-                        className="flex-1 min-w-[90px] h-8 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-2.5"
-                        onClick={() => handleAnswerQuestions(process)}
-                      >
-                        <MessageSquare className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
-                        <span className="truncate">Answer</span>
-                      </Button>
-                    )}
-                    
-                    {process.status !== ProcessStatus.HANDED_OVER && (
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        className="flex-1 min-w-[90px] h-8 text-xs font-medium px-2.5"
-                        onClick={() => handleCancelRequest(process.item?.id)}
-                        disabled={cancelingItems.has(process.item?.id)}
-                      >
-                        {cancelingItems.has(process.item?.id) ? (
-                          <>
-                            <Loader2 className="h-3.5 w-3.5 mr-1 flex-shrink-0 animate-spin" />
-                            <span className="truncate">Canceling</span>
-                          </>
-                        ) : (
-                          <>
-                            <Trash className="h-3.5 w-3.5 mr-1 flex-shrink-0" />
-                            <span className="truncate">Cancel</span>
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-        )}
-      </div>
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6"
+                >
+                  <AnimatePresence mode="popLayout">
+                    {processes
+                      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+                      .map((process) => (
+                        <motion.div
+                          key={process.id}
+                          variants={itemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          layout
+                          layoutId={process.id}
+                          className="h-full"
+                          style={{
+                            transformOrigin: "center center",
+                            position: "relative"
+                          }}
+                          whileHover={{ 
+                            scale: 1.02,
+                            transition: { 
+                              duration: 0.2,
+                              ease: "easeOut"
+                            }
+                          }}
+                        >
+                          {status === 'pending_retrieval' 
+                            ? renderPickupCard(process)
+                            : renderProcessCard(process)
+                          }
+                        </motion.div>
+                      ))}
+                  </AnimatePresence>
+                </motion.div>
+              </TabsContent>
+            );
+          })}
+        </Tabs>
+      )}
 
       {/* Answer Questions Dialog */}
       <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
