@@ -49,9 +49,6 @@ try
     builder.Services.AddScoped<UserService>();
     builder.Services.AddScoped<UserAccessService>();
     builder.Services.AddScoped<AdminService>();
-    builder.Services.AddScoped<VerificationQuestionService>();
-    builder.Services.AddHostedService<ItemCleanupService>();
-    builder.Services.AddScoped<IVerificationQuestionService, VerificationQuestionService>();
 
     // Add CORS
     builder.Services.AddCors(options =>
