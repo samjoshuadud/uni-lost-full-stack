@@ -144,18 +144,49 @@ export default function StatisticsSection() {
 
         // Get recent activity
         const recentActivity = fetchedProcesses
-          .filter(process => 
-            process.status === ProcessStatus.HANDED_OVER || 
-            process.status === ProcessStatus.PENDING_APPROVAL
-          )
+          .filter(process => process.updatedAt)
           .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-          .slice(0, 5)
-          .map(process => ({
-            type: process.status === ProcessStatus.HANDED_OVER ? 'retrieved' : 'New Report',
-            itemName: process.item?.name,
-            studentId: process.item?.studentId,
-            timestamp: process.updatedAt
-          }));
+          .slice(0, 10)
+          .map(process => {
+            let type, label;
+            switch (process.status) {
+              case ProcessStatus.HANDED_OVER:
+                type = 'Retrieved';
+                label = 'bg-green-500';
+                break;
+              case ProcessStatus.PENDING_APPROVAL:
+                type = 'New Report';
+                label = 'bg-blue-500';
+                break;
+              case ProcessStatus.IN_VERIFICATION:
+                type = 'Verification';
+                label = 'bg-yellow-500';
+                break;
+              case ProcessStatus.PENDING_RETRIEVAL:
+                type = 'Ready';
+                label = 'bg-purple-500';
+                break;
+              case ProcessStatus.NO_SHOW:
+                type = 'No Show';
+                label = 'bg-red-500';
+                break;
+              case ProcessStatus.REJECTED:
+                type = 'Rejected';
+                label = 'bg-gray-500';
+                break;
+              default:
+                type = 'Status Update';
+                label = 'bg-gray-400';
+            }
+            return {
+              type,
+              color: label,
+              itemName: process.item?.name,
+              studentId: process.item?.studentId,
+              timestamp: process.updatedAt,
+              itemStatus: process.item?.status
+            };
+          });
 
         // Calculate weekly change
         const lastWeek = new Date();
@@ -692,15 +723,15 @@ export default function StatisticsSection() {
                   key={index} 
                   className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
                 >
-                  <div className={`h-2 w-2 rounded-full flex-shrink-0 ${
-                    activity.type === 'retrieved' ? 'bg-green-500' : 'bg-blue-500'
-                  }`} />
+                  <div className={`h-2 w-2 rounded-full flex-shrink-0 ${activity.color}`} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {activity.type === 'retrieved' ? 'Item Retrieved' : 'New Report'}
+                      {activity.type}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">
-                      {activity.itemName} - Student ID: {activity.studentId}
+                      {activity.itemName} 
+                      {activity.studentId && ` • ${activity.studentId}`}
+                      {activity.itemStatus && ` • ${activity.itemStatus} Item`}
                     </p>
                   </div>
                   <div className="text-xs text-muted-foreground whitespace-nowrap">
@@ -708,6 +739,11 @@ export default function StatisticsSection() {
                   </div>
                 </div>
               ))}
+              {stats.recentActivity.length === 0 && (
+                <div className="text-center text-sm text-muted-foreground py-4">
+                  No recent activity
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
