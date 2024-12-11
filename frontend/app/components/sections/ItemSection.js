@@ -22,15 +22,6 @@ const staggerDelay = (index) => ({
   animationDelay: `${index * 0.1}s`
 });
 
-const PERSONAL_ITEMS = [
-  'wallet', 'id', 'card', 'phone', 'laptop', 'tablet', 'keys',
-  'personal', 'personal items', 'personal belongings',
-  'identification', 'documents', 'gadget', 'gadgets',
-  'mobile', 'mobile phone', 'cellphone', 'cell phone',
-  'bag', 'bags', 'purse', 'wallet', 'wallets',
-  'watch', 'watches', 'jewelry', 'accessories'
-];
-
 export default function ItemSection({ 
   items = [], 
   title,
@@ -77,40 +68,30 @@ export default function ItemSection({
     setIsLoading(true);
     
     const filteredItems = items.filter(item => {
-      // Normalize the item category for consistent comparison
-      const itemCategory = (item.category || '').toLowerCase().trim();
-      
-      // Check if the category is a personal item using some() for flexible matching
-      const isPersonalItem = PERSONAL_ITEMS.some(personalCat => 
-        itemCategory.includes(personalCat.toLowerCase())
-      );
+        // Category filter - Updated logic for "others" category
+        const matchesCategory = 
+            searchCategory === "all" ? true :
+            searchCategory === "others" ? 
+                !CATEGORIES.includes(item.category?.toLowerCase()) :
+                item.category?.toLowerCase() === searchCategory.toLowerCase();
 
-      // Updated category matching logic
-      const matchesCategory = 
-        searchCategory === "all" ? true :
-        searchCategory === "others" ? 
-          !CATEGORIES.includes(itemCategory) && !isPersonalItem :
-        searchCategory === "personal" ?
-          isPersonalItem :
-          itemCategory === searchCategory.toLowerCase();
+        // Search terms - only filter if there's a search query
+        if (searchQuery.trim()) {
+            const searchTerms = searchQuery.toLowerCase().trim();
+            const matchesSearch = 
+                item.name?.toLowerCase().includes(searchTerms) ||
+                item.location?.toLowerCase().includes(searchTerms) ||
+                item.description?.toLowerCase().includes(searchTerms) ||
+                item.category?.toLowerCase().includes(searchTerms);
 
-      // Search terms - only filter if there's a search query
-      if (searchQuery.trim()) {
-        const searchTerms = searchQuery.toLowerCase().trim();
-        const matchesSearch = 
-          item.name?.toLowerCase().includes(searchTerms) ||
-          item.location?.toLowerCase().includes(searchTerms) ||
-          item.description?.toLowerCase().includes(searchTerms) ||
-          itemCategory.includes(searchTerms);
+            return matchesCategory && matchesSearch;
+        }
 
-        return matchesCategory && matchesSearch;
-      }
-
-      // If no search query, just filter by category
-      return matchesCategory;
+        // If no search query, just filter by category
+        return matchesCategory;
     }).map(item => ({
-      ...item,
-      process: processes.find(p => p.itemId === item.id)
+        ...item,
+        process: processes.find(p => p.itemId === item.id)
     }));
     
     setLocalItems(filteredItems);
