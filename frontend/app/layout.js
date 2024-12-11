@@ -1,5 +1,5 @@
 import './globals.css'
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "sonner"
 import { Inter } from "next/font/google";
 
 const inter = Inter({
