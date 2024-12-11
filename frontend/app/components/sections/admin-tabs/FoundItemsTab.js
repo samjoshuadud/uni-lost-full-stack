@@ -492,6 +492,52 @@ const FoundItemsTab = memo(function FoundItemsTab({
     };
   };
 
+  const handleMatchItem = async (lostItem) => {
+    if (!lostItem || isMatchingItem) return;
+    
+    try {
+      setIsMatchingItem(true);
+      
+      console.log('Matching items:', {
+        foundProcessId: selectedItemForMatching.id,
+        lostProcessId: lostItem.id
+      });
+
+      const response = await fetch(
+        `${API_BASE_URL}/api/Item/process/match-found`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            foundProcessId: selectedItemForMatching.id,
+            lostProcessId: lostItem.id
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to match items");
+      }
+
+      toast.success('Successfully matched items');
+      setShowMatchDialog(false);
+      setSelectedFoundItem(null);
+      
+      if (typeof onUpdateCounts === 'function') {
+        onUpdateCounts();
+      }
+    } catch (error) {
+      console.error("Error matching items:", error);
+      toast.error(error.message || 'Failed to match items');
+    } finally {
+      setIsMatchingItem(false);
+      setShowMatchDialog(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="min-h-[600px]">
@@ -1353,7 +1399,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 Cancel
               </Button>
               <Button
-                onClick={() => handleMatchConfirm(selectedFoundItem)}
+                onClick={() => handleMatchItem(selectedFoundItem)}
                 disabled={!selectedFoundItem || isMatchingItem}
                 className="bg-blue-600 hover:bg-blue-700"
               >

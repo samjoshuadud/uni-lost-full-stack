@@ -17,4 +17,5 @@ public interface IEmailService
     Task SendFoundItemReportedEmailAsync(string userEmail, string itemName, string processId, string qrCodeBase64);
     Task SendFoundItemApprovedEmailAsync(string userEmail, string itemName, string itemId, string processId);
     Task SendClaimSubmittedEmailAsync(string userEmail, string itemName, List<ClaimQuestionAnswerDto> questionsAndAnswers);
+    Task SendItemMatchedEmailAsync(string userEmail, string foundItemName, string lostItemName);
 } 
