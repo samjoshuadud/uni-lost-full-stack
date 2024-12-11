@@ -91,3 +91,103 @@ h1, h2, h3, h4, h5, h6 {
     @apply bg-background text-foreground;
   }
 }
+
+/* Add these custom styles for the tabs */
+.tabs-trigger {
+  @apply relative px-4 py-2 text-sm font-medium transition-all
+  data-[state=active]:text-primary
+  data-[state=active]:shadow-sm
+  data-[state=active]:bg-white
+  hover:bg-gray-50
+  focus-visible:outline-none
+  focus-visible:ring-2
+  focus-visible:ring-offset-2
+  focus-visible:ring-primary;
+}
+
+.tabs-content {
+  @apply mt-6 ring-offset-background
+  focus-visible:outline-none
+  focus-visible:ring-2
+  focus-visible:ring-offset-2
+  focus-visible:ring-primary;
+} 
+
+/* Add noise texture */
+.bg-noise-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Add radial gradient utility */
+.bg-radial-gradient {
+  background-image: radial-gradient(circle at center, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
+} 
+
+/* Custom styles for the tabs */
+.tabs-root {
+  @apply w-full;
+}
+
+.tabs-list {
+  @apply flex w-full h-full items-center;
+}
+
+.tabs-trigger {
+  @apply relative flex-1 px-6 py-2
+    text-sm font-medium text-white/90
+    rounded-full
+    transition-all duration-200
+    outline-none
+    transform
+    hover:bg-white/10;
+}
+
+.tabs-trigger[data-state="active"] {
+  @apply bg-[#FFD43B] text-[#2E3F65] shadow-sm scale-95
+    hover:bg-[#FFD43B];
+}
+
+.tabs-trigger:hover .tab-badge {
+  @apply bg-opacity-90;
+}
+
+.tab-badge {
+  @apply inline-flex items-center justify-center
+    min-w-[20px]
+    px-2 py-0.5
+    text-xs font-medium
+    rounded-full
+    transition-all duration-200;
+}
+
+/* Badge colors for each status */
+.tab-badge-ready {
+  @apply bg-red-500 text-white
+    data-[state=active]:bg-red-600;
+}
+
+.tab-badge-pending {
+  @apply bg-[#FFD43B] text-[#2E3F65]
+    data-[state=active]:bg-[#FFB800];
+}
+
+.tab-badge-posted {
+  @apply bg-emerald-500 text-white
+    data-[state=active]:bg-emerald-600;
+}
+
+.tab-badge-handed {
+  @apply bg-blue-500 text-white
+    data-[state=active]:bg-blue-600;
+}
+
+.tabs-content {
+  @apply mt-8 outline-none;
+}
+
+/* Smooth animation for tab content */
+.tabs-content[data-state="active"] {
+  @apply animate-in fade-in-50 duration-300;
+}
+
+/* Remove unused styles */ 
