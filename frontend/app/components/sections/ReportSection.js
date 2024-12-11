@@ -788,7 +788,8 @@ export default function ReportSection({
                 <div className="grid grid-cols-2 gap-4 p-4">
                   <div className="space-y-3">
                     <DetailItem label="Report Type" value={itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"} />
-                    <DetailItem label="Student ID" value={studentId} />
+                    <DetailItem label={adminMode ? "Reported By" : "Student ID"
+                    } value={studentId} />
                     <DetailItem label="Item Name" value={name} />
                   </div>
                   <div className="space-y-3">
