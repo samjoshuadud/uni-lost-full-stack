@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   ClipboardList,
   CheckCircle,
@@ -16,7 +17,9 @@ import {
   Upload,
   Inbox,
   CalendarIcon,
-  MapPinIcon
+  MapPinIcon,
+  Search,
+  ArrowUpDown
 } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
 import ReportSection from "../ReportSection"
@@ -27,6 +30,17 @@ import { useAuth } from "@/lib/AuthContext"
 import { API_BASE_URL } from "@/lib/api-config"
 import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
 import { format } from "date-fns";
+import { cn } from "@/lib/utils"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { toast } from "sonner"
+
 const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
   isCountsLoading,
@@ -58,6 +72,11 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [selectedItemForMatching, setSelectedItemForMatching] = useState(null);
   const [isMatchingItem, setIsMatchingItem] = useState(false);
+  const [matchSearchQuery, setMatchSearchQuery] = useState('');
+  const [matchCategoryFilter, setMatchCategoryFilter] = useState('all');
+  const [matchDateFilter, setMatchDateFilter] = useState('all');
+  const [matchSortOption, setMatchSortOption] = useState('bestMatch');
+  const [selectedFoundItem, setSelectedFoundItem] = useState(null);
 
   useEffect(() => {
     console.log('Raw items received:', items);
@@ -115,44 +134,69 @@ const FoundItemsTab = memo(function FoundItemsTab({
     fetchLostItems();
   }, []);
 
-  const handleMatchItem = async (lostItem) => {
-  if (!lostItem || isMatchingItem) return;
-  
-  try {
-    setIsMatchingItem(true);
-    
-    const response = await fetch(
-      `${API_BASE_URL}/api/Item/process/match`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          lostProcessId: lostItem.id,
-          foundProcessId: selectedItemForMatching.processId
-        }),
-      }
-    );
+  const rankItemSimilarity = async (foundItem, lostItems) => {
+    // Basic similarity scoring
+    return lostItems.map(process => ({
+      ...process,
+      similarityScore: calculateSimilarityScore(foundItem, process.item)
+    })).sort((a, b) => b.similarityScore - a.similarityScore);
+  };
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to match items");
+  const calculateSimilarityScore = (foundItem, lostItem) => {
+    let score = 0;
+    
+    // Category match
+    if (foundItem.category?.toLowerCase() === lostItem.category?.toLowerCase()) {
+      score += 30;
+    }
+    
+    // Location proximity
+    if (foundItem.location?.toLowerCase() === lostItem.location?.toLowerCase()) {
+      score += 20;
+    }
+    
+    // Description similarity (basic word matching)
+    const foundWords = foundItem.description?.toLowerCase().split(' ') || [];
+    const lostWords = lostItem.description?.toLowerCase().split(' ') || [];
+    const commonWords = foundWords.filter(word => lostWords.includes(word));
+    score += (commonWords.length / Math.max(foundWords.length, lostWords.length)) * 50;
+    
+    return Math.round(score);
+  };
+
+  const handleMatchWithLostClick = async (foundProcess) => {
+    if (!foundProcess?.item) {
+      toast.error('Invalid found item data');
+      return;
     }
 
-    toast.success('Successfully matched items');
-    setShowMatchDialog(false);
-    
-    if (typeof onUpdateCounts === 'function') {
-      onUpdateCounts();
+    setSelectedItemForMatching(foundProcess);
+    setShowMatchDialog(true);
+    setIsLoadingLostItems(true);
+
+    try {
+      // Fetch all lost items
+      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+      if (!response.ok) throw new Error('Failed to fetch lost items');
+      const data = await response.json();
+      
+      // Filter for lost items only
+      let lostItems = data.$values?.filter(process => 
+        process.item?.status?.toLowerCase() === 'lost' &&
+        process.status === ProcessStatus.APPROVED
+      ) || [];
+
+      // Get similarity rankings
+      const rankedItems = await rankItemSimilarity(foundProcess.item, lostItems);
+      setLostItems(rankedItems);
+
+    } catch (error) {
+      console.error('Error fetching lost items:', error);
+      toast.error('Failed to fetch lost items');
+    } finally {
+      setIsLoadingLostItems(false);
     }
-  } catch (error) {
-    console.error("Error matching items:", error);
-    toast.error(error.message || 'Failed to match items');
-  } finally {
-    setIsMatchingItem(false);
-  }
-};
+  };
 
   const handleApprove = async (itemId) => {
     try {
@@ -402,6 +446,76 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const handleItemClick = (item) => {
     setSelectedItemForDetails(item);
     setShowDetailsDialog(true);
+  };
+
+  const filterAndSortItems = (items) => {
+    if (!items) return [];
+    
+    // First apply search filter
+    let filteredItems = items.filter(process => {
+      if (!process?.item) return false;
+      
+      const searchLower = matchSearchQuery.toLowerCase();
+      return (
+        !matchSearchQuery ||
+        process.item.name?.toLowerCase().includes(searchLower) ||
+        process.item.category?.toLowerCase().includes(searchLower) ||
+        process.item.location?.toLowerCase().includes(searchLower) ||
+        process.item.description?.toLowerCase().includes(searchLower)
+      );
+    });
+
+    // Apply category filter
+    if (matchCategoryFilter !== 'all') {
+      filteredItems = filteredItems.filter(process =>
+        process.item?.category?.toLowerCase() === matchCategoryFilter.toLowerCase()
+      );
+    }
+
+    // Apply date filter
+    filteredItems = filteredItems.filter(process => {
+      if (!process.item?.dateReported) return false;
+      const itemDate = new Date(process.item.dateReported);
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      switch (matchDateFilter) {
+        case 'today':
+          return itemDate.toDateString() === today.toDateString();
+        case 'week':
+          return itemDate >= weekAgo;
+        case 'month':
+          return itemDate >= monthAgo;
+        default:
+          return true;
+      }
+    });
+
+    // Apply sorting
+    switch (matchSortOption) {
+      case 'newest':
+        return filteredItems.sort((a, b) => 
+          new Date(b.item?.dateReported) - new Date(a.item?.dateReported)
+        );
+      case 'oldest':
+        return filteredItems.sort((a, b) => 
+          new Date(a.item?.dateReported) - new Date(b.item?.dateReported)
+        );
+      case 'bestMatch':
+      default:
+        return filteredItems.sort((a, b) => b.similarityScore - a.similarityScore);
+    }
+  };
+
+  // Add this helper function for smooth color transition
+  const getMatchPercentageStyle = (percentage) => {
+    const hue = Math.min(percentage * 1.2, 120); // 0 = red (0°), 60 = yellow (60°), 120 = green (120°)
+    return {
+      backgroundColor: `hsla(${hue}, 75%, 95%, 1)`,
+      color: `hsla(${hue}, 75%, 35%, 1)`,
+      borderColor: `hsla(${hue}, 75%, 85%, 1)`,
+    };
   };
 
   return (
@@ -661,8 +775,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="secondary"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedItemForMatching(process.item);
-                                  setShowMatchDialog(true);
+                                  handleMatchWithLostClick(process);  // Pass the entire process object
                                 }}
                                 className="bg-gradient-to-r from-[#1E293B] to-[#334155] text-white shadow-sm transition-all duration-200"
                               >
@@ -1008,73 +1121,278 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
         {/* Match Dialog */}
         <Dialog open={showMatchDialog} onOpenChange={setShowMatchDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
-              <DialogTitle className="text-xl font-semibold">
-                Match with Lost Item Reports
-              </DialogTitle>
-              <DialogDescription>
-                Select a lost item report to match with this found item
-              </DialogDescription>
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-blue-600" />
+                <div>
+                  <DialogTitle className="text-xl font-semibold text-blue-700">
+                    Select Matching Lost Item
+                  </DialogTitle>
+                  <DialogDescription>
+                    Please select the lost item that matches with the found item report.
+                  </DialogDescription>
+                </div>
+              </div>
             </DialogHeader>
 
-            <div className="space-y-4">
-              {/* Lost Items List */}
-              <div className="h-[500px] overflow-y-auto pr-4">
-                {isLoadingLostItems ? (
-                  <div className="flex items-center justify-center h-full">
-                    <Loader2 className="h-8 w-8 animate-spin" />
+            {/* Found Item Details Box */}
+            <div className="bg-blue-50 rounded-lg p-4 mb-4 w-full">
+              <h3 className="text-sm font-medium text-blue-800 mb-2">Found Item Details:</h3>
+              <div className="space-y-2">
+                <div className="flex gap-x-12">
+                  <div>
+                    <span className="text-sm text-blue-700">Name:</span>{" "}
+                    <span className="text-sm text-blue-600">
+                      {selectedItemForMatching?.item?.name || 'N/A'}
+                    </span>
                   </div>
-                ) : lostItems.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-gray-500">No lost item reports available</p>
+                  <div>
+                    <span className="text-sm text-blue-700">Category:</span>{" "}
+                    <span className="text-sm text-blue-600">
+                      {selectedItemForMatching?.item?.category || 'N/A'}
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    {lostItems.map((process) => (
-                      <Card
-                        key={process.id}
-                        className="cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => handleMatchItem(process)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex gap-4">
-                            {/* Image */}
-                            <div className="w-24 h-24 bg-gray-50 rounded-lg overflow-hidden">
-                              {process.item?.imageUrl ? (
-                                <img 
-                                  src={process.item.imageUrl}
-                                  alt={process.item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center">
-                                  <Package className="h-8 w-8 text-gray-400" />
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Details */}
-                            <div className="flex-1">
-                              <h4 className="font-medium">{process.item?.name}</h4>
-                              <p className="text-sm text-gray-500">{process.item?.description}</p>
-                              <div className="mt-2 flex items-center gap-2">
-                                <Badge variant="outline">
-                                  {process.item?.category}
-                                </Badge>
-                                <span className="text-sm text-gray-500">
-                                  {format(new Date(process.item?.dateReported), 'MMM d, yyyy')}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                  <div>
+                    <span className="text-sm text-blue-700">Location:</span>{" "}
+                    <span className="text-sm text-blue-600">
+                      {selectedItemForMatching?.item?.location || 'N/A'}
+                    </span>
                   </div>
-                )}
+                </div>
+                <div>
+                  <span className="text-sm text-blue-700">Description:</span>{" "}
+                  <span className="text-sm text-blue-600">
+                    {selectedItemForMatching?.item?.description || 'No description available'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-sm text-blue-700">Date Found:</span>{" "}
+                  <span className="text-sm text-blue-600">
+                    {selectedItemForMatching?.item?.dateReported ? 
+                      format(new Date(selectedItemForMatching.item.dateReported), 'MMM d, yyyy') : 
+                      'N/A'
+                    }
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Search and Filters */}
+            <div className="flex items-center gap-2 mb-4 w-full">
+              <div className="relative flex-1">
+                <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input 
+                  placeholder="Search by name, category, location"
+                  className="pl-9 border-gray-200"
+                  value={matchSearchQuery}
+                  onChange={(e) => setMatchSearchQuery(e.target.value)}
+                />
+              </div>
+
+              <Select value={matchCategoryFilter} onValueChange={setMatchCategoryFilter}>
+                <SelectTrigger className="w-[160px] border-gray-200">
+                  <Package className="h-4 w-4 text-gray-400 mr-2" />
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {Array.from(new Set(lostItems.map(process => process.item?.category)))
+                    .filter(Boolean)
+                    .sort()
+                    .map(category => (
+                      <SelectItem key={category} value={category.toLowerCase()}>
+                        {category}
+                      </SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+
+              <Select value={matchDateFilter} onValueChange={setMatchDateFilter}>
+                <SelectTrigger className="w-[160px] border-gray-200">
+                  <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
+                  <SelectValue placeholder="All Time" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="week">This Week</SelectItem>
+                  <SelectItem value="month">This Month</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={matchSortOption} onValueChange={setMatchSortOption}>
+                <SelectTrigger className="w-[160px] border-gray-200">
+                  <ArrowUpDown className="h-4 w-4 text-gray-400 mr-2" />
+                  <SelectValue placeholder="Best Match" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bestMatch">Best Match</SelectItem>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Results Count */}
+            <div className="text-sm text-gray-500 mb-4 w-full">
+              Showing {filterAndSortItems(lostItems).length} items | Sorted by: {
+                matchSortOption === 'bestMatch' ? 'Best Match' :
+                matchSortOption === 'newest' ? 'Newest First' : 'Oldest First'
+              }
+            </div>
+
+            {/* Items List */}
+            <ScrollArea className="h-[400px]">
+              <div className="space-y-6 px-4">
+                {filterAndSortItems(lostItems).map((process) => (
+                  <div
+                    key={process.id}
+                    onClick={() => setSelectedFoundItem(process)}
+                    className={cn(
+                      "p-4 rounded-lg border cursor-pointer transition-all relative mt-6 w-full",
+                      selectedFoundItem?.id === process.id 
+                        ? "border-blue-500 bg-blue-50/50 shadow-lg" 
+                        : "border-gray-200 hover:border-gray-300 hover:shadow-md"
+                    )}
+                    style={{
+                      transition: "all 0.2s ease-in-out",
+                      transform: selectedFoundItem?.id === process.id ? "scale(1.01)" : "scale(1)",
+                    }}
+                  >
+                    {/* Match Percentage Badge - Top Left, overlapping */}
+                    <div 
+                      className="absolute -top-2.5 left-0 px-1 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap"
+                      style={getMatchPercentageStyle(process.similarityScore)}
+                    >
+                      {process.similarityScore}% Match
+                    </div>
+
+                    {/* Status Badge - Top Right */}
+                    <div className="absolute top-2 right-2">
+                      <Badge variant="outline" className="bg-red-50 text-red-700 px-2 py-0.5 text-xs font-medium">
+                        Lost
+                      </Badge>
+                    </div>
+
+                    <div className="flex gap-4 mt-4">
+                      {/* Image Section */}
+                      <div className={cn(
+                        "w-24 h-24 bg-gray-50 rounded-lg border flex-shrink-0 flex items-center justify-center",
+                        selectedFoundItem?.id === process.id 
+                          ? "border-blue-200 bg-blue-50" 
+                          : "border-gray-200"
+                      )}>
+                        {process.item?.imageUrl ? (
+                          <img
+                            src={process.item.imageUrl}
+                            alt={process.item.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center">
+                            <Package className={cn(
+                              "h-8 w-8",
+                              selectedFoundItem?.id === process.id 
+                                ? "text-blue-400" 
+                                : "text-gray-400"
+                            )} />
+                            <span className={cn(
+                              "text-xs mt-1",
+                              selectedFoundItem?.id === process.id 
+                                ? "text-blue-400" 
+                                : "text-gray-400"
+                            )}>No Image</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="flex-1 min-w-0">
+                        {/* Title and Date */}
+                        <div className="mb-2">
+                          <h4 className={cn(
+                            "font-semibold text-lg",
+                            selectedFoundItem?.id === process.id && "text-blue-700"
+                          )}>{process.item.name}</h4>
+                          <div className={cn(
+                            "flex items-center text-sm",
+                            selectedFoundItem?.id === process.id ? "text-blue-500" : "text-gray-500"
+                          )}>
+                            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                            {format(new Date(process.item.dateReported), 'MMM d, yyyy')}
+                          </div>
+                        </div>
+
+                        {/* Add the check icon when selected */}
+                        {selectedFoundItem?.id === process.id && (
+                          <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1 shadow-lg animate-in fade-in zoom-in duration-200">
+                            <CheckCircle className="h-4 w-4 text-white" />
+                          </div>
+                        )}
+
+                        {/* Info Grid - Two rows with two columns each */}
+                        <div className="grid grid-cols-[1fr,1.2fr] gap-y-2">
+                          <div className="text-sm">
+                            <span className="text-gray-600">Category:</span>{" "}
+                            <span className="text-gray-900">{process.item.category}</span>
+                          </div>
+                          <div className="text-sm pl-12">
+                            <span className="text-gray-600">Location:</span>{" "}
+                            <span className="text-gray-900">{process.item.location}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-600">Student ID:</span>{" "}
+                            <span className="text-gray-900">{process.item.studentId}</span>
+                          </div>
+                          <div className="text-sm pl-12">
+                            <span className="text-gray-600">Status:</span>{" "}
+                            <span className="text-gray-900 capitalize">Lost</span>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <div className="mt-4">
+                          <p className="text-sm text-gray-600">
+                            <span className="font-medium">Description:</span>
+                          </p>
+                          <p className="text-sm text-gray-700 mt-0.5">
+                            {process.item.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowMatchDialog(false);
+                  setSelectedFoundItem(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => handleMatchConfirm(selectedFoundItem)}
+                disabled={!selectedFoundItem || isMatchingItem}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {isMatchingItem ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Matching...
+                  </>
+                ) : (
+                  'Confirm Match'
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
