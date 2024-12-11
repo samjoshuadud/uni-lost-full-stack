@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { toast } from "sonner"
+import { rankItemSimilarity } from "@/lib/gemini"
 
 const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
@@ -134,35 +135,6 @@ const FoundItemsTab = memo(function FoundItemsTab({
     fetchLostItems();
   }, []);
 
-  const rankItemSimilarity = async (foundItem, lostItems) => {
-    // Basic similarity scoring
-    return lostItems.map(process => ({
-      ...process,
-      similarityScore: calculateSimilarityScore(foundItem, process.item)
-    })).sort((a, b) => b.similarityScore - a.similarityScore);
-  };
-
-  const calculateSimilarityScore = (foundItem, lostItem) => {
-    let score = 0;
-    
-    // Category match
-    if (foundItem.category?.toLowerCase() === lostItem.category?.toLowerCase()) {
-      score += 30;
-    }
-    
-    // Location proximity
-    if (foundItem.location?.toLowerCase() === lostItem.location?.toLowerCase()) {
-      score += 20;
-    }
-    
-    // Description similarity (basic word matching)
-    const foundWords = foundItem.description?.toLowerCase().split(' ') || [];
-    const lostWords = lostItem.description?.toLowerCase().split(' ') || [];
-    const commonWords = foundWords.filter(word => lostWords.includes(word));
-    score += (commonWords.length / Math.max(foundWords.length, lostWords.length)) * 50;
-    
-    return Math.round(score);
-  };
 
   const handleMatchWithLostClick = async (foundProcess) => {
     if (!foundProcess?.item) {
@@ -189,6 +161,8 @@ const FoundItemsTab = memo(function FoundItemsTab({
       // Get similarity rankings
       const rankedItems = await rankItemSimilarity(foundProcess.item, lostItems);
       setLostItems(rankedItems);
+      setSelectedItemForMatching(foundProcess);
+      setShowMatchDialog(true);
 
     } catch (error) {
       console.error('Error fetching lost items:', error);
