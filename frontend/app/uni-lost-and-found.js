@@ -1133,22 +1133,21 @@ export default function UniLostAndFound() {
 
   return (
     <div className="min-h-screen relative">
-      {/* Enhanced gradient overlay with multiple layers for depth */}
       <div className="absolute inset-0">
-        {/* Primary warm gradient background - reversed direction */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#E6F3FF] via-[#F0F8FF] to-[#B7D9FF]" />
-        
-        {/* Subtle warm overlay gradient - adjusted direction */}
-        <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-[#FFE5B4]/5 to-transparent" />
-        
-        {/* Radial gradient for depth */}
-        <div className="absolute inset-0 bg-radial-gradient from-transparent via-[#E8F4FF]/30 to-[#E8F4FF]/50" />
-        
-        {/* Very subtle texture overlay */}
-        <div className="absolute inset-0 opacity-5 bg-noise-pattern mix-blend-overlay" />
+        <div 
+          className="fixed inset-0 bg-[url('/images/umak-logo.png')] bg-no-repeat opacity-[0.35] will-change-auto"
+          style={{ 
+            backgroundSize: '100% 100%',
+            backgroundPosition: '50% 50%',
+            minHeight: '100vh',
+            width: '100%',
+            transform: 'translateZ(0)'  // Hardware acceleration
+          }}
+        >
+          <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/15 to-white/25" />
+        </div>
       </div>
       
-      {/* Content container */}
       <div className="relative z-10">
         <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
           <DialogContent>
