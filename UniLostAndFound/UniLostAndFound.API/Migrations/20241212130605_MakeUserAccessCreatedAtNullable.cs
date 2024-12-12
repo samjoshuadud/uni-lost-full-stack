@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace UniLostAndFound.API.Migrations
 {
     /// <inheritdoc />
-    public partial class AddCreatedAtDefaultValueToManila : Migration
+    public partial class MakeUserAccessCreatedAtNullable : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -15,11 +15,9 @@ namespace UniLostAndFound.API.Migrations
                 name: "CreatedAt",
                 table: "UserAccess",
                 type: "datetime(6)",
-                nullable: false,
-                defaultValueSql: "CURRENT_TIMESTAMP(6) AT TIME ZONE 'Asia/Manila'",
+                nullable: true,
                 oldClrType: typeof(DateTime),
-                oldType: "datetime(6)",
-                oldDefaultValueSql: "CONVERT_TZ(CURRENT_TIMESTAMP(6), '+00:00', '+08:00')");
+                oldType: "datetime(6)");
         }
 
         /// <inheritdoc />
@@ -30,10 +28,10 @@ namespace UniLostAndFound.API.Migrations
                 table: "UserAccess",
                 type: "datetime(6)",
                 nullable: false,
-                defaultValueSql: "CONVERT_TZ(CURRENT_TIMESTAMP(6), '+00:00', '+08:00')",
+                defaultValue: new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
                 oldClrType: typeof(DateTime),
                 oldType: "datetime(6)",
-                oldDefaultValueSql: "CURRENT_TIMESTAMP(6) AT TIME ZONE 'Asia/Manila'");
+                oldNullable: true);
         }
     }
 }

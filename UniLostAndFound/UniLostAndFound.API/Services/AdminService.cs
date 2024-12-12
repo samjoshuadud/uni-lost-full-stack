@@ -29,7 +29,7 @@ public class AdminService
         _context = context;
     }
 
-    public async Task<bool> AssignAdminAsync(string email)
+    public async Task<bool> AssignAdminAsync(string email, DateTime currentDateTime)
     {
         try
         {
@@ -50,12 +50,12 @@ public class AdminService
                 string firstName = user.DisplayName.Split(' ')[0];
 
                 user.StudentId = $"ADMIN - {firstName.ToUpper()}";
-                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedAt = currentDateTime;
 
                 var isAlreadyAdmin = await _userAccessRepository.IsAdminEmailAsync(email);
                 if (!isAlreadyAdmin)
                 {
-                    var success = await _userAccessRepository.AddAdminEmailAsync(email);
+                    var success = await _userAccessRepository.AddAdminEmailAsync(email, currentDateTime);
                     if (!success)
                     {
                         _logger.LogError($"Failed to assign admin role to {email}");
@@ -82,7 +82,7 @@ public class AdminService
         }
     }
 
-    public async Task<bool> UnassignAdminAsync(string email)
+    public async Task<bool> UnassignAdminAsync(string email, DateTime currentDateTime)
     {
         try
         {
@@ -108,7 +108,7 @@ public class AdminService
             }
 
             user.StudentId = studentId;
-            user.UpdatedAt = DateTime.UtcNow;
+            user.UpdatedAt = currentDateTime;
 
             var success = await _userAccessRepository.RemoveAdminEmailAsync(email);
             if (!success)

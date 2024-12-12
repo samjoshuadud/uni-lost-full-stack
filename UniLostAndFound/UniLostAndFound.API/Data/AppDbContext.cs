@@ -27,7 +27,7 @@ public class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .IsRequired();
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql(null);
+                .IsRequired(false);
         });
 
         modelBuilder.Entity<Item>(entity =>
