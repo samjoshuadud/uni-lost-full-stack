@@ -931,7 +931,9 @@ export default function UniLostAndFound() {
                 // Calculate total pending count (all statuses except AWAITING_SURRENDER and APPROVED)
                 const newTotalCount = data.$values.filter(process => 
                     process.status !== ProcessStatus.AWAITING_SURRENDER && 
-                    process.status !== ProcessStatus.APPROVED
+                    process.status !== ProcessStatus.APPROVED &&
+                    process.status !== ProcessStatus.HANDED_OVER &&
+                    process.status !== ProcessStatus.NO_SHOW
                 ).length;
 
                 setPendingProcessCount(prevCount => {

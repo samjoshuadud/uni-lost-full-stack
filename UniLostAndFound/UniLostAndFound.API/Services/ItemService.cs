@@ -41,6 +41,9 @@ public class ItemService
                 using var transaction = await _context.Database.BeginTransactionAsync(ct);
                 try
                 {
+                    var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+                    var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
                     var item = new Item
                     {
                         Name = createDto.Name,
@@ -48,7 +51,7 @@ public class ItemService
                         Category = createDto.Category,
                         Status = createDto.Status,
                         Location = createDto.Location,
-                        DateReported = DateTime.UtcNow,
+                        DateReported = currentDateTime,
                         ReporterId = createDto.ReporterId,
                         StudentId = createDto.StudentId,
                         Approved = false,
@@ -80,8 +83,8 @@ public class ItemService
                                         ItemId = createdItem.Id,
                                         Title = dto.Title ?? string.Empty,
                                         Description = dto.Description ?? string.Empty,
-                                        CreatedAt = DateTime.UtcNow,
-                                        UpdatedAt = DateTime.UtcNow
+                                        CreatedAt = currentDateTime,
+                                        UpdatedAt = currentDateTime
                                     };
                                     _context.AdditionalDescriptions.Add(description);
                                 }
@@ -105,8 +108,8 @@ public class ItemService
                         UserId = createDto.ReporterId,
                         status = createDto.ProcessStatus ?? ProcessMessages.Status.PENDING_APPROVAL,
                         Message = createDto.Message ?? ProcessMessages.Messages.WAITING_APPROVAL,
-                        CreatedAt = DateTime.UtcNow,
-                        UpdatedAt = DateTime.UtcNow
+                        CreatedAt = currentDateTime,
+                        UpdatedAt = currentDateTime
                     };
 
                     _logger.LogInformation($"Creating process with status: {process.status} and message: {process.Message}");
@@ -234,6 +237,9 @@ public class ItemService
 
                 if (descriptions != null)
                 {
+                    var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+                    var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
                     foreach (var desc in descriptions)
                     {
                         var newDesc = new AdditionalDescription
@@ -241,8 +247,8 @@ public class ItemService
                             ItemId = id,
                             Title = desc.Title,
                             Description = desc.Description,
-                            CreatedAt = DateTime.UtcNow,
-                            UpdatedAt = DateTime.UtcNow
+                            CreatedAt = currentDateTime,
+                            UpdatedAt = currentDateTime
                         };
                         _context.AdditionalDescriptions.Add(newDesc);
                     }
@@ -262,7 +268,10 @@ public class ItemService
     {
         try
         {
-            item.UpdatedAt = DateTime.UtcNow;
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
+            item.UpdatedAt = currentDateTime;
             _context.Items.Update(item);
             await _context.SaveChangesAsync();
             return item;

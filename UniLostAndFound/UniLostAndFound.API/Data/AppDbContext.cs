@@ -27,7 +27,7 @@ public class AppDbContext : DbContext
                 .HasMaxLength(255)
                 .IsRequired();
             entity.Property(e => e.CreatedAt)
-                .HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+                .HasDefaultValueSql("CURRENT_TIMESTAMP(6) AT TIME ZONE 'Asia/Manila'");
         });
 
         modelBuilder.Entity<Item>(entity =>
