@@ -39,6 +39,18 @@ const styles = `
       opacity: 1;
     }
   }
+
+  .bg-pattern {
+    background-image: url('/images/bg.jpeg');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  .bg-overlay {
+    background: rgba(248, 249, 250, 0.80);  /* Adjust the last value (0.95) for transparency */
+  }
 `;
 
 // Add this helper function at the top level
@@ -1017,84 +1029,68 @@ export default function UniLostAndFound() {
   // }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa]">
-      <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Item Deleted Successfully!</DialogTitle>
-            <DialogDescription>The item has been successfully cancelled/deleted.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+    <div className="min-h-screen relative">
+      <div className="fixed inset-0 bg-pattern"></div>
+      <div className="fixed inset-0 bg-overlay"></div>
+      <div className="relative z-10">
+        <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Item Deleted Successfully!</DialogTitle>
+              <DialogDescription>The item has been successfully cancelled/deleted.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Error Dialog */}
-      <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Item Not Deleted - Error</DialogTitle>
-            <DialogDescription>There was an issue with deleting the item. Please try again later.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setIsErrorDialogOpen(false)}>Okay</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* Error Dialog */}
+        <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Item Not Deleted - Error</DialogTitle>
+              <DialogDescription>There was an issue with deleting the item. Please try again later.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => setIsErrorDialogOpen(false)}>Okay</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
-      {/* Header */}
-      <header className="bg-gradient-to-r from-[#023265] to-[#004C99] shadow-md border-b border-[#004C99]/50">
-        <div className="container mx-auto px-4 py-4">
-          {/* Main Header Content */}
-          <div className="flex flex-col lg:flex-row items-center gap-6">
-            {/* Logo and Title Section */}
-            <div className="flex items-center gap-4">
-              <div className="relative group">
-                <Image 
-                  src="/logo/logo.png" 
-                  alt="UMAK Logo" 
-                  width={48} 
-                  height={48} 
-                  className="rounded-full bg-white/95 p-1.5 shadow-md group-hover:shadow-lg transition-all duration-300
-                    transform group-hover:scale-105"
-                />
-                <div className="absolute inset-0 rounded-full bg-white/10 opacity-0 group-hover:opacity-100 
-                  transition-opacity duration-300"></div>
+        {/* Header */}
+        <header className="bg-gradient-to-r from-[#023265] to-[#004C99] shadow-md border-b border-[#004C99]/50">
+          <div className="container mx-auto px-4 py-4">
+            {/* Main Header Content */}
+            <div className="flex flex-col lg:flex-row items-center gap-6">
+              {/* Logo and Title Section */}
+              <div className="flex items-center gap-4">
+                <div className="relative group">
+                  <Image 
+                    src="/logo/logo.png" 
+                    alt="UMAK Logo" 
+                    width={48} 
+                    height={48} 
+                    className="rounded-full bg-white/95 p-1.5 shadow-md group-hover:shadow-lg transition-all duration-300
+                      transform group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 rounded-full bg-white/10 opacity-0 group-hover:opacity-100 
+                    transition-opacity duration-300"></div>
+                </div>
+                <div className="flex flex-col">
+                  <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
+                    Lost & Found
+                  </h1>
+                  <span className="text-sm text-yellow-400/80">
+                    University of Makati
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
-                  Lost & Found
-                </h1>
-                <span className="text-sm text-yellow-400/80">
-                  University of Makati
-                </span>
-              </div>
-            </div>
 
-            {/* Navigation Section */}
-            <nav className="flex flex-wrap items-center justify-center gap-3 lg:ml-auto">
-              <div className="flex flex-wrap justify-center gap-2">
-                {isAdmin ? (
-                  <Button 
-                    variant="ghost"
-                    className={`
-                      text-white transition-all duration-200 px-4 py-2 h-auto
-                      hover:bg-white/10 hover:text-yellow-400
-                      relative after:absolute after:bottom-0 after:left-0 after:right-0 
-                      after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
-                      after:transition-transform after:duration-300
-                      ${activeSection === "dashboard" ? 
-                        "after:scale-x-100 font-semibold" : 
-                        "after:scale-x-0"
-                      }
-                    `}
-                    onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
-                  >
-                    View Items
-                  </Button>
-                ) : (
-                  <>
+              {/* Navigation Section */}
+              <nav className="flex flex-wrap items-center justify-center gap-3 lg:ml-auto">
+                <div className="flex flex-wrap justify-center gap-2">
+                  {isAdmin ? (
                     <Button 
                       variant="ghost"
                       className={`
@@ -1110,397 +1106,417 @@ export default function UniLostAndFound() {
                       `}
                       onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
                     >
-                      Home
+                      View Items
                     </Button>
-                    <Button 
-                      variant="ghost"
-                      className={`
-                        text-white transition-all duration-200 px-4 py-2 h-auto
-                        hover:bg-white/10 hover:text-yellow-400
-                        relative after:absolute after:bottom-0 after:left-0 after:right-0 
-                        after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
-                        after:transition-transform after:duration-300
-                        ${activeSection === "report" ? 
-                          "after:scale-x-100 font-semibold" : 
-                          "after:scale-x-0"
-                        }
-                      `}
-                      onClick={() => { 
-                        if (requireAuth()) return;
-                        setActiveSection("report"); 
-                        setSelectedItem(null); 
-                      }}
-                    >
-                      Report Item
-                    </Button>
-                    {user && (
-                      <>
-                        <Button 
-                          variant="ghost"
-                          className={`
-                            text-white transition-all duration-200 px-4 py-2 h-auto
-                            hover:bg-white/10 hover:text-yellow-400
-                            relative after:absolute after:bottom-0 after:left-0 after:right-0 
-                            after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
-                            after:transition-transform after:duration-300
-                            ${activeSection === "pending_process" ? 
-                              "after:scale-x-100 font-semibold" : 
-                              "after:scale-x-0"
-                            }
-                          `}
-                          onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
-                        >
-                          <span className="relative">
-                            Pending Process
-                            {pendingProcessCount > 0 && (
-                              <span className="absolute -top-3 -right-3 bg-yellow-400 text-[#0052cc] 
-                                rounded-full px-2 py-0.5 text-xs font-medium min-w-[20px] text-center">
-                                {pendingProcessCount}
-                              </span>
-                            )}
-                          </span>
-                        </Button>
-                      </>
-                    )}
-                  </>
-                )}
-              </div>
-              
-              {/* User Profile & Login Section */}
-              <div className="ml-2 flex items-center">
-                {user ? (
-                  <div className="flex items-center gap-2">
-                    {/* Only show profile button for non-admin users */}
-                    {!isAdmin && (
-                      <motion.button
-                        onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
+                  ) : (
+                    <>
+                      <Button 
+                        variant="ghost"
                         className={`
                           text-white transition-all duration-200 px-4 py-2 h-auto
                           hover:bg-white/10 hover:text-yellow-400
                           relative after:absolute after:bottom-0 after:left-0 after:right-0 
                           after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
                           after:transition-transform after:duration-300
-                          ${activeSection === "profile" ? 
-                            "after:scale-x-100 font-semibold bg-white/10" : 
+                          ${activeSection === "dashboard" ? 
+                            "after:scale-x-100 font-semibold" : 
                             "after:scale-x-0"
                           }
                         `}
+                        onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
                       >
-                        <div className="flex items-center gap-2">
-                          <div className="relative">
-                            <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                              <User className="h-4 w-4 text-yellow-400" />
-                            </div>
-                            {/* Online indicator */}
-                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#023265]"></div>
-                          </div>
-                          <div className="flex flex-col items-start">
-                            <span className="text-sm font-medium leading-none">My Profile</span>
-                            <span className="text-xs text-yellow-400/70 leading-none mt-1">
-                              {user.email?.split('@')[0]?.substring(0, 15)}
-                              {user.email?.split('@')[0]?.length > 15 ? '...' : ''}
-                            </span>
-                          </div>
-                        </div>
-                      </motion.button>
-                    )}
-
-                    {/* Logout Button */}
-                    <Button
-                      variant="ghost"
-                      onClick={logout}
-                      className="
-                        relative group
-                        ml-2 px-4 py-2 h-auto
-                        text-white/90 
-                        hover:text-red-400
-                        hover:bg-white/10
-                        transition-all duration-300
-                        flex items-center gap-2.5
-                        rounded-full
-                        border border-transparent
-                        hover:border-red-400/20
-                        hover:shadow-[0_0_15px_rgba(248,113,113,0.1)]
-                        active:scale-95
-                      "
-                    >
-                      <div className="p-1.5 rounded-full bg-white/10 
-                        group-hover:bg-red-400/10 transition-colors duration-300"
+                        Home
+                      </Button>
+                      <Button 
+                        variant="ghost"
+                        className={`
+                          text-white transition-all duration-200 px-4 py-2 h-auto
+                          hover:bg-white/10 hover:text-yellow-400
+                          relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                          after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                          after:transition-transform after:duration-300
+                          ${activeSection === "report" ? 
+                            "after:scale-x-100 font-semibold" : 
+                            "after:scale-x-0"
+                          }
+                        `}
+                        onClick={() => { 
+                          if (requireAuth()) return;
+                          setActiveSection("report"); 
+                          setSelectedItem(null); 
+                        }}
                       >
-                        <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
-                      </div>
-                      <span className="text-sm font-medium">Logout</span>
-                    </Button>
-                  </div>
-                ) : (
-                  <Button 
-                    variant="ghost" 
-                    className="
-                      bg-yellow-400/20 hover:bg-yellow-400/30
-                      text-yellow-400 hover:text-yellow-400
-                      transition-colors duration-200
-                      px-4 py-2 h-auto
-                      rounded-full
-                      border border-yellow-400/30
-                    "
-                    onClick={() => setShowAuthDialog(true)}
-                  >
-                    <User className="h-4 w-4 mr-2" />
-                    Sign In
-                  </Button>
-                )}
-              </div>
-            </nav>
-          </div>
-        </div>
-      </header>
-
-      <main className="container mx-auto px-4 md:px-6 py-4 md:py-8">
-        {/* Admin Cards */}
-        {user && isAdmin && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
-            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Pending Actions</h3>
-                    <p className="text-gray-500">
-                      {isProcessCountLoading ? (
-                        <Loader2 className="h-4 w-4 inline animate-spin mr-2" />
-                      ) : (
+                        Report Item
+                      </Button>
+                      {user && (
                         <>
-                          <span className="font-medium text-[#0052cc]">{totalPendingCount}</span> items need attention
+                          <Button 
+                            variant="ghost"
+                            className={`
+                              text-white transition-all duration-200 px-4 py-2 h-auto
+                              hover:bg-white/10 hover:text-yellow-400
+                              relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                              after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                              after:transition-transform after:duration-300
+                              ${activeSection === "pending_process" ? 
+                                "after:scale-x-100 font-semibold" : 
+                                "after:scale-x-0"
+                              }
+                            `}
+                            onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
+                          >
+                            <span className="relative">
+                              Pending Process
+                              {pendingProcessCount > 0 && (
+                                <span className="absolute -top-3 -right-3 bg-yellow-400 text-[#0052cc] 
+                                  rounded-full px-2 py-0.5 text-xs font-medium min-w-[20px] text-center">
+                                  {pendingProcessCount}
+                                </span>
+                              )}
+                            </span>
+                          </Button>
                         </>
                       )}
-                    </p>
+                    </>
+                  )}
+                </div>
+                
+                {/* User Profile & Login Section */}
+                <div className="ml-2 flex items-center">
+                  {user ? (
+                    <div className="flex items-center gap-2">
+                      {/* Only show profile button for non-admin users */}
+                      {!isAdmin && (
+                        <motion.button
+                          onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
+                          className={`
+                            text-white transition-all duration-200 px-4 py-2 h-auto
+                            hover:bg-white/10 hover:text-yellow-400
+                            relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                            after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                            after:transition-transform after:duration-300
+                            ${activeSection === "profile" ? 
+                              "after:scale-x-100 font-semibold bg-white/10" : 
+                              "after:scale-x-0"
+                            }
+                          `}
+                        >
+                          <div className="flex items-center gap-2">
+                            <div className="relative">
+                              <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                                <User className="h-4 w-4 text-yellow-400" />
+                              </div>
+                              {/* Online indicator */}
+                              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#023265]"></div>
+                            </div>
+                            <div className="flex flex-col items-start">
+                              <span className="text-sm font-medium leading-none">My Profile</span>
+                              <span className="text-xs text-yellow-400/70 leading-none mt-1">
+                                {user.email?.split('@')[0]?.substring(0, 15)}
+                                {user.email?.split('@')[0]?.length > 15 ? '...' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        </motion.button>
+                      )}
+
+                      {/* Logout Button */}
+                      <Button
+                        variant="ghost"
+                        onClick={logout}
+                        className="
+                          relative group
+                          ml-2 px-4 py-2 h-auto
+                          text-white/90 
+                          hover:text-red-400
+                          hover:bg-white/10
+                          transition-all duration-300
+                          flex items-center gap-2.5
+                          rounded-full
+                          border border-transparent
+                          hover:border-red-400/20
+                          hover:shadow-[0_0_15px_rgba(248,113,113,0.1)]
+                          active:scale-95
+                        "
+                      >
+                        <div className="p-1.5 rounded-full bg-white/10 
+                          group-hover:bg-red-400/10 transition-colors duration-300"
+                        >
+                          <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
+                        </div>
+                        <span className="text-sm font-medium">Logout</span>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      className="
+                        bg-yellow-400/20 hover:bg-yellow-400/30
+                        text-yellow-400 hover:text-yellow-400
+                        transition-colors duration-200
+                        px-4 py-2 h-auto
+                        rounded-full
+                        border border-yellow-400/30
+                      "
+                      onClick={() => setShowAuthDialog(true)}
+                    >
+                      <User className="h-4 w-4 mr-2" />
+                      Sign In
+                    </Button>
+                  )}
+                </div>
+              </nav>
+            </div>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 md:px-6 py-4 md:py-8">
+          {/* Admin Cards */}
+          {user && isAdmin && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
+              <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Pending Actions</h3>
+                      <p className="text-gray-500">
+                        {isProcessCountLoading ? (
+                          <Loader2 className="h-4 w-4 inline animate-spin mr-2" />
+                        ) : (
+                          <>
+                            <span className="font-medium text-[#0052cc]">{totalPendingCount}</span> items need attention
+                          </>
+                        )}
+                      </p>
+                    </div>
+                    <Button 
+                      className={`transition-colors relative
+                        ${activeSection === "admin" ? 
+                          "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                          "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        }
+                      `}
+                      onClick={() => { setActiveSection("admin"); setSelectedItem(null); }}
+                    >
+                      View Admin Dashboard
+                    </Button>
                   </div>
-                  <Button 
-                    className={`transition-colors relative
-                      ${activeSection === "admin" ? 
-                        "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                        "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                </CardContent>
+              </Card>
+
+              <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Item Database</h3>
+                      <p className="text-gray-500">View and manage all items</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <Button 
+                        className={`transition-colors relative
+                          ${activeSection === "lost" ? 
+                            "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                            "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                          }
+                        `}
+                        onClick={() => { setActiveSection("lost"); setSelectedItem(null); }}
+                      >
+                        Lost Items
+                      </Button>
+                      <Button 
+                        className={`transition-colors relative
+                          ${activeSection === "found" ? 
+                            "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                            "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                          }
+                        `}
+                        onClick={() => { setActiveSection("found"); setSelectedItem(null); }}
+                      >
+                        Found Items
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Navigation Tabs */}
+          {!isAdmin && user && 
+            !["profile", "report", "pending_process"].includes(activeSection) && (
+            <div className="mb-6">
+              <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
+                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1">
+                  <Button
+                    variant={activeSection === "dashboard" ? "secondary" : "ghost"}
+                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
+                      ${activeSection === "dashboard" ? 
+                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                        "text-white hover:text-[#004C99] font-bold"
                       }
                     `}
-                    onClick={() => { setActiveSection("admin"); setSelectedItem(null); }}
+                    onClick={() => setActiveSection("dashboard")}
                   >
-                    View Admin Dashboard
+                    Dashboard
                   </Button>
+                  <Button
+                    variant={activeSection === "lost" ? "secondary" : "ghost"}
+                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
+                      ${activeSection === "lost" ? 
+                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                        "text-white hover:text-[#004C99] font-bold"
+                      }
+                    `}
+                    onClick={() => setActiveSection("lost")}
+                  >
+                    Lost Items
+                  </Button>
+                  <Button
+                    variant={activeSection === "found" ? "secondary" : "ghost"}
+                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
+                      ${activeSection === "found" ? 
+                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                        "text-white hover:text-[#004C99] font-bold"
+                      }
+                    `}
+                    onClick={() => setActiveSection("found")}
+                  >
+                    Found Items
+                  </Button>
+                  
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          )}
 
-            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Item Database</h3>
-                    <p className="text-gray-500">View and manage all items</p>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button 
-                      className={`transition-colors relative
-                        ${activeSection === "lost" ? 
-                          "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                          "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
-                        }
-                      `}
-                      onClick={() => { setActiveSection("lost"); setSelectedItem(null); }}
-                    >
-                      Lost Items
-                    </Button>
-                    <Button 
-                      className={`transition-colors relative
-                        ${activeSection === "found" ? 
-                          "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                          "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
-                        }
-                      `}
-                      onClick={() => { setActiveSection("found"); setSelectedItem(null); }}
-                    >
-                      Found Items
-                    </Button>
-                  </div>
+          {/* Search Section */}
+          {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
+            <div className="flex flex-col md:flex-row gap-4 mb-4 pb-6 md:pb-10 mt-6 md:mt-10">
+              {/* Search Input */}
+              <div className="flex-1 bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                <div className="relative flex items-center">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Search lost and found items..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 border-0 focus:ring-0 rounded-full h-12 w-full"
+                  />
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+              </div>
 
-        {/* Navigation Tabs */}
-        {!isAdmin && user && 
-          !["profile", "report", "pending_process"].includes(activeSection) && (
-          <div className="mb-6">
-            <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
-              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1">
-                <Button
-                  variant={activeSection === "dashboard" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                    ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-[#004C99] font-bold"
-                    }
-                  `}
-                  onClick={() => setActiveSection("dashboard")}
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  variant={activeSection === "lost" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                    ${activeSection === "lost" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-[#004C99] font-bold"
-                    }
-                  `}
-                  onClick={() => setActiveSection("lost")}
-                >
-                  Lost Items
-                </Button>
-                <Button
-                  variant={activeSection === "found" ? "secondary" : "ghost"}
-                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                    ${activeSection === "found" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                      "text-white hover:text-[#004C99] font-bold"
-                    }
-                  `}
-                  onClick={() => setActiveSection("found")}
-                >
-                  Found Items
-                </Button>
-                
+              {/* Filters Container */}
+              <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+                {/* Categories Dropdown */}
+                <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                  <Select value={searchCategory} onValueChange={setSearchCategory}>
+                    <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                      <SelectValue placeholder="All Categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      <SelectItem value="Books">Books</SelectItem>
+                      <SelectItem value="Electronics">Electronics</SelectItem>
+                      <SelectItem value="Personal Items">Personal Items</SelectItem>
+                      <SelectItem value="Documents">Documents</SelectItem>
+                      <SelectItem value="Bags">Bags</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Claim Status Dropdown */}
+                <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                  <Select value={claimStatus} onValueChange={setClaimStatus}>
+                    <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                      <SelectValue placeholder="Claim Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Items</SelectItem>
+                      <SelectItem value="none">No Claims</SelectItem>
+                      <SelectItem value="pending">Pending Claims</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Sort Dropdown */}
+                <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                  <Select value={sortOrder} onValueChange={setSortOrder}>
+                    <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="newest">Newest First</SelectItem>
+                      <SelectItem value="oldest">Oldest First</SelectItem>
+                      <SelectItem value="a-z">A to Z</SelectItem>
+                      <SelectItem value="z-a">Z to A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
+          )}
+
+          {/* Main Content */}
+          <div className="relative">
+            {renderSection()}
           </div>
-        )}
 
-        {/* Search Section */}
-        {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
-          <div className="flex flex-col md:flex-row gap-4 mb-4 pb-6 md:pb-10 mt-6 md:mt-10">
-            {/* Search Input */}
-            <div className="flex-1 bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-              <div className="relative flex items-center">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search lost and found items..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 border-0 focus:ring-0 rounded-full h-12 w-full"
-                />
-              </div>
-            </div>
+          <style jsx>{styles}</style>
 
-            {/* Filters Container */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-              {/* Categories Dropdown */}
-              <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-                <Select value={searchCategory} onValueChange={setSearchCategory}>
-                  <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="Books">Books</SelectItem>
-                    <SelectItem value="Electronics">Electronics</SelectItem>
-                    <SelectItem value="Personal Items">Personal Items</SelectItem>
-                    <SelectItem value="Documents">Documents</SelectItem>
-                    <SelectItem value="Bags">Bags</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <ItemDetailSection 
+            item={selectedItem}
+            open={showDetailsDialog}
+            onClose={() => {
+              setShowDetailsDialog(false);
+              setSelectedItem(null);
+            }}
+            onDelete={handleDelete}
+            isAdmin={isAdmin}
+            userId={user?.uid}
+            onUnapprove={handleUnapprove}
+          />
 
-              {/* Claim Status Dropdown */}
-              <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-                <Select value={claimStatus} onValueChange={setClaimStatus}>
-                  <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                    <SelectValue placeholder="Claim Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Items</SelectItem>
-                    <SelectItem value="none">No Claims</SelectItem>
-                    <SelectItem value="pending">Pending Claims</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+          <AuthRequiredDialog 
+            open={showAuthDialog} 
+            onOpenChange={setShowAuthDialog}
+          />
+        </main>
 
-              {/* Sort Dropdown */}
-              <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-                <Select value={sortOrder} onValueChange={setSortOrder}>
-                  <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="a-z">A to Z</SelectItem>
-                    <SelectItem value="z-a">Z to A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        )}
+        <ReportConfirmDialog 
+          open={showReportConfirmDialog}
+          onOpenChange={setShowReportConfirmDialog}
+          onConfirm={handleConfirmReport}
+        />
 
-        {/* Main Content */}
-        <div className="relative">
-          {renderSection()}
-        </div>
-
-        <style jsx>{styles}</style>
-
-        <ItemDetailSection 
-          item={selectedItem}
-          open={showDetailsDialog}
-          onClose={() => {
-            setShowDetailsDialog(false);
-            setSelectedItem(null);
+        <VerificationDialog 
+          open={showVerificationDialog}
+          onOpenChange={setShowVerificationDialog}
+          onSubmit={handleSubmitVerification}
+          onCancel={() => setShowVerificationDialog(false)}
+          questions={currentNotification?.verificationQuestions || []}
+          answers={verificationAnswers}
+          onAnswerChange={(index, value) => {
+            const newAnswers = [...verificationAnswers];
+            newAnswers[index] = value;
+            setVerificationAnswers(newAnswers);
           }}
-          onDelete={handleDelete}
-          isAdmin={isAdmin}
-          userId={user?.uid}
-          onUnapprove={handleUnapprove}
         />
 
-        <AuthRequiredDialog 
-          open={showAuthDialog} 
-          onOpenChange={setShowAuthDialog}
+        <VerificationSuccessDialog 
+          open={showVerificationSuccessDialog}
+          onOpenChange={setShowVerificationSuccessDialog}
         />
-      </main>
 
-      <ReportConfirmDialog 
-        open={showReportConfirmDialog}
-        onOpenChange={setShowReportConfirmDialog}
-        onConfirm={handleConfirmReport}
-      />
-
-      <VerificationDialog 
-        open={showVerificationDialog}
-        onOpenChange={setShowVerificationDialog}
-        onSubmit={handleSubmitVerification}
-        onCancel={() => setShowVerificationDialog(false)}
-        questions={currentNotification?.verificationQuestions || []}
-        answers={verificationAnswers}
-        onAnswerChange={(index, value) => {
-          const newAnswers = [...verificationAnswers];
-          newAnswers[index] = value;
-          setVerificationAnswers(newAnswers);
-        }}
-      />
-
-      <VerificationSuccessDialog 
-        open={showVerificationSuccessDialog}
-        onOpenChange={setShowVerificationSuccessDialog}
-      />
-
-      <VerificationFailDialog 
-        open={showVerificationFailDialog}
-        onOpenChange={setShowVerificationFailDialog}
-        onTryAgain={() => {
-          setShowVerificationFailDialog(false);
-          setShowVerificationDialog(true);
-        }}
-      />
+        <VerificationFailDialog 
+          open={showVerificationFailDialog}
+          onOpenChange={setShowVerificationFailDialog}
+          onTryAgain={() => {
+            setShowVerificationFailDialog(false);
+            setShowVerificationDialog(true);
+          }}
+        />
+      </div>
     </div>
   )
 }
