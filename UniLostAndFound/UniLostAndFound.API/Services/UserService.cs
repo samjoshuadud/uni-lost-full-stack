@@ -3,6 +3,7 @@ using UniLostAndFound.API.Models;
 using UniLostAndFound.API.Repositories;
 using Microsoft.EntityFrameworkCore;
 using UniLostAndFound.API.Data;
+using System;
 
 namespace UniLostAndFound.API.Services;
 
@@ -90,14 +91,17 @@ public class UserService
                     studentId = "";
                 }
 
+                var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+                var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
                 user = new User
                 {
                     Id = uid,
                     Email = email,
                     DisplayName = displayName,
                     StudentId = studentId,
-                    CreatedAt = DateTime.UtcNow,
-                    UpdatedAt = DateTime.UtcNow
+                    CreatedAt = currentDateTime,
+                    UpdatedAt = currentDateTime
                 };
                 
                 _logger.LogInformation($"Creating new user with email: {email}, studentId: {studentId}, isAdmin: {isAdmin}");
@@ -109,7 +113,7 @@ public class UserService
             {
                 string firstName = displayName.Split(' ')[0];
                 user.StudentId = $"ADMIN - {firstName.ToUpper()}";
-                user.UpdatedAt = DateTime.UtcNow;
+                user.UpdatedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila"));
                 await _context.SaveChangesAsync();
                 _logger.LogInformation($"Updated existing admin user with studentId: {user.StudentId}");
             }
@@ -119,7 +123,7 @@ public class UserService
                 if (parts.Length > 1)
                 {
                     user.StudentId = parts[1].ToUpper();
-                    user.UpdatedAt = DateTime.UtcNow;
+                    user.UpdatedAt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila"));
                     await _context.SaveChangesAsync();
                     _logger.LogInformation($"Updated existing user with studentId: {user.StudentId}");
                 }

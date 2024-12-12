@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UniLostAndFound.API.Data;
 
@@ -10,9 +11,11 @@ using UniLostAndFound.API.Data;
 namespace UniLostAndFound.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241212123545_AddCreatedAtDefaultValue")]
+    partial class AddCreatedAtDefaultValue
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -189,7 +192,7 @@ namespace UniLostAndFound.API.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP(6) AT TIME ZONE 'Asia/Manila'");
+                        .HasDefaultValueSql("CONVERT_TZ(CURRENT_TIMESTAMP(6), '+00:00', '+08:00')");
 
                     b.Property<string>("Type")
                         .IsRequired()

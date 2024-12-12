@@ -131,14 +131,17 @@ public class AuthController : ControllerBase
         {
             _logger.LogInformation($"[Debug] Attempting to {request.Action} admin: {request.Email}");
 
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
             bool success;
             if (request.Action == "unassign")
             {
-                success = await _adminService.UnassignAdminAsync(request.Email);
+                success = await _adminService.UnassignAdminAsync(request.Email, currentDateTime);
             }
             else
             {
-                success = await _adminService.AssignAdminAsync(request.Email);
+                success = await _adminService.AssignAdminAsync(request.Email, currentDateTime);
             }
 
             if (!success)
