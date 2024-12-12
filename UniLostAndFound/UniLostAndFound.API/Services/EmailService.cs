@@ -186,41 +186,37 @@ namespace UniLostAndFound.API.Services
 
         public async Task SendReadyForPickupEmailAsync(string email, string itemName)
         {
-            var subject = "Your Lost Item Has Been Found! 🎉";
+            var subject = "Your Lost Item Has Been Found!";
+            
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
             
             var body = $@"
                 <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;'>
-                    <h2 style='color: #0052cc;'>Good News! Your Item Has Been Found</h2>
-                    
-                    <p>Dear Student,</p>
-                    
+                    <h2 style='color: #1e293b;'>Good news!</h2>
+
                     <p>We are pleased to inform you that your lost item (<strong>{itemName}</strong>) has been found and is now ready for pickup!</p>
 
                     <div style='background-color: #f0f4f8; padding: 20px; border-radius: 8px; margin: 20px 0;'>
-                        <h3 style='color: #1e293b; margin-top: 0;'>📋 Next Steps:</h3>
+                        <h3 style='color: #1e293b; margin-top: 0;'>Next Steps:</h3>
                         <ol style='color: #334155;'>
                             <li>Visit the OHSO (Occupational Health Services Office) in the basement of the Admin Building</li>
                             <li>Bring your valid school ID for verification</li>
-                            <li>You may be asked additional verification questions to confirm ownership</li>
-                            <li>Once verified, you can claim your item</li>
+                            <li>Claim your item during office hours</li>
                         </ol>
                     </div>
 
                     <div style='background-color: #fff8f0; padding: 20px; border-radius: 8px; margin: 20px 0;'>
-                        <h3 style='color: #9a3412; margin-top: 0;'>⚠️ Important Notes:</h3>
+                        <h3 style='color: #9a3412; margin-top: 0;'>Important Notes:</h3>
                         <ul style='color: #9a3412;'>
                             <li>Please claim your item within 3 working days</li>
                             <li>OHSO office hours: Monday to Friday, 8:00 AM to 5:00 PM</li>
-                            <li>If you cannot come within this period, please contact OHSO to make arrangements</li>
+                            <li>Date Notified: {currentDateTime:MMMM dd, yyyy HH:mm}</li>
                         </ul>
                     </div>
 
-                    <p>If you have any questions or concerns, please don't hesitate to contact the OHSO office.</p>
-
-                    <p style='color: #64748b; font-size: 0.9em;'>
-                        Best regards,<br>
-                        Lost and Found System Team
-                    </p>
+                    <p style='color: #475569;'>If you have any questions, please don't hesitate to contact us.</p>
+                    <p style='color: #475569;'>Best regards,<br>UNI Lost and Found Team</p>
                 </div>
             ";
 
@@ -231,6 +227,9 @@ namespace UniLostAndFound.API.Services
         {
             try
             {
+                var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+                var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
                 var email = new MimeMessage();
                 email.From.Add(new MailboxAddress(_emailSettings.FromName, _emailSettings.FromEmail));
                 email.To.Add(MailboxAddress.Parse(userEmail));
@@ -246,7 +245,7 @@ namespace UniLostAndFound.API.Services
                         <ul>
                             <li>Item: {itemName}</li>
                             <li>Status: Handed Over</li>
-                            <li>Date: {DateTime.Now.ToString("MMMM dd, yyyy HH:mm")}</li>
+                            <li>Date: {currentDateTime.ToString("MMMM dd, yyyy HH:mm")}</li>
                         </ul>
                         <div style='margin: 20px 0;'>
                             <div style='background-color: #f8f9fa; border: 1px solid #e9ecef; padding: 15px; border-radius: 5px;'>
@@ -315,6 +314,7 @@ namespace UniLostAndFound.API.Services
                                 </p>
                             </div>
                         </div>
+
                         <div style='margin: 20px 0;'>
                             <a href='http://localhost:3000' 
                                style='background-color: #0066cc; 
@@ -326,6 +326,7 @@ namespace UniLostAndFound.API.Services
                                 View Status
                             </a>
                         </div>
+
                         <p>If you have any questions or need assistance, please contact the Lost & Found office.</p>
                         <p>Thank you for your understanding.</p>
                     "

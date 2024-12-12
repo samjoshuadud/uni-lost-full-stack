@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using UniLostAndFound.API.Constants;
+using System;
 
 namespace UniLostAndFound.API.Services.BackgroundServices;
 
@@ -46,9 +47,12 @@ public class ItemCleanupService : BackgroundService
         try
         {
             var processes = await processService.GetAllWithItemsAsync();
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+            
             var expiredItems = processes.Where(p => 
                 p.status == ProcessMessages.Status.AWAITING_SURRENDER && 
-                (DateTime.UtcNow - p.CreatedAt).TotalDays > 3  // Changed back to 3 days
+                (currentDateTime - p.CreatedAt).TotalDays > 3  // Changed back to 3 days
             );
 
             foreach (var process in expiredItems)
@@ -63,4 +67,4 @@ public class ItemCleanupService : BackgroundService
             throw;
         }
     }
-} 
+}

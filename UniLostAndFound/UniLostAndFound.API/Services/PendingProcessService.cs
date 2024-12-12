@@ -68,9 +68,12 @@ public class PendingProcessService
                 throw new InvalidOperationException("Invalid status transition");
             }
 
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+
             process.status = status;
             process.Message = message;
-            process.UpdatedAt = DateTime.UtcNow;
+            process.UpdatedAt = currentDateTime;
 
             // If status is approved, update the item's approval status
             if (status == ProcessMessages.Status.APPROVED)
@@ -130,8 +133,12 @@ public class PendingProcessService
             
             // Set default values if not provided
             process.Id = process.Id ?? Guid.NewGuid().ToString();
-            process.CreatedAt = DateTime.UtcNow;
-            process.UpdatedAt = DateTime.UtcNow;
+            
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+            
+            process.CreatedAt = currentDateTime;
+            process.UpdatedAt = currentDateTime;
 
             // Create the process and get the created entity back
             var createdProcess = await _processRepository.CreateAsync(process);
