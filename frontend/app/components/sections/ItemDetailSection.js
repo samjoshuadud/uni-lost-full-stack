@@ -125,31 +125,7 @@ export default function ItemDetailSection({
               {/* Reporter Info Section - Updated logic */}
               <div className="p-4 border-b bg-gradient-to-r from-gray-50 to-gray-100">
                 <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-gray-500">Reported By</h4>
-                  <div className="flex items-center gap-2">
-                    {(item.studentId?.startsWith('ADMIN_') || item.reporterId?.startsWith('ADMIN_')) ? (
-                      <>
-                        <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
-                          Admin Reported
-                        </Badge>
-                        <span className="text-gray-600">
-                          {(item.studentId?.startsWith('ADMIN_') 
-                            ? item.studentId.replace('ADMIN_', '')
-                            : item.reporterId?.replace('ADMIN_', ''))}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
-                          Student Reported
-                        </Badge>
-                        <span className="text-gray-600">
-                          {item.studentId || 'Unknown'}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-xs text-gray-500 flex items-center gap-1">
+                  <div className="text-sm text-gray-500 flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     Reported on {format(new Date(item.dateReported), 'PPP')}
                   </div>
