@@ -16,12 +16,12 @@ import {
   MapPinIcon,
   Search,
   X,
-  ArrowUpDown
+  ArrowUpDown,
 } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ProcessStatus, ProcessMessages } from '@/lib/constants';
-import { memo } from 'react';
+import { ProcessStatus, ProcessMessages } from "@/lib/constants";
+import { memo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -32,10 +32,20 @@ import {
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
-import { API_BASE_URL } from "@/lib/api-config"
-import { generateVerificationQuestions, rankItemSimilarity } from "@/lib/gemini";
+import { API_BASE_URL } from "@/lib/api-config";
+import {
+  generateVerificationQuestions,
+  rankItemSimilarity,
+} from "@/lib/gemini";
 import { toast } from "react-hot-toast";
-import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import {
+  format,
+  subMonths,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  formatDistanceToNow
+} from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
@@ -47,7 +57,7 @@ import {
   SelectValue,
   SelectSeparator,
   SelectLabel,
-  SelectGroup
+  SelectGroup,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -63,13 +73,16 @@ const LostReportsTab = memo(function LostReportsTab({
   handleDelete,
   onApprove,
   handleViewDetails,
-  onUpdateCounts
+  onUpdateCounts,
 }) {
   const [approvingItems, setApprovingItems] = useState(new Set());
   const [deletingItems, setDeletingItems] = useState(new Set());
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
-  const [selectedItemForVerification, setSelectedItemForVerification] = useState(null);
-  const [verificationQuestions, setVerificationQuestions] = useState([{ question: '' }]);
+  const [selectedItemForVerification, setSelectedItemForVerification] =
+    useState(null);
+  const [verificationQuestions, setVerificationQuestions] = useState([
+    { question: "" },
+  ]);
   const [isSubmittingQuestions, setIsSubmittingQuestions] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
@@ -78,53 +91,63 @@ const LostReportsTab = memo(function LostReportsTab({
   const [isLoadingFoundItems, setIsLoadingFoundItems] = useState(false);
   const [showFoundItemsDialog, setShowFoundItemsDialog] = useState(false);
   const [selectedFoundItem, setSelectedFoundItem] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOption, setSortOption] = useState('newest');
-  const [dateFilter, setDateFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOption, setSortOption] = useState("newest");
+  const [dateFilter, setDateFilter] = useState("all");
   const [dateRange, setDateRange] = useState({
     from: null,
-    to: null
+    to: null,
   });
   const [customDate, setCustomDate] = useState(null);
   const [showCustomDatePicker, setShowCustomDatePicker] = useState(false);
-  const [calendarMode, setCalendarMode] = useState('single');
+  const [calendarMode, setCalendarMode] = useState("single");
   const [selectedMonth, setSelectedMonth] = useState(null);
-  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [isRankingItems, setIsRankingItems] = useState(false);
   const [processingItems, setProcessingItems] = useState(new Set());
   const [isMatchingItem, setIsMatchingItem] = useState(false);
 
   const mainCategories = [
-    "books", 
-    "electronics", 
-    "personal items", 
-    "documents", 
+    "books",
+    "electronics",
+    "personal items",
+    "documents",
     "bags",
-    "others"
+    "others",
   ];
 
   const capitalizeFirstLetter = (string) => {
-    if (!string) return '';
-    return string.split(' ').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-    ).join(' ');
+    if (!string) return "";
+    return string
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
   };
 
   const formatDate = (date) => {
-    if (!date) return 'Date not available';
+    if (!date) return "Date not available";
     try {
-      return format(new Date(date), 'MMMM d, yyyy');
+      return format(new Date(date), "MMMM d, yyyy");
     } catch (error) {
-      return 'Invalid date';
+      return "Invalid date";
     }
   };
 
+const formatDatefns = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const relativeTime = formatDistanceToNow(date, { addSuffix: true });
+    return relativeTime.charAt(0).toUpperCase() + relativeTime.slice(1);
+
+};
+
+
   const handleApproveClick = async (itemId) => {
     try {
-      setApprovingItems(prev => new Set(prev).add(itemId));
+      setApprovingItems((prev) => new Set(prev).add(itemId));
       await onApprove(itemId);
     } finally {
-      setApprovingItems(prev => {
+      setApprovingItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
         return next;
@@ -134,10 +157,10 @@ const LostReportsTab = memo(function LostReportsTab({
 
   const handleDeleteClick = async (itemId) => {
     try {
-      setDeletingItems(prev => new Set(prev).add(itemId));
+      setDeletingItems((prev) => new Set(prev).add(itemId));
       await handleDelete(itemId);
     } finally {
-      setDeletingItems(prev => {
+      setDeletingItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
         return next;
@@ -148,7 +171,7 @@ const LostReportsTab = memo(function LostReportsTab({
   const handleItemInPossession = async (process) => {
     setSelectedItemForVerification({
       processId: process.id,
-      item: process.item
+      item: process.item,
     });
     setShowFoundItemsDialog(true);
 
@@ -161,16 +184,17 @@ const LostReportsTab = memo(function LostReportsTab({
       const rankedItems = await rankItemSimilarity(process.item, foundItems);
       setFoundItems(rankedItems);
     } catch (error) {
-      console.error('Error ranking items:', error);
-      toast.error('Failed to rank items by similarity');
+      console.error("Error ranking items:", error);
+      toast.error("Failed to rank items by similarity");
     } finally {
       setIsRankingItems(false);
     }
   };
 
   const handleAddQuestion = () => {
-    setVerificationQuestions([...verificationQuestions, { question: '' }]);
+    setVerificationQuestions([...verificationQuestions, { question: "" }]);
   };
+
 
   const handleQuestionChange = (index, value) => {
     const newQuestions = [...verificationQuestions];
@@ -180,14 +204,14 @@ const LostReportsTab = memo(function LostReportsTab({
 
   const handleSubmitVerificationQuestions = async () => {
     const questions = verificationQuestions
-      .map(q => q.question.trim())
-      .filter(q => q.length > 0);
+      .map((q) => q.question.trim())
+      .filter((q) => q.length > 0);
 
     if (questions.length === 0) return;
 
     try {
       setIsSubmittingQuestions(true);
-      
+
       const response = await fetch(
         `${API_BASE_URL}/api/Item/process/${selectedItemForVerification.processId}/status`,
         {
@@ -195,9 +219,9 @@ const LostReportsTab = memo(function LostReportsTab({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             status: ProcessStatus.IN_VERIFICATION,
-            message: JSON.stringify(questions)
+            message: JSON.stringify(questions),
           }),
-        }
+        },
       );
 
       if (!response.ok) throw new Error("Failed to update process status");
@@ -205,13 +229,12 @@ const LostReportsTab = memo(function LostReportsTab({
       // Reset dialog state
       setShowVerificationDialog(false);
       setSelectedItemForVerification(null);
-      setVerificationQuestions([{ question: '' }]);
+      setVerificationQuestions([{ question: "" }]);
 
       // Update counts if needed
-      if (typeof onUpdateCounts === 'function') {
+      if (typeof onUpdateCounts === "function") {
         onUpdateCounts();
       }
-
     } catch (error) {
       console.error("Error updating process status:", error);
     } finally {
@@ -231,21 +254,22 @@ const LostReportsTab = memo(function LostReportsTab({
         category: item.category,
         description: item.description,
         location: item.location,
-        imageUrl: item.imageUrl
+        imageUrl: item.imageUrl,
       });
 
       // Convert generated questions to the format expected by the dialog
-      const formattedQuestions = generatedQuestions.map(question => ({
+      const formattedQuestions = generatedQuestions.map((question) => ({
         question,
-        id: Math.random().toString(36).substr(2, 9) // temporary ID for new questions
+        id: Math.random().toString(36).substr(2, 9), // temporary ID for new questions
       }));
 
       setVerificationQuestions(formattedQuestions);
     } catch (error) {
-      console.error('Error generating questions:', error);
+      console.error("Error generating questions:", error);
       toast({
         title: "Error",
-        description: "Failed to generate questions. Please try again or add them manually.",
+        description:
+          "Failed to generate questions. Please try again or add them manually.",
         variant: "destructive",
       });
     } finally {
@@ -257,24 +281,24 @@ const LostReportsTab = memo(function LostReportsTab({
     setSelectedItemForDetails(item);
     setShowDetailsDialog(true);
   };
-
   const fetchFoundItems = async () => {
     try {
       setIsLoadingFoundItems(true);
       const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-      if (!response.ok) throw new Error('Failed to fetch found items');
+      if (!response.ok) throw new Error("Failed to fetch found items");
       const data = await response.json();
-      
+
       // Filter only approved found items
-      const foundItems = data.$values.filter(process => 
-        process.item?.status?.toLowerCase() === 'found' && 
-        process.item?.approved === true
+      const foundItems = data.$values.filter(
+        (process) =>
+          process.item?.status?.toLowerCase() === "found" &&
+          process.item?.approved === true,
       );
-      
+
       setFoundItems(foundItems);
     } catch (error) {
-      console.error('Error fetching found items:', error);
-      toast.error('Failed to load found items');
+      console.error("Error fetching found items:", error);
+      toast.error("Failed to load found items");
     } finally {
       setIsLoadingFoundItems(false);
     }
@@ -286,47 +310,44 @@ const LostReportsTab = memo(function LostReportsTab({
 
   const handleMatchItem = async (foundItem) => {
     if (!foundItem || isMatchingItem) return;
-    
+
     try {
       setIsMatchingItem(true);
-      
-      console.log('Matching items:', {
+
+      console.log("Matching items:", {
         lostProcessId: selectedItemForVerification.processId,
-        foundProcessId: foundItem.id
+        foundProcessId: foundItem.id,
       });
 
-      const response = await fetch(
-        `${API_BASE_URL}/api/Item/process/match`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            lostProcessId: selectedItemForVerification.processId,
-            foundProcessId: foundItem.id
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/match`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          lostProcessId: selectedItemForVerification.processId,
+          foundProcessId: foundItem.id,
+        }),
+      });
 
       const responseData = await response.clone().json();
-      console.log('Match response:', responseData);
+      console.log("Match response:", responseData);
 
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to match items");
       }
 
-      toast.success('Successfully matched items');
+      toast.success("Successfully matched items");
       setShowFoundItemsDialog(false);
       setSelectedFoundItem(null);
-      
-      if (typeof onUpdateCounts === 'function') {
+
+      if (typeof onUpdateCounts === "function") {
         onUpdateCounts();
       }
     } catch (error) {
       console.error("Error matching items:", error);
-      toast.error(error.message || 'Failed to match items');
+      toast.error(error.message || "Failed to match items");
     } finally {
       setIsMatchingItem(false);
       setShowFoundItemsDialog(false);
@@ -337,34 +358,38 @@ const LostReportsTab = memo(function LostReportsTab({
     if (!date) return false;
     const itemDate = new Date(date);
     const today = new Date();
-    
+
     switch (range) {
-      case 'today':
+      case "today":
         return itemDate.toDateString() === today.toDateString();
-      case 'yesterday': {
+      case "yesterday": {
         const yesterday = new Date();
         yesterday.setDate(today.getDate() - 1);
         return itemDate.toDateString() === yesterday.toDateString();
       }
-      case 'last7days': {
+      case "last7days": {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(today.getDate() - 7);
         return itemDate >= sevenDaysAgo;
       }
-      case 'last30days': {
+      case "last30days": {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(today.getDate() - 30);
         return itemDate >= thirtyDaysAgo;
       }
-      case 'thisMonth': {
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      case "thisMonth": {
+        const firstDayOfMonth = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1,
+        );
         return itemDate >= firstDayOfMonth;
       }
-      case 'custom':
+      case "custom":
         if (!dateRange.from) return true;
         if (!dateRange.to) return itemDate >= dateRange.from;
         return itemDate >= dateRange.from && itemDate <= dateRange.to;
-      case 'all':
+      case "all":
         return true;
       default:
         return true;
@@ -372,18 +397,21 @@ const LostReportsTab = memo(function LostReportsTab({
   };
 
   const sortedAndFilteredFoundItems = useMemo(() => {
-    const filtered = foundItems.filter(item => {
+    const filtered = foundItems.filter((item) => {
       const searchStr = searchQuery.toLowerCase();
-      const matchesSearch = (
+      const matchesSearch =
         item.item?.name?.toLowerCase().includes(searchStr) ||
         item.item?.category?.toLowerCase().includes(searchStr) ||
         item.item?.description?.toLowerCase().includes(searchStr) ||
         item.item?.location?.toLowerCase().includes(searchStr) ||
-        item.item?.studentId?.toLowerCase().includes(searchStr)
-      );
+        item.item?.studentId?.toLowerCase().includes(searchStr);
 
-      const matchesDate = isWithinDateRange(item.item?.dateReported, dateFilter);
-      const matchesCategory = categoryFilter === 'all' || 
+      const matchesDate = isWithinDateRange(
+        item.item?.dateReported,
+        dateFilter,
+      );
+      const matchesCategory =
+        categoryFilter === "all" ||
         item.item?.category?.toLowerCase() === categoryFilter.toLowerCase();
 
       return matchesSearch && matchesDate && matchesCategory;
@@ -391,7 +419,7 @@ const LostReportsTab = memo(function LostReportsTab({
 
     return [...filtered].sort((a, b) => {
       // First prioritize similarity score if sorting option is 'newest' (default)
-      if (sortOption === 'newest') {
+      if (sortOption === "newest") {
         // If both items have similarity scores, sort by score
         if (a.similarityScore && b.similarityScore) {
           return b.similarityScore - a.similarityScore;
@@ -405,12 +433,14 @@ const LostReportsTab = memo(function LostReportsTab({
 
       // Other sorting options remain unchanged
       switch (sortOption) {
-        case 'oldest':
-          return new Date(a.item?.dateReported) - new Date(b.item?.dateReported);
-        case 'a-z':
-          return (a.item?.name || '').localeCompare(b.item?.name || '');
-        case 'z-a':
-          return (b.item?.name || '').localeCompare(a.item?.name || '');
+        case "oldest":
+          return (
+            new Date(a.item?.dateReported) - new Date(b.item?.dateReported)
+          );
+        case "a-z":
+          return (a.item?.name || "").localeCompare(b.item?.name || "");
+        case "z-a":
+          return (b.item?.name || "").localeCompare(a.item?.name || "");
         default:
           return 0;
       }
@@ -425,8 +455,9 @@ const LostReportsTab = memo(function LostReportsTab({
           Lost Items Management
         </h3>
         <p className="text-gray-600 mt-2">
-          Process lost item reports and manage student claims. Review item details, 
-          approve posts to make them visible, or find a matching item for a found item.
+          Process lost item reports and manage student claims. Review item
+          details, approve posts to make them visible, or find a matching item
+          for a found item.
         </p>
 
         {/* Status Cards */}
@@ -445,10 +476,11 @@ const LostReportsTab = memo(function LostReportsTab({
                     {isCountsLoading ? (
                       <span className="animate-pulse">...</span>
                     ) : (
-                      items.filter(process => 
-                        process.status === ProcessStatus.PENDING_APPROVAL && 
-                        process.item?.status?.toLowerCase() === "lost" && 
-                        !process.item?.approved
+                      items.filter(
+                        (process) =>
+                          process.status === ProcessStatus.PENDING_APPROVAL &&
+                          process.item?.status?.toLowerCase() === "lost" &&
+                          !process.item?.approved,
                       ).length
                     )}
                   </p>
@@ -474,7 +506,10 @@ const LostReportsTab = memo(function LostReportsTab({
                   // Enhanced skeleton loading state
                   <>
                     {[1, 2, 3].map((i) => (
-                      <Card key={i} className="overflow-hidden border border-gray-100 shadow-sm">
+                      <Card
+                        key={i}
+                        className="overflow-hidden border border-gray-100 shadow-sm"
+                      >
                         <CardContent className="p-6">
                           <div className="flex gap-6">
                             <Skeleton className="w-32 h-32 rounded-xl flex-shrink-0" />
@@ -503,10 +538,12 @@ const LostReportsTab = memo(function LostReportsTab({
                       </Card>
                     ))}
                   </>
-                ) : !items || items.filter(process => 
-                    process.status === ProcessStatus.PENDING_APPROVAL && 
-                    process.item?.status?.toLowerCase() === "lost" && 
-                    !process.item?.approved
+                ) : !items ||
+                  items.filter(
+                    (process) =>
+                      process.status === ProcessStatus.PENDING_APPROVAL &&
+                      process.item?.status?.toLowerCase() === "lost" &&
+                      !process.item?.approved,
                   ).length === 0 ? (
                   // Enhanced empty state
                   <Card className="border border-dashed bg-gray-50/50">
@@ -515,9 +552,12 @@ const LostReportsTab = memo(function LostReportsTab({
                         <div className="p-4 bg-blue-50 rounded-full">
                           <Inbox className="h-12 w-12 text-blue-500" />
                         </div>
-                        <h3 className="font-semibold text-xl text-gray-900">No Lost Item Reports</h3>
+                        <h3 className="font-semibold text-xl text-gray-900">
+                          No Lost Item Reports
+                        </h3>
                         <p className="text-gray-500 text-sm max-w-sm">
-                          There are currently no lost item reports waiting for approval. New reports will appear here.
+                          There are currently no lost item reports waiting for
+                          approval. New reports will appear here.
                         </p>
                       </div>
                     </CardContent>
@@ -525,14 +565,15 @@ const LostReportsTab = memo(function LostReportsTab({
                 ) : (
                   // Enhanced item cards
                   items
-                    .filter(process => 
-                      process.status === ProcessStatus.PENDING_APPROVAL && 
-                      !process.item?.approved && 
-                      process.item?.status?.toLowerCase() === "lost"
+                    .filter(
+                      (process) =>
+                        process.status === ProcessStatus.PENDING_APPROVAL &&
+                        !process.item?.approved &&
+                        process.item?.status?.toLowerCase() === "lost",
                     )
                     .map((process) => (
-                      <Card 
-                        key={process.id} 
+                      <Card
+                        key={process.id}
                         className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
                         onClick={() => handleItemClick(process.item)}
                       >
@@ -577,9 +618,15 @@ const LostReportsTab = memo(function LostReportsTab({
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                       <span className="font-medium">
-                                        {process.item?.studentId?.startsWith('ADMIN') ? 'Reported by:' : 'Student ID:'}
+                                        {process.item?.studentId?.startsWith(
+                                          "ADMIN",
+                                        )
+                                          ? "Reported by:"
+                                          : "Student ID:"}
                                       </span>
-                                      <span>{process.item?.studentId || 'N/A'}</span>
+                                      <span>
+                                        {process.item?.studentId || "N/A"}
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
@@ -589,18 +636,33 @@ const LostReportsTab = memo(function LostReportsTab({
                                 >
                                   {process.item?.category}
                                 </Badge>
+                                <Badge
+                                  variant="secondary"
+                                  className="flex-shrink-0"
+                                >
+                                  <p className="text-sm">
+                                    {formatDatefns(process.updatedAt)} 
+                                  </p> 
+                                </Badge>
                               </div>
                               <div className="space-y-1.5">
                                 <p className="text-sm">
-                                  <strong>Location:</strong> {process.item?.location}
+                                  <strong>Location:</strong>{" "}
+                                  {process.item?.location}
                                 </p>
                                 <p className="text-sm">
-                                  <strong>Description:</strong> {process.item?.description}
+                                  <strong>Description:</strong>{" "}
+                                  {process.item?.description}
                                 </p>
-                                {process.item?.additionalDescriptions?.$values?.length > 0 && (
+                                {process.item?.additionalDescriptions?.$values
+                                  ?.length > 0 && (
                                   <div className="mt-2">
                                     <p className="text-sm text-muted-foreground">
-                                      +{process.item.additionalDescriptions.$values.length}{" "}
+                                      +
+                                      {
+                                        process.item.additionalDescriptions
+                                          .$values.length
+                                      }{" "}
                                       additional details
                                     </p>
                                   </div>
@@ -609,7 +671,10 @@ const LostReportsTab = memo(function LostReportsTab({
                             </div>
 
                             {/* Actions Section - Stop event propagation */}
-                            <div className="flex flex-col gap-2 justify-start min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className="flex flex-col gap-2 justify-start min-w-[140px]"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -623,7 +688,9 @@ const LostReportsTab = memo(function LostReportsTab({
                                 variant="default"
                                 size="sm"
                                 className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white shadow-sm transition-all duration-200"
-                                onClick={() => handleApproveClick(process.item?.id)}
+                                onClick={() =>
+                                  handleApproveClick(process.item?.id)
+                                }
                                 disabled={approvingItems.has(process.item?.id)}
                               >
                                 {approvingItems.has(process.item?.id) ? (
@@ -651,7 +718,9 @@ const LostReportsTab = memo(function LostReportsTab({
                                 variant="destructive"
                                 size="sm"
                                 className="w-full bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 transition-all duration-200"
-                                onClick={() => handleDeleteClick(process.item?.id)}
+                                onClick={() =>
+                                  handleDeleteClick(process.item?.id)
+                                }
                                 disabled={deletingItems.has(process.item?.id)}
                               >
                                 {deletingItems.has(process.item?.id) ? (
@@ -680,14 +749,20 @@ const LostReportsTab = memo(function LostReportsTab({
       </div>
 
       {/* Verification Dialog */}
-      <Dialog open={showVerificationDialog} onOpenChange={setShowVerificationDialog}>
+      <Dialog
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+      >
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-blue-700">
               Item Match Found for {selectedItemForVerification?.item?.name}
             </DialogTitle>
             <DialogDescription className="pt-2.5 text-gray-600 leading-relaxed">
-              This will notify the reporter that a matching item has been found in our storage. They will be instructed to visit the OHSO (Occupational Health Services Office) in the basement of the Admin Building to claim their item.
+              This will notify the reporter that a matching item has been found
+              in our storage. They will be instructed to visit the OHSO
+              (Occupational Health Services Office) in the basement of the Admin
+              Building to claim their item.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
@@ -713,9 +788,9 @@ const LostReportsTab = memo(function LostReportsTab({
                       },
                       body: JSON.stringify({
                         status: ProcessStatus.PENDING_RETRIEVAL,
-                        message: "Item is ready for pickup at OHSO"
+                        message: "Item is ready for pickup at OHSO",
                       }),
-                    }
+                    },
                   );
 
                   if (!response.ok) {
@@ -727,7 +802,7 @@ const LostReportsTab = memo(function LostReportsTab({
                   setSelectedItemForVerification(null);
 
                   // Update counts if needed
-                  if (typeof onUpdateCounts === 'function') {
+                  if (typeof onUpdateCounts === "function") {
                     onUpdateCounts();
                   }
                 } catch (error) {
@@ -750,17 +825,24 @@ const LostReportsTab = memo(function LostReportsTab({
             <DialogHeader>
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
-                  <DialogTitle className="text-xl font-semibold text-[#0052cc]">Item Details</DialogTitle>
+                  <DialogTitle className="text-xl font-semibold text-[#0052cc]">
+                    Item Details
+                  </DialogTitle>
                   <div className="flex items-center gap-2 text-sm text-gray-500">
                     <CalendarIcon className="h-4 w-4" />
-                    {selectedItemForDetails?.dateReported ? 
-                      format(new Date(selectedItemForDetails.dateReported), 'MMMM do, yyyy') 
-                      : 'Date not available'
-                    }
+                    {selectedItemForDetails?.dateReported
+                      ? format(
+                          new Date(selectedItemForDetails.dateReported),
+                          "MMMM do, yyyy",
+                        )
+                      : "Date not available"}
                   </div>
                 </div>
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 capitalize px-3 py-1.5">
-                  {selectedItemForDetails?.status || 'Lost'}
+                <Badge
+                  variant="secondary"
+                  className="bg-yellow-100 text-yellow-800 capitalize px-3 py-1.5"
+                >
+                  {selectedItemForDetails?.status || "Lost"}
                 </Badge>
               </div>
             </DialogHeader>
@@ -792,19 +874,33 @@ const LostReportsTab = memo(function LostReportsTab({
                   <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-x-12 gap-y-4">
                       <div className="space-y-1">
-                        <h4 className="text-sm font-medium text-gray-500">Item Name</h4>
-                        <p className="font-medium">{selectedItemForDetails.name}</p>
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Item Name
+                        </h4>
+                        <p className="font-medium">
+                          {selectedItemForDetails.name}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                        <p className="font-medium capitalize">{selectedItemForDetails.status || 'lost'}</p>
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Status
+                        </h4>
+                        <p className="font-medium capitalize">
+                          {selectedItemForDetails.status || "lost"}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-sm font-medium text-gray-500">Category</h4>
-                        <p className="font-medium">{selectedItemForDetails.category}</p>
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Category
+                        </h4>
+                        <p className="font-medium">
+                          {selectedItemForDetails.category}
+                        </p>
                       </div>
                       <div className="space-y-1">
-                        <h4 className="text-sm font-medium text-gray-500">Location</h4>
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Location
+                        </h4>
                         <p className="font-medium flex items-center gap-1.5">
                           <MapPinIcon className="h-4 w-4 text-gray-400" />
                           {selectedItemForDetails.location}
@@ -814,20 +910,33 @@ const LostReportsTab = memo(function LostReportsTab({
 
                     {/* Description */}
                     <div className="space-y-1">
-                      <h4 className="text-sm font-medium text-gray-500">Description</h4>
-                      <p className="text-gray-700">{selectedItemForDetails.description}</p>
+                      <h4 className="text-sm font-medium text-gray-500">
+                        Description
+                      </h4>
+                      <p className="text-gray-700">
+                        {selectedItemForDetails.description}
+                      </p>
                     </div>
 
                     {/* Additional Details if any */}
-                    {selectedItemForDetails?.additionalDescriptions?.length > 0 && (
+                    {selectedItemForDetails?.additionalDescriptions?.length >
+                      0 && (
                       <div className="space-y-2">
-                        <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Additional Details
+                        </h4>
                         <div className="space-y-2">
-                          {selectedItemForDetails.additionalDescriptions.map((desc, index) => (
-                            <p key={index} className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200">
-                              <strong>{desc.title}:</strong> {desc.description}
-                            </p>
-                          ))}
+                          {selectedItemForDetails.additionalDescriptions.map(
+                            (desc, index) => (
+                              <p
+                                key={index}
+                                className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200"
+                              >
+                                <strong>{desc.title}:</strong>{" "}
+                                {desc.description}
+                              </p>
+                            ),
+                          )}
                         </div>
                       </div>
                     )}
@@ -892,7 +1001,10 @@ const LostReportsTab = memo(function LostReportsTab({
         </DialogContent>
       </Dialog>
 
-      <Dialog open={showFoundItemsDialog} onOpenChange={setShowFoundItemsDialog}>
+      <Dialog
+        open={showFoundItemsDialog}
+        onOpenChange={setShowFoundItemsDialog}
+      >
         <DialogContent className="max-w-4xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold text-blue-700 flex items-center gap-2">
@@ -900,11 +1012,14 @@ const LostReportsTab = memo(function LostReportsTab({
               Select Matching Found Item
             </DialogTitle>
             <DialogDescription className="text-sm text-muted-foreground">
-              Please select the found item that matches with the lost item report.
+              Please select the found item that matches with the lost item
+              report.
             </DialogDescription>
             <div className="mt-4">
               <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                <h4 className="font-medium text-blue-800">Lost Item Details:</h4>
+                <h4 className="font-medium text-blue-800">
+                  Lost Item Details:
+                </h4>
                 <div className="mt-1 grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-blue-700">
                   <div>
                     <span className="font-medium">Category:</span>{" "}
@@ -942,7 +1057,7 @@ const LostReportsTab = memo(function LostReportsTab({
                     variant="ghost"
                     size="sm"
                     className="absolute right-2 top-2 h-6 w-6 p-0"
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => setSearchQuery("")}
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -961,8 +1076,8 @@ const LostReportsTab = memo(function LostReportsTab({
                   <SelectItem value="all">All Categories</SelectItem>
                   <SelectSeparator />
                   {mainCategories.map((category) => (
-                    <SelectItem 
-                      key={category} 
+                    <SelectItem
+                      key={category}
                       value={category.toLowerCase()}
                       className="capitalize"
                     >
@@ -975,29 +1090,26 @@ const LostReportsTab = memo(function LostReportsTab({
               {/* Date Filter */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button variant="outline" className="min-w-[200px] justify-start text-left font-normal">
+                  <Button
+                    variant="outline"
+                    className="min-w-[200px] justify-start text-left font-normal"
+                  >
                     <CalendarIcon className="mr-2 h-4 w-4" />
-                    {dateFilter === 'all' ? (
-                      "All Time"
-                    ) : dateFilter === 'custom' ? (
-                      dateRange.from ? (
-                        dateRange.to ? (
-                          `${format(dateRange.from, 'MMM d')} - ${format(dateRange.to, 'MMM d')}`
-                        ) : (
-                          `From ${format(dateRange.from, 'MMM d')}`
-                        )
-                      ) : (
-                        "Select dates"
-                      )
-                    ) : (
-                      {
-                        'today': 'Today',
-                        'yesterday': 'Yesterday',
-                        'last7days': 'Last 7 days',
-                        'last30days': 'Last 30 days',
-                        'thisMonth': 'This month',
-                      }[dateFilter]
-                    )}
+                    {dateFilter === "all"
+                      ? "All Time"
+                      : dateFilter === "custom"
+                        ? dateRange.from
+                          ? dateRange.to
+                            ? `${format(dateRange.from, "MMM d")} - ${format(dateRange.to, "MMM d")}`
+                            : `From ${format(dateRange.from, "MMM d")}`
+                          : "Select dates"
+                        : {
+                            today: "Today",
+                            yesterday: "Yesterday",
+                            last7days: "Last 7 days",
+                            last30days: "Last 30 days",
+                            thisMonth: "This month",
+                          }[dateFilter]}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -1006,66 +1118,76 @@ const LostReportsTab = memo(function LostReportsTab({
                       {/* Quick Filters */}
                       <div className="grid grid-cols-2 gap-2">
                         <Button
-                          variant={dateFilter === 'all' ? 'default' : 'outline'}
+                          variant={dateFilter === "all" ? "default" : "outline"}
                           size="sm"
                           className="justify-start text-left font-normal h-9"
                           onClick={() => {
-                            setDateFilter('all');
+                            setDateFilter("all");
                             setDateRange({ from: null, to: null });
                           }}
                         >
                           All Time
                         </Button>
                         <Button
-                          variant={dateFilter === 'today' ? 'default' : 'outline'}
+                          variant={
+                            dateFilter === "today" ? "default" : "outline"
+                          }
                           size="sm"
                           className="justify-start text-left font-normal h-9"
                           onClick={() => {
-                            setDateFilter('today');
+                            setDateFilter("today");
                             setDateRange({ from: null, to: null });
                           }}
                         >
                           Today
                         </Button>
                         <Button
-                          variant={dateFilter === 'yesterday' ? 'default' : 'outline'}
+                          variant={
+                            dateFilter === "yesterday" ? "default" : "outline"
+                          }
                           size="sm"
                           className="justify-start text-left font-normal h-9"
                           onClick={() => {
-                            setDateFilter('yesterday');
+                            setDateFilter("yesterday");
                             setDateRange({ from: null, to: null });
                           }}
                         >
                           Yesterday
                         </Button>
                         <Button
-                          variant={dateFilter === 'last7days' ? 'default' : 'outline'}
+                          variant={
+                            dateFilter === "last7days" ? "default" : "outline"
+                          }
                           size="sm"
                           className="justify-start text-left font-normal h-9"
                           onClick={() => {
-                            setDateFilter('last7days');
+                            setDateFilter("last7days");
                             setDateRange({ from: null, to: null });
                           }}
                         >
                           Last 7 days
                         </Button>
                         <Button
-                          variant={dateFilter === 'last30days' ? 'default' : 'outline'}
+                          variant={
+                            dateFilter === "last30days" ? "default" : "outline"
+                          }
                           size="sm"
                           className="justify-start text-left font-normal h-9"
                           onClick={() => {
-                            setDateFilter('last30days');
+                            setDateFilter("last30days");
                             setDateRange({ from: null, to: null });
                           }}
                         >
                           Last 30 days
                         </Button>
                         <Button
-                          variant={dateFilter === 'thisMonth' ? 'default' : 'outline'}
+                          variant={
+                            dateFilter === "thisMonth" ? "default" : "outline"
+                          }
                           size="sm"
                           className="justify-start text-left font-normal h-9"
                           onClick={() => {
-                            setDateFilter('thisMonth');
+                            setDateFilter("thisMonth");
                             setDateRange({ from: null, to: null });
                           }}
                         >
@@ -1079,7 +1201,9 @@ const LostReportsTab = memo(function LostReportsTab({
                       {/* Calendar */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">Custom Range</span>
+                          <span className="text-sm font-medium">
+                            Custom Range
+                          </span>
                           {dateRange.from && (
                             <Button
                               variant="ghost"
@@ -1087,7 +1211,7 @@ const LostReportsTab = memo(function LostReportsTab({
                               className="h-8 px-2"
                               onClick={() => {
                                 setDateRange({ from: null, to: null });
-                                setDateFilter('all');
+                                setDateFilter("all");
                               }}
                             >
                               <X className="h-4 w-4" />
@@ -1106,9 +1230,9 @@ const LostReportsTab = memo(function LostReportsTab({
                             onSelect={(range) => {
                               setDateRange(range || { from: null, to: null });
                               if (range?.from) {
-                                setDateFilter('custom');
+                                setDateFilter("custom");
                               } else {
-                                setDateFilter('all');
+                                setDateFilter("all");
                               }
                             }}
                             numberOfMonths={1}
@@ -1143,19 +1267,22 @@ const LostReportsTab = memo(function LostReportsTab({
             {sortedAndFilteredFoundItems.length > 0 && (
               <div className="text-sm text-gray-500 flex items-center gap-2 flex-wrap">
                 <span>
-                  Showing {sortedAndFilteredFoundItems.length} {sortedAndFilteredFoundItems.length === 1 ? 'item' : 'items'}
-                  {searchQuery && ' matching your search'}
+                  Showing {sortedAndFilteredFoundItems.length}{" "}
+                  {sortedAndFilteredFoundItems.length === 1 ? "item" : "items"}
+                  {searchQuery && " matching your search"}
                 </span>
                 <span className="text-gray-300">|</span>
                 <span className="text-gray-600">
-                  Sorted by: {
-                    sortOption === 'newest' ? 'Best Match' :
-                    sortOption === 'oldest' ? 'Oldest First' :
-                    sortOption === 'a-z' ? 'Name (A to Z)' :
-                    'Name (Z to A)'
-                  }
+                  Sorted by:{" "}
+                  {sortOption === "newest"
+                    ? "Best Match"
+                    : sortOption === "oldest"
+                      ? "Oldest First"
+                      : sortOption === "a-z"
+                        ? "Name (A to Z)"
+                        : "Name (Z to A)"}
                 </span>
-                {categoryFilter !== 'all' && (
+                {categoryFilter !== "all" && (
                   <>
                     <span className="text-gray-300">|</span>
                     <span className="text-gray-600">
@@ -1163,21 +1290,28 @@ const LostReportsTab = memo(function LostReportsTab({
                     </span>
                   </>
                 )}
-                {dateFilter !== 'all' && (
+                {dateFilter !== "all" && (
                   <>
                     <span className="text-gray-300">|</span>
                     <span className="text-gray-600">
-                      Date range: {
-                        dateFilter === 'today' ? 'Today' :
-                        dateFilter === '7days' ? 'Last 7 Days' :
-                        dateFilter === '30days' ? 'Last 30 Days' :
-                        dateFilter === 'this-month' ? 'This Month' :
-                        dateFilter === 'custom-date' ? 
-                          (customDate ? formatDate(customDate) : 'Custom Date') :
-                        dateFilter === 'custom-month' ?
-                          (selectedMonth ? format(selectedMonth, 'MMMM yyyy') : 'Select Month') :
-                        'All Time'
-                      }
+                      Date range:{" "}
+                      {dateFilter === "today"
+                        ? "Today"
+                        : dateFilter === "7days"
+                          ? "Last 7 Days"
+                          : dateFilter === "30days"
+                            ? "Last 30 Days"
+                            : dateFilter === "this-month"
+                              ? "This Month"
+                              : dateFilter === "custom-date"
+                                ? customDate
+                                  ? formatDate(customDate)
+                                  : "Custom Date"
+                                : dateFilter === "custom-month"
+                                  ? selectedMonth
+                                    ? format(selectedMonth, "MMMM yyyy")
+                                    : "Select Month"
+                                  : "All Time"}
                     </span>
                   </>
                 )}
@@ -1190,7 +1324,9 @@ const LostReportsTab = memo(function LostReportsTab({
               <div className="text-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
                 <p className="mt-2 text-sm text-gray-500">
-                  {isLoadingFoundItems ? 'Loading found items...' : 'Ranking items by similarity...'}
+                  {isLoadingFoundItems
+                    ? "Loading found items..."
+                    : "Ranking items by similarity..."}
                 </p>
               </div>
             </div>
@@ -1200,16 +1336,14 @@ const LostReportsTab = memo(function LostReportsTab({
                 <Package className="h-12 w-12 text-gray-400" />
               </div>
               <p className="mt-4 text-gray-600 font-medium">
-                {searchQuery 
-                  ? 'No items match your search'
-                  : 'No Found Items Available'
-                }
+                {searchQuery
+                  ? "No items match your search"
+                  : "No Found Items Available"}
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                {searchQuery 
-                  ? 'Try adjusting your search terms'
-                  : 'There are currently no approved found items in the system.'
-                }
+                {searchQuery
+                  ? "Try adjusting your search terms"
+                  : "There are currently no approved found items in the system."}
               </p>
             </div>
           ) : (
@@ -1219,22 +1353,27 @@ const LostReportsTab = memo(function LostReportsTab({
                   <div
                     key={foundItem.id}
                     className={`relative rounded-lg border transition-all duration-200 
-                      ${selectedFoundItem?.id === foundItem.id 
-                        ? 'border-blue-500 bg-blue-50/50 shadow-md transform scale-[1.01] z-10' 
-                        : 'border-gray-200 hover:border-blue-200 hover:bg-gray-50/50'
-                      } ${processingItems.has(foundItem.id) ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                      ${
+                        selectedFoundItem?.id === foundItem.id
+                          ? "border-blue-500 bg-blue-50/50 shadow-md transform scale-[1.01] z-10"
+                          : "border-gray-200 hover:border-blue-200 hover:bg-gray-50/50"
+                      } ${processingItems.has(foundItem.id) ? "opacity-70 cursor-not-allowed" : "cursor-pointer"}`}
                   >
                     {/* Add similarity score badge */}
                     <div className="absolute -top-2 -left-2 flex items-center gap-1.5">
                       {/* Match Rank Badge */}
-                     
+
                       {/* Similarity Score Badge */}
-                      <div className={cn(
-                        "px-2 py-0.5 rounded-full text-xs font-medium",
-                        foundItem.similarityScore >= 80 ? "bg-green-100 text-green-800" :
-                        foundItem.similarityScore >= 60 ? "bg-yellow-100 text-yellow-800" :
-                        "bg-gray-100 text-gray-800"
-                      )}>
+                      <div
+                        className={cn(
+                          "px-2 py-0.5 rounded-full text-xs font-medium",
+                          foundItem.similarityScore >= 80
+                            ? "bg-green-100 text-green-800"
+                            : foundItem.similarityScore >= 60
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-800",
+                        )}
+                      >
                         {foundItem.similarityScore}% Match
                       </div>
                     </div>
@@ -1244,21 +1383,25 @@ const LostReportsTab = memo(function LostReportsTab({
                         <CheckCircle className="h-4 w-4" />
                       </div>
                     )}
-                    
-                    <div 
+
+                    <div
                       className="p-4 relative"
                       onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         if (processingItems.has(foundItem.id)) return;
-                        
-                        setProcessingItems(prev => new Set([...prev, foundItem.id]));
+
+                        setProcessingItems(
+                          (prev) => new Set([...prev, foundItem.id]),
+                        );
                         setSelectedFoundItem(foundItem);
-                        
+
                         // Add a small delay to show loading state
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                        
-                        setProcessingItems(prev => {
+                        await new Promise((resolve) =>
+                          setTimeout(resolve, 300),
+                        );
+
+                        setProcessingItems((prev) => {
                           const next = new Set(prev);
                           next.delete(foundItem.id);
                           return next;
@@ -1269,16 +1412,20 @@ const LostReportsTab = memo(function LostReportsTab({
                         <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
                           <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-full shadow-sm border">
                             <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                            <span className="text-sm text-blue-600 font-medium">Processing...</span>
+                            <span className="text-sm text-blue-600 font-medium">
+                              Processing...
+                            </span>
                           </div>
                         </div>
                       )}
                       <div className="flex gap-6">
                         {/* Image Section */}
-                        <div className={`w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border transition-colors duration-200
-                          ${selectedFoundItem?.id === foundItem.id 
-                            ? 'border-blue-200 shadow-sm' 
-                            : 'border-gray-200'
+                        <div
+                          className={`w-32 h-32 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border transition-colors duration-200
+                          ${
+                            selectedFoundItem?.id === foundItem.id
+                              ? "border-blue-200 shadow-sm"
+                              : "border-gray-200"
                           }`}
                         >
                           {foundItem.item?.imageUrl ? (
@@ -1286,23 +1433,28 @@ const LostReportsTab = memo(function LostReportsTab({
                               src={foundItem.item.imageUrl}
                               alt={foundItem.item.name}
                               className={`w-full h-full object-cover transition-transform duration-200
-                                ${selectedFoundItem?.id === foundItem.id 
-                                  ? 'scale-105' 
-                                  : 'scale-100'
+                                ${
+                                  selectedFoundItem?.id === foundItem.id
+                                    ? "scale-105"
+                                    : "scale-100"
                                 }`}
                             />
                           ) : (
                             <div className="w-full h-full flex flex-col items-center justify-center">
-                              <Package className={`h-8 w-8 transition-colors duration-200
-                                ${selectedFoundItem?.id === foundItem.id 
-                                  ? 'text-blue-400' 
-                                  : 'text-gray-400'
+                              <Package
+                                className={`h-8 w-8 transition-colors duration-200
+                                ${
+                                  selectedFoundItem?.id === foundItem.id
+                                    ? "text-blue-400"
+                                    : "text-gray-400"
                                 }`}
                               />
-                              <span className={`text-xs mt-1 transition-colors duration-200
-                                ${selectedFoundItem?.id === foundItem.id 
-                                  ? 'text-blue-400' 
-                                  : 'text-gray-400'
+                              <span
+                                className={`text-xs mt-1 transition-colors duration-200
+                                ${
+                                  selectedFoundItem?.id === foundItem.id
+                                    ? "text-blue-400"
+                                    : "text-gray-400"
                                 }`}
                               >
                                 No Image
@@ -1315,10 +1467,12 @@ const LostReportsTab = memo(function LostReportsTab({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h4 className={`font-semibold text-lg transition-colors duration-200
-                                ${selectedFoundItem?.id === foundItem.id 
-                                  ? 'text-blue-700' 
-                                  : 'text-gray-900'
+                              <h4
+                                className={`font-semibold text-lg transition-colors duration-200
+                                ${
+                                  selectedFoundItem?.id === foundItem.id
+                                    ? "text-blue-700"
+                                    : "text-gray-900"
                                 }`}
                               >
                                 {foundItem.item?.name}
@@ -1330,24 +1484,29 @@ const LostReportsTab = memo(function LostReportsTab({
                                 </div>
                                 {foundItem.similarityScore > 0 && (
                                   <div className="text-sm">
-                                    <span className={cn(
-                                      "font-medium",
-                                      foundItem.similarityScore >= 80 ? "text-green-600" :
-                                      foundItem.similarityScore >= 60 ? "text-yellow-600" :
-                                      "text-gray-600"
-                                    )}>
+                                    <span
+                                      className={cn(
+                                        "font-medium",
+                                        foundItem.similarityScore >= 80
+                                          ? "text-green-600"
+                                          : foundItem.similarityScore >= 60
+                                            ? "text-yellow-600"
+                                            : "text-gray-600",
+                                      )}
+                                    >
                                       {foundItem.similarityScore}% Similarity
                                     </span>
                                   </div>
                                 )}
                               </div>
                             </div>
-                            <Badge 
-                              variant="secondary" 
+                            <Badge
+                              variant="secondary"
                               className={`transition-colors duration-200
-                                ${selectedFoundItem?.id === foundItem.id 
-                                  ? 'bg-blue-100 text-blue-800' 
-                                  : 'bg-green-100 text-green-800'
+                                ${
+                                  selectedFoundItem?.id === foundItem.id
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-green-100 text-green-800"
                                 }`}
                             >
                               Found Item
@@ -1356,34 +1515,60 @@ const LostReportsTab = memo(function LostReportsTab({
 
                           <div className="grid grid-cols-2 gap-y-2 gap-x-4 mt-3 text-sm">
                             <div>
-                              <span className="font-medium text-gray-700">Category:</span>{" "}
-                              <span className="text-gray-600">{capitalizeFirstLetter(foundItem.item?.category)}</span>
+                              <span className="font-medium text-gray-700">
+                                Category:
+                              </span>{" "}
+                              <span className="text-gray-600">
+                                {capitalizeFirstLetter(
+                                  foundItem.item?.category,
+                                )}
+                              </span>
                             </div>
                             <div>
-                              <span className="font-medium text-gray-700">Location:</span>{" "}
-                              <span className="text-gray-600">{foundItem.item?.location}</span>
+                              <span className="font-medium text-gray-700">
+                                Location:
+                              </span>{" "}
+                              <span className="text-gray-600">
+                                {foundItem.item?.location}
+                              </span>
                             </div>
                             <div>
-                              <span className="font-medium text-gray-700">Student ID:</span>{" "}
-                              <span className="text-gray-600">{foundItem.item?.studentId || 'N/A'}</span>
+                              <span className="font-medium text-gray-700">
+                                Student ID:
+                              </span>{" "}
+                              <span className="text-gray-600">
+                                {foundItem.item?.studentId || "N/A"}
+                              </span>
                             </div>
                             <div>
-                              <span className="font-medium text-gray-700">Status:</span>{" "}
-                              <span className="text-gray-600 capitalize">{foundItem.item?.status}</span>
+                              <span className="font-medium text-gray-700">
+                                Status:
+                              </span>{" "}
+                              <span className="text-gray-600 capitalize">
+                                {foundItem.item?.status}
+                              </span>
                             </div>
                           </div>
 
                           <div className="mt-3">
-                            <span className="font-medium text-gray-700 text-sm">Description:</span>
+                            <span className="font-medium text-gray-700 text-sm">
+                              Description:
+                            </span>
                             <p className="mt-1 text-sm text-gray-600 line-clamp-2">
                               {foundItem.item?.description}
                             </p>
                           </div>
 
-                          {foundItem.item?.additionalDescriptions?.$values?.length > 0 && (
+                          {foundItem.item?.additionalDescriptions?.$values
+                            ?.length > 0 && (
                             <div className="mt-2">
                               <span className="text-xs text-gray-500">
-                                +{foundItem.item.additionalDescriptions.$values.length} additional details
+                                +
+                                {
+                                  foundItem.item.additionalDescriptions.$values
+                                    .length
+                                }{" "}
+                                additional details
                               </span>
                             </div>
                           )}
@@ -1418,7 +1603,7 @@ const LostReportsTab = memo(function LostReportsTab({
                   Matching...
                 </>
               ) : (
-                'Confirm Match'
+                "Confirm Match"
               )}
             </Button>
           </DialogFooter>
