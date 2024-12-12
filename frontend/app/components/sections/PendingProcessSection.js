@@ -4,8 +4,8 @@ import React from "react";
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { X, Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter, Info, MapPin } from "lucide-react"
-import { useState, useEffect } from "react"
+import { X, Package, Eye, Clock, CheckCircle, Inbox, Loader2, XCircle, ExternalLink, MessageSquare, Trash, Filter, Info, MapPin, ChevronLeft, ChevronRight } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import FailedVerificationDialog from "../dialogs/FailedVerificationDialog";
@@ -138,16 +138,22 @@ const renderPickupCard = (process) => {
     }`}>
       <CardContent className="p-4">
         {/* Title and Status Badges */}
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <div className="flex items-center gap-2">
-            <h3 className="text-lg font-medium">{process.item?.name}</h3>
-            <Badge variant="secondary" className={`${
-              isLost ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-            }`}>
+        <div className="flex flex-wrap items-start sm:items-center gap-2 mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+            <h3 className="text-base sm:text-lg font-medium line-clamp-1">
+              {process.item?.name}
+            </h3>
+            <Badge variant="secondary" className={`
+              ${isLost ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}
+              whitespace-nowrap text-xs sm:text-sm
+            `}>
               {isLost ? 'Lost' : 'Found'}
             </Badge>
           </div>
-          <Badge variant="secondary" className="bg-orange-50 text-orange-700 ml-auto">
+          <Badge variant="secondary" className="
+            bg-orange-50 text-orange-700 ml-auto 
+            whitespace-nowrap text-xs sm:text-sm
+          ">
             Pending Retrieval
           </Badge>
         </div>
@@ -155,10 +161,12 @@ const renderPickupCard = (process) => {
         {/* Pickup Status Message */}
         <div className="bg-orange-50/50 rounded-lg p-3 mb-4">
           <div className="flex items-start gap-2">
-            <Package className="h-5 w-5 text-orange-500 mt-0.5" />
-            <div>
-              <p className="text-orange-800 font-medium">Waiting for item retrieval</p>
-              <p className="text-sm text-orange-600">
+            <Package className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-orange-800 font-medium text-sm sm:text-base">
+                Waiting for item retrieval
+              </p>
+              <p className="text-xs sm:text-sm text-orange-600 break-words">
                 Ready for pickup since {formatDate(process.updatedAt)}
               </p>
             </div>
@@ -167,38 +175,40 @@ const renderPickupCard = (process) => {
 
         {/* Item Details */}
         <div className="space-y-2 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Category:</span>
-            <span>{process.item?.category || '-'}</span>
+          <div className="flex items-start sm:items-center gap-2">
+            <span className="font-medium text-sm sm:text-base whitespace-nowrap">Category:</span>
+            <span className="text-sm sm:text-base break-words">{process.item?.category || '-'}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="font-medium">Location:</span>
-            <span>{process.item?.location}</span>
+          <div className="flex items-start sm:items-center gap-2">
+            <span className="font-medium text-sm sm:text-base whitespace-nowrap">Location:</span>
+            <span className="text-sm sm:text-base break-words">{process.item?.location}</span>
           </div>
         </div>
 
         {/* Action Button */}
-        <Button 
-          variant="outline" 
-          className="w-full"
-          onClick={() => onViewDetails(formatItemForDetails(process))}
-        >
-          <ExternalLink className="h-4 w-4 mr-2" />
-          View Details
-        </Button>
+        <div className="flex flex-row gap-2 w-full">
+          <Button 
+            variant="outline" 
+            className="flex-1 h-auto py-2 px-4 text-sm sm:text-base flex items-center justify-center gap-2 min-w-[120px]"
+            onClick={() => onViewDetails(formatItemForDetails(process))}
+          >
+            <ExternalLink className="h-4 w-4 flex-shrink-0" />
+            <span className="whitespace-nowrap">View Details</span>
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
 };
 
-// Update the renderActionButtons function to handle both single and multiple buttons
+// Update the renderActionButtons function for better responsiveness
 const renderActionButtons = (buttons) => {
   // If buttons is a single button (not wrapped in a Fragment)
   if (React.isValidElement(buttons)) {
     return (
-      <div className="grid grid-cols-2 gap-2 mt-4">
+      <div className="flex flex-row gap-2 mt-4 w-full">
         {React.cloneElement(buttons, {
-          className: `${buttons.props.className} h-10 px-4 text-sm font-medium`
+          className: `flex-1 h-auto py-2 px-4 text-sm sm:text-base flex items-center justify-center gap-2 min-w-[120px]`
         })}
       </div>
     );
@@ -206,10 +216,10 @@ const renderActionButtons = (buttons) => {
 
   // If buttons are multiple (wrapped in Fragment)
   return (
-    <div className="grid grid-cols-2 gap-2 mt-4">
+    <div className="flex flex-row gap-2 mt-4 w-full">
       {React.Children.map(buttons.props.children, (button) =>
         React.cloneElement(button, {
-          className: `h-10 px-4 text-sm font-medium`
+          className: `flex-1 h-auto py-2 px-4 text-sm sm:text-base flex items-center justify-center gap-2 min-w-[120px]`
         })
       )}
     </div>
@@ -231,11 +241,45 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [showFailedDialog, setShowFailedDialog] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tabsRef = useRef(null);
 
   // Update localProcesses when pendingProcesses changes
   useEffect(() => {
     setLocalProcesses(pendingProcesses);
   }, [pendingProcesses]);
+
+  useEffect(() => {
+    const tabsElement = tabsRef.current;
+    if (tabsElement) {
+      const checkScroll = () => {
+        const canScrollLeftNow = tabsElement.scrollLeft > 0;
+        const canScrollRightNow = 
+          tabsElement.scrollLeft < (tabsElement.scrollWidth - tabsElement.clientWidth);
+        
+        setCanScrollLeft(canScrollLeftNow);
+        setCanScrollRight(canScrollRightNow);
+      };
+
+      checkScroll();
+      tabsElement.addEventListener('scroll', checkScroll);
+      window.addEventListener('resize', checkScroll);
+
+      return () => {
+        tabsElement.removeEventListener('scroll', checkScroll);
+        window.removeEventListener('resize', checkScroll);
+      };
+    }
+  }, []);
+
+  const scrollTabs = (direction) => {
+    const tabsElement = tabsRef.current;
+    if (tabsElement) {
+      const scrollAmount = direction === 'left' ? -200 : 200;
+      tabsElement.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const handleAnswerQuestions = async (process) => {
     try {
@@ -1052,24 +1096,42 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     'no_show'              // No Show
   ];
 
+  // Add this helper function for badge styles
+  const getBadgeStyles = (status) => {
+    switch (status) {
+      case 'pending_retrieval':
+        return 'bg-red-500 text-white group-hover:bg-red-600';
+      case 'claim_request':
+        return 'bg-blue-500 text-white group-hover:bg-blue-600';
+      case 'pending_approval':
+        return 'bg-[#FFD43B] text-[#2E3F65] group-hover:bg-[#FFB800]';
+      case 'approved':
+        return 'bg-emerald-500 text-white group-hover:bg-emerald-600';
+      default:
+        return 'bg-blue-500 text-white group-hover:bg-blue-600';
+    }
+  };
+
   return (
-    <div className="max-w-full mx-auto space-y-6">
+    <div className="max-w-full mx-auto space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm">
-        <div className="flex items-center justify-between">
+      <div className="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-xl font-semibold text-[#0052cc]">Pending Processes</h2>
             <p className="text-gray-600 mt-1">Track the status of your reported items</p>
           </div>
-          <div className="flex items-center gap-4">
+          
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
             {/* Type Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="h-4 w-4 text-gray-500 hidden sm:block" />
               <Select
                 value={typeFilter}
                 onValueChange={setTypeFilter}
               >
-                <SelectTrigger className="w-[150px]">
+                <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1079,14 +1141,15 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                 </SelectContent>
               </Select>
             </div>
+            
             {/* Status Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-gray-500" />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Filter className="h-4 w-4 text-gray-500 hidden sm:block" />
               <Select
                 value={statusFilter}
                 onValueChange={setStatusFilter}
               >
-                <SelectTrigger className="w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filter by status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1102,150 +1165,168 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         </div>
       </div>
 
-      {/* Process Cards */}
-      {!filteredProcesses || filteredProcesses.length === 0 ? (
-        <div className="col-span-full">
-          <Card className="border-0 shadow-sm bg-white">
-            <CardContent className="p-8 text-center">
-              <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                <Inbox className="h-8 w-8 text-gray-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">No Pending Processes</h3>
-              <p className="text-gray-500 max-w-sm mx-auto">
-                You don't have any pending processes at the moment. Your reported items and their status updates will appear here.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      ) : (
-        <Tabs defaultValue="pending_retrieval" className="w-full">
-          <div className="bg-[#2E3F65] rounded-full shadow-lg h-14">
-            <TabsList className="flex w-full bg-transparent h-full px-1 justify-between overflow-x-auto">
-              {sectionOrder.map(status => {
-                const count = groupedProcesses[status]?.length || 0;
-                return (
-                  <TabsTrigger
-                    key={status}
-                    value={status}
-                    className={`
-                      flex-shrink-0
-                      px-4 py-2 rounded-full
-                      data-[state=active]:bg-[#FFD43B]
-                      data-[state=active]:text-[#2E3F65]
-                      data-[state=active]:shadow-sm
-                      data-[state=active]:scale-95
-                      data-[state=active]:hover:bg-[#F5B800]
-                      text-white/90
-                      transition-all duration-200
-                      hover:bg-white
-                      hover:text-[#003D99]
-                      group
-                      text-xs sm:text-sm
-                      whitespace-nowrap
-                      mx-0.5
-                    `}
-                  >
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span className="font-medium group-hover:text-inherit">
-                        {getSectionTitle(status)}
-                      </span>
-                      <Badge 
-                        variant="secondary" 
-                        className={`
-                          px-1.5 py-0.5 rounded-full text-xs font-medium
-                          ${status === 'pending_retrieval' 
-                            ? 'bg-red-500 text-white group-hover:bg-red-600'
-                            : status === 'claim_request'
-                            ? 'bg-blue-500 text-white group-hover:bg-blue-600'
-                            : status === 'pending_approval'
-                            ? 'bg-[#FFD43B] text-[#2E3F65] group-hover:bg-[#FFB800]'
-                            : status === 'approved'
-                            ? 'bg-emerald-500 text-white group-hover:bg-emerald-600'
-                            : 'bg-blue-500 text-white group-hover:bg-blue-600'
-                          }
-                          transition-colors duration-200
-                        `}
-                      >
-                        {count}
-                      </Badge>
-                    </div>
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
-          </div>
+      {/* Tabs Section */}
+      <Tabs defaultValue="pending_retrieval" className="w-full">
+        <div className="bg-[#2E3F65] rounded-2xl shadow-lg overflow-hidden relative group">
+          {/* Scroll Indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: canScrollRight ? 1 : 0,
+            }}
+            transition={{ duration: 0.3 }}
+            className="absolute right-14 top-1/2 -translate-y-1/2 z-10 pointer-events-none"
+          >
+            <motion.div
+              animate={{ x: [0, 10, 0] }}
+              transition={{ 
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <ChevronRight className="h-5 w-5 text-white/60" />
+            </motion.div>
+          </motion.div>
 
-          {sectionOrder.map(status => {
-            const processes = groupedProcesses[status] || [];
-            return (
-              <TabsContent 
-                key={status} 
-                value={status} 
-                className="mt-8 focus-visible:outline-none"
-              >
-                <motion.div
-                  variants={containerVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6"
+          {/* Tabs List */}
+          <TabsList 
+            ref={tabsRef}
+            className="
+              flex w-full bg-transparent p-3 justify-start overflow-x-auto 
+              scrollbar-none flex-nowrap gap-2 min-h-[70px] relative
+              scroll-smooth transition-all duration-300
+            "
+          >
+            {sectionOrder.map(status => {
+              const count = groupedProcesses[status]?.length || 0;
+              return (
+                <TabsTrigger
+                  key={status}
+                  value={status}
+                  className={`
+                    flex-none
+                    px-4 py-2.5 
+                    rounded-xl
+                    data-[state=active]:bg-[#FFD43B]
+                    data-[state=active]:text-[#2E3F65]
+                    data-[state=active]:shadow-sm
+                    data-[state=active]:scale-95
+                    data-[state=active]:hover:bg-[#F5B800]
+                    text-white/90
+                    transition-all duration-200
+                    hover:bg-white/10
+                    hover:text-[#FFD43B]
+                    group
+                    text-sm
+                    min-w-[160px]
+                    h-full
+                  `}
                 >
-                  {processes.length === 0 ? (
-                    <motion.div
-                      variants={itemVariants}
-                      className="col-span-full"
+                  <div className="flex items-center justify-center gap-3 whitespace-nowrap">
+                    {/* Status Icons */}
+                    {status === 'pending_retrieval' && <Clock className="h-4 w-4 flex-shrink-0" />}
+                    {status === 'claim_request' && <MessageSquare className="h-4 w-4 flex-shrink-0" />}
+                    {status === 'pending_approval' && <Clock className="h-4 w-4 flex-shrink-0" />}
+                    {status === 'approved' && <CheckCircle className="h-4 w-4 flex-shrink-0" />}
+                    {status === 'handed_over' && <Package className="h-4 w-4 flex-shrink-0" />}
+                    {status === 'no_show' && <XCircle className="h-4 w-4 flex-shrink-0" />}
+                    
+                    <span className="font-medium">
+                      {getSectionTitle(status)}
+                    </span>
+                    <Badge 
+                      variant="secondary" 
+                      className={`
+                        px-2 py-0.5 
+                        rounded-full 
+                        text-xs 
+                        font-medium
+                        flex-shrink-0
+                        ${getBadgeStyles(status)}
+                        transition-colors duration-200
+                      `}
                     >
-                      <Card className="border-0 shadow-sm bg-white">
-                        <CardContent className="p-8 text-center">
-                          <div className="bg-gray-50 rounded-full p-4 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
-                            <Inbox className="h-8 w-8 text-gray-400" />
-                          </div>
-                          <h3 className="text-lg font-semibold text-gray-700 mb-2">No Items</h3>
-                          <p className="text-gray-500 max-w-sm mx-auto">
-                            There are no items with {getSectionTitle(status).toLowerCase()} status.
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </motion.div>
-                  ) : (
-                    <AnimatePresence mode="popLayout">
-                      {processes
-                        .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-                        .map((process) => (
-                          <motion.div
-                            key={process.id}
-                            variants={itemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            exit="exit"
-                            layout
-                            layoutId={process.id}
-                            className="h-full"
-                            style={{
-                              transformOrigin: "center center",
-                              position: "relative"
-                            }}
-                            whileHover={{ 
-                              scale: 1.02,
-                              transition: { 
-                                duration: 0.2,
-                                ease: "easeOut"
-                              }
-                            }}
-                          >
-                            {status === 'pending_retrieval' 
-                              ? renderPickupCard(process)
-                              : renderProcessCard(process)
+                      {count}
+                    </Badge>
+                  </div>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+
+        {/* Tab Content */}
+        {sectionOrder.map(status => {
+          const processes = groupedProcesses[status] || [];
+          return (
+            <TabsContent 
+              key={status} 
+              value={status} 
+              className="mt-6 sm:mt-8 focus-visible:outline-none"
+            >
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6"
+              >
+                {processes.length === 0 ? (
+                  <motion.div
+                    variants={itemVariants}
+                    className="col-span-full"
+                  >
+                    <Card className="border-0 shadow-sm bg-white rounded-xl">
+                      <CardContent className="p-6 sm:p-8 text-center">
+                        <div className="bg-gray-50 rounded-full p-4 w-14 sm:w-16 h-14 sm:h-16 mx-auto mb-4 flex items-center justify-center">
+                          <Inbox className="h-6 sm:h-8 w-6 sm:w-8 text-gray-400" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-700 mb-2">No Items</h3>
+                        <p className="text-gray-500 max-w-sm mx-auto text-sm sm:text-base">
+                          There are no items with {getSectionTitle(status).toLowerCase()} status.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ) : (
+                  <AnimatePresence mode="popLayout">
+                    {processes
+                      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+                      .map((process) => (
+                        <motion.div
+                          key={process.id}
+                          variants={itemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          layout
+                          layoutId={process.id}
+                          className="h-full"
+                          style={{
+                            transformOrigin: "center center",
+                            position: "relative"
+                          }}
+                          whileHover={{ 
+                            scale: 1.02,
+                            transition: { 
+                              duration: 0.2,
+                              ease: "easeOut"
                             }
-                          </motion.div>
-                        ))}
-                    </AnimatePresence>
-                  )}
-                </motion.div>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
-      )}
+                          }}
+                        >
+                          {status === 'pending_retrieval' 
+                            ? renderPickupCard(process)
+                            : renderProcessCard(process)
+                          }
+                        </motion.div>
+                      ))}
+                  </AnimatePresence>
+                )}
+              </motion.div>
+            </TabsContent>
+          );
+        })}
+      </Tabs>
 
       {/* Answer Questions Dialog */}
       <Dialog open={showAnswerDialog} onOpenChange={setShowAnswerDialog}>
@@ -1322,6 +1403,24 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         isOpen={showFailedDialog}
         onClose={() => setShowFailedDialog(false)}
       />
+
+      {/* Add these styles to your global styles or in a style tag */}
+      <style jsx global>{`
+        .scrollbar-none::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-none {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+          scroll-behavior: smooth;
+        }
+        
+        @media (hover: none) {
+          .scroll-hint {
+            opacity: 1 !important;
+          }
+        }
+      `}</style>
     </div>
   );
 } 
