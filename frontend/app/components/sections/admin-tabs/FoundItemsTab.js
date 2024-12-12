@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import {
   ClipboardList,
   CheckCircle,
@@ -19,28 +19,35 @@ import {
   CalendarIcon,
   MapPinIcon,
   Search,
-  ArrowUpDown
-} from "lucide-react"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog"
-import ReportSection from "../ReportSection"
-import { useState, useEffect, memo, useRef, useCallback } from "react"
-import { Skeleton } from "@/components/ui/skeleton"
-import { ProcessStatus } from '@/lib/constants';
-import { useAuth } from "@/lib/AuthContext"
-import { API_BASE_URL } from "@/lib/api-config"
-import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode';
-import { format } from "date-fns";
-import { cn } from "@/lib/utils"
-import { ScrollArea } from "@/components/ui/scroll-area"
+  ArrowUpDown,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import ReportSection from "../ReportSection";
+import { useState, useEffect, memo, useRef, useCallback } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ProcessStatus } from "@/lib/constants";
+import { useAuth } from "@/lib/AuthContext";
+import { API_BASE_URL } from "@/lib/api-config";
+import { Html5QrcodeScanner, Html5Qrcode } from "html5-qrcode";
+import { format, formatDistanceToNow } from "date-fns";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import { toast } from "sonner"
-import { rankItemSimilarity } from "@/lib/gemini"
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { rankItemSimilarity } from "@/lib/gemini";
 
 const FoundItemsTab = memo(function FoundItemsTab({
   items = [],
@@ -48,7 +55,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
   onDelete,
   onViewDetails,
   onApprove,
-  onUpdateCounts
+  onUpdateCounts,
 }) {
   const { user } = useAuth();
   const [approvingItems, setApprovingItems] = useState(new Set());
@@ -73,36 +80,38 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [showMatchDialog, setShowMatchDialog] = useState(false);
   const [selectedItemForMatching, setSelectedItemForMatching] = useState(null);
   const [isMatchingItem, setIsMatchingItem] = useState(false);
-  const [matchSearchQuery, setMatchSearchQuery] = useState('');
-  const [matchCategoryFilter, setMatchCategoryFilter] = useState('all');
-  const [matchDateFilter, setMatchDateFilter] = useState('all');
-  const [matchSortOption, setMatchSortOption] = useState('bestMatch');
+  const [matchSearchQuery, setMatchSearchQuery] = useState("");
+  const [matchCategoryFilter, setMatchCategoryFilter] = useState("all");
+  const [matchDateFilter, setMatchDateFilter] = useState("all");
+  const [matchSortOption, setMatchSortOption] = useState("bestMatch");
   const [selectedFoundItem, setSelectedFoundItem] = useState(null);
 
   useEffect(() => {
-    console.log('Raw items received:', items);
-    console.log('All items state:', allItems);
+    console.log("Raw items received:", items);
+    console.log("All items state:", allItems);
   }, [items, allItems]);
 
   useEffect(() => {
-    console.log('Items received in FoundItemsTab:', items);
+    console.log("Items received in FoundItemsTab:", items);
     if (items && items.$values) {
       setAllItems(items.$values);
     } else if (Array.isArray(items)) {
       setAllItems(items);
     }
   }, [items]);
-  
+
   useEffect(() => {
     const updateCount = () => {
-      const count = allItems.filter(process => {
-        console.log('Checking process for count:', process);
-        return process.status === ProcessStatus.PENDING_APPROVAL && 
-               process.item?.status?.toLowerCase() === "found" && 
-               !process.item?.approved;
+      const count = allItems.filter((process) => {
+        console.log("Checking process for count:", process);
+        return (
+          process.status === ProcessStatus.PENDING_APPROVAL &&
+          process.item?.status?.toLowerCase() === "found" &&
+          !process.item?.approved
+        );
       }).length;
-      
-      console.log('Found items count:', count);
+
+      console.log("Found items count:", count);
       setPendingFoundApprovalCount(count);
     };
 
@@ -113,19 +122,20 @@ const FoundItemsTab = memo(function FoundItemsTab({
     try {
       setIsLoadingLostItems(true);
       const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-      if (!response.ok) throw new Error('Failed to fetch lost items');
+      if (!response.ok) throw new Error("Failed to fetch lost items");
       const data = await response.json();
 
       // Filter only lost items
-      const lostItems = data.$values.filter(process => 
-        process.item?.status?.toLowerCase() === 'lost' && 
-        process.item?.approved == true
+      const lostItems = data.$values.filter(
+        (process) =>
+          process.item?.status?.toLowerCase() === "lost" &&
+          process.item?.approved == true,
       );
 
       setLostItems(lostItems);
     } catch (error) {
-      console.error('Error fetching lost items:', error);
-      toast.error('Failed to load lost items');
+      console.error("Error fetching lost items:", error);
+      toast.error("Failed to load lost items");
     } finally {
       setIsLoadingLostItems(false);
     }
@@ -135,10 +145,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
     fetchLostItems();
   }, []);
 
-
   const handleMatchWithLostClick = async (foundProcess) => {
     if (!foundProcess?.item) {
-      toast.error('Invalid found item data');
+      toast.error("Invalid found item data");
       return;
     }
 
@@ -149,24 +158,28 @@ const FoundItemsTab = memo(function FoundItemsTab({
     try {
       // Fetch all lost items
       const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-      if (!response.ok) throw new Error('Failed to fetch lost items');
+      if (!response.ok) throw new Error("Failed to fetch lost items");
       const data = await response.json();
-      
+
       // Filter for lost items only
-      let lostItems = data.$values?.filter(process => 
-        process.item?.status?.toLowerCase() === 'lost' &&
-        process.status === ProcessStatus.APPROVED
-      ) || [];
+      let lostItems =
+        data.$values?.filter(
+          (process) =>
+            process.item?.status?.toLowerCase() === "lost" &&
+            process.status === ProcessStatus.APPROVED,
+        ) || [];
 
       // Get similarity rankings
-      const rankedItems = await rankItemSimilarity(foundProcess.item, lostItems);
+      const rankedItems = await rankItemSimilarity(
+        foundProcess.item,
+        lostItems,
+      );
       setLostItems(rankedItems);
       setSelectedItemForMatching(foundProcess);
       setShowMatchDialog(true);
-
     } catch (error) {
-      console.error('Error fetching lost items:', error);
-      toast.error('Failed to fetch lost items');
+      console.error("Error fetching lost items:", error);
+      toast.error("Failed to fetch lost items");
     } finally {
       setIsLoadingLostItems(false);
     }
@@ -177,17 +190,18 @@ const FoundItemsTab = memo(function FoundItemsTab({
       setApprovingItems((prev) => new Set(prev).add(itemId));
       await onApprove(itemId);
       // Update count after successful approval
-      setAllItems(prevItems => {
-        const newItems = prevItems.map(item => 
-          item.item?.id === itemId 
+      setAllItems((prevItems) => {
+        const newItems = prevItems.map((item) =>
+          item.item?.id === itemId
             ? { ...item, item: { ...item.item, approved: true } }
-            : item
+            : item,
         );
         // Update count after state update
-        const newCount = newItems.filter(process => 
-          process.status === "pending_approval" && 
-          process.item?.status?.toLowerCase() === "found" && 
-          !process.item?.approved
+        const newCount = newItems.filter(
+          (process) =>
+            process.status === "pending_approval" &&
+            process.item?.status?.toLowerCase() === "found" &&
+            !process.item?.approved,
         ).length;
         setPendingFoundApprovalCount(newCount);
         return newItems;
@@ -203,22 +217,23 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
   const handleDeleteClick = async (itemId) => {
     try {
-      setDeletingItems(prev => new Set(prev).add(itemId));
+      setDeletingItems((prev) => new Set(prev).add(itemId));
       await onDelete(itemId);
       // Update local state after successful deletion
-      setAllItems(prevItems => {
-        const newItems = prevItems.filter(item => item.item?.id !== itemId);
+      setAllItems((prevItems) => {
+        const newItems = prevItems.filter((item) => item.item?.id !== itemId);
         // Update count after state update
-        const newCount = newItems.filter(process => 
-          process.status === "pending_approval" && 
-          process.item?.status?.toLowerCase() === "found" && 
-          !process.item?.approved
+        const newCount = newItems.filter(
+          (process) =>
+            process.status === "pending_approval" &&
+            process.item?.status?.toLowerCase() === "found" &&
+            !process.item?.approved,
         ).length;
         setPendingFoundApprovalCount(newCount);
         return newItems;
       });
     } finally {
-      setDeletingItems(prev => {
+      setDeletingItems((prev) => {
         const next = new Set(prev);
         next.delete(itemId);
         return next;
@@ -227,42 +242,46 @@ const FoundItemsTab = memo(function FoundItemsTab({
   };
 
   const processQRFile = async (file) => {
-    const tempDiv = document.createElement('div');
-    tempDiv.id = 'qr-reader-temp';
-    tempDiv.style.display = 'none';
+    const tempDiv = document.createElement("div");
+    tempDiv.id = "qr-reader-temp";
+    tempDiv.style.display = "none";
     document.body.appendChild(tempDiv);
 
     try {
       // Wait for the element to be in the DOM
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
       const html5QrCode = new Html5Qrcode("qr-reader-temp");
-      
+
       try {
         const scanResult = await html5QrCode.scanFileV2(file, {
           experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          }
+            useBarCodeDetectorIfSupported: true,
+          },
         });
-        
+
         if (scanResult && scanResult.decodedText) {
           try {
             const parsedData = JSON.parse(scanResult.decodedText);
             if (parsedData && parsedData.id) {
               // Update to use process ID endpoint
-              const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+              const response = await fetch(
+                `${API_BASE_URL}/api/Item/pending/all`,
+              );
               if (!response.ok) {
-                throw new Error('Failed to fetch process data');
+                throw new Error("Failed to fetch process data");
               }
               const processesData = await response.json();
-              
+
               // Find the specific process using the ID from QR code
-              const processData = processesData.$values.find(p => p.id === parsedData.id);
-              
+              const processData = processesData.$values.find(
+                (p) => p.id === parsedData.id,
+              );
+
               if (!processData) {
-                throw new Error('Process not found');
+                throw new Error("Process not found");
               }
-              
+
               // Set the scanned data with process and item details
               setScannedData({
                 id: processData.item?.id,
@@ -272,24 +291,25 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 category: processData.item?.category,
                 studentId: processData.item?.studentId,
                 imageUrl: processData.item?.imageUrl,
-                additionalDescriptions: processData.item?.additionalDescriptions,
-                processId: processData.id // Store the process ID as well
+                additionalDescriptions:
+                  processData.item?.additionalDescriptions,
+                processId: processData.id, // Store the process ID as well
               });
-              
+
               setShowScannerModal(false);
               setShowScannedDataModal(true);
             }
           } catch (error) {
-            console.error('Error parsing QR data:', error);
-            alert('Invalid QR code format');
+            console.error("Error parsing QR data:", error);
+            alert("Invalid QR code format");
           }
         }
       } finally {
         await html5QrCode.clear();
       }
     } catch (error) {
-      console.error('Error processing QR file:', error);
-      alert('Could not read QR code from this image');
+      console.error("Error processing QR file:", error);
+      alert("Could not read QR code from this image");
     } finally {
       // Always remove the temp element
       if (tempDiv && tempDiv.parentNode) {
@@ -301,11 +321,11 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const handleReportSubmit = async (data) => {
     try {
       setShowReportDialog(false);
-      if (typeof onUpdateCounts === 'function') {
+      if (typeof onUpdateCounts === "function") {
         onUpdateCounts();
       }
     } catch (error) {
-      console.error('Error submitting report:', error);
+      console.error("Error submitting report:", error);
     }
   };
 
@@ -317,33 +337,30 @@ const FoundItemsTab = memo(function FoundItemsTab({
       if (showScannerModal) {
         try {
           initializationTimeout = setTimeout(() => {
-            const element = document.getElementById('qr-reader');
+            const element = document.getElementById("qr-reader");
             if (!element) {
-              console.error('QR reader element not found');
+              console.error("QR reader element not found");
               return;
             }
 
-            scanner = new Html5QrcodeScanner(
-              "qr-reader",
-              { 
-                fps: 10,
-                qrbox: { width: 250, height: 250 },
-                aspectRatio: 1.0,
-                showTorchButtonIfSupported: true,
-                rememberLastUsedCamera: true,
-                supportedScanTypes: [0],
-                formatsToSupport: [ "QR_CODE" ],
-                videoConstraints: {
-                  facingMode: { ideal: "environment" },
-                  width: { min: 320, ideal: 1280, max: 1920 },
-                  height: { min: 240, ideal: 720, max: 1080 }
-                },
-                experimentalFeatures: {
-                  useBarCodeDetectorIfSupported: false
-                },
-                verbose: false
-              }
-            );
+            scanner = new Html5QrcodeScanner("qr-reader", {
+              fps: 10,
+              qrbox: { width: 250, height: 250 },
+              aspectRatio: 1.0,
+              showTorchButtonIfSupported: true,
+              rememberLastUsedCamera: true,
+              supportedScanTypes: [0],
+              formatsToSupport: ["QR_CODE"],
+              videoConstraints: {
+                facingMode: { ideal: "environment" },
+                width: { min: 320, ideal: 1280, max: 1920 },
+                height: { min: 240, ideal: 720, max: 1080 },
+              },
+              experimentalFeatures: {
+                useBarCodeDetectorIfSupported: false,
+              },
+              verbose: false,
+            });
 
             scanner.render(
               async (decodedText) => {
@@ -351,19 +368,23 @@ const FoundItemsTab = memo(function FoundItemsTab({
                   const parsedData = JSON.parse(decodedText);
                   if (parsedData && parsedData.id) {
                     // Update to use the correct endpoint for pending processes
-                    const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+                    const response = await fetch(
+                      `${API_BASE_URL}/api/Item/pending/all`,
+                    );
                     if (!response.ok) {
-                      throw new Error('Failed to fetch process data');
+                      throw new Error("Failed to fetch process data");
                     }
                     const processesData = await response.json();
-                    
+
                     // Find the specific process using the ID from QR code
-                    const processData = processesData.$values.find(p => p.id === parsedData.id);
-                    
+                    const processData = processesData.$values.find(
+                      (p) => p.id === parsedData.id,
+                    );
+
                     if (!processData) {
-                      throw new Error('Process not found');
+                      throw new Error("Process not found");
                     }
-                    
+
                     // Set the scanned data with process and item details
                     setScannedData({
                       id: processData.item?.id,
@@ -373,22 +394,26 @@ const FoundItemsTab = memo(function FoundItemsTab({
                       category: processData.item?.category,
                       studentId: processData.item?.studentId,
                       imageUrl: processData.item?.imageUrl,
-                      additionalDescriptions: processData.item?.additionalDescriptions,
-                      processId: processData.id // Store the process ID as well
+                      additionalDescriptions:
+                        processData.item?.additionalDescriptions,
+                      processId: processData.id, // Store the process ID as well
                     });
-                    
+
                     setShowScannerModal(false);
                     setShowScannedDataModal(true);
                   }
                 } catch (error) {
-                  console.error('Error processing QR data:', error);
+                  console.error("Error processing QR data:", error);
                 }
               },
               (error) => {
-                if (error?.message && !error.message.includes("NotFoundException")) {
-                  console.log('QR scan error:', error);
+                if (
+                  error?.message &&
+                  !error.message.includes("NotFoundException")
+                ) {
+                  console.log("QR scan error:", error);
                 }
-              }
+              },
             );
           }, 100);
         } catch (err) {
@@ -406,12 +431,12 @@ const FoundItemsTab = memo(function FoundItemsTab({
       if (scanner) {
         try {
           scanner.clear();
-          const element = document.getElementById('qr-reader');
+          const element = document.getElementById("qr-reader");
           if (element) {
-            element.innerHTML = '';
+            element.innerHTML = "";
           }
         } catch (error) {
-          console.error('Error clearing scanner:', error);
+          console.error("Error clearing scanner:", error);
         }
       }
     };
@@ -422,13 +447,21 @@ const FoundItemsTab = memo(function FoundItemsTab({
     setShowDetailsDialog(true);
   };
 
+const formatDatefns = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const relativeTime = formatDistanceToNow(date, { addSuffix: true });
+    return relativeTime.charAt(0).toUpperCase() + relativeTime.slice(1);
+
+};
+
   const filterAndSortItems = (items) => {
     if (!items) return [];
-    
+
     // First apply search filter
-    let filteredItems = items.filter(process => {
+    let filteredItems = items.filter((process) => {
       if (!process?.item) return false;
-      
+
       const searchLower = matchSearchQuery.toLowerCase();
       return (
         !matchSearchQuery ||
@@ -440,14 +473,16 @@ const FoundItemsTab = memo(function FoundItemsTab({
     });
 
     // Apply category filter
-    if (matchCategoryFilter !== 'all') {
-      filteredItems = filteredItems.filter(process =>
-        process.item?.category?.toLowerCase() === matchCategoryFilter.toLowerCase()
+    if (matchCategoryFilter !== "all") {
+      filteredItems = filteredItems.filter(
+        (process) =>
+          process.item?.category?.toLowerCase() ===
+          matchCategoryFilter.toLowerCase(),
       );
     }
 
     // Apply date filter
-    filteredItems = filteredItems.filter(process => {
+    filteredItems = filteredItems.filter((process) => {
       if (!process.item?.dateReported) return false;
       const itemDate = new Date(process.item.dateReported);
       const today = new Date();
@@ -455,11 +490,11 @@ const FoundItemsTab = memo(function FoundItemsTab({
       const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
 
       switch (matchDateFilter) {
-        case 'today':
+        case "today":
           return itemDate.toDateString() === today.toDateString();
-        case 'week':
+        case "week":
           return itemDate >= weekAgo;
-        case 'month':
+        case "month":
           return itemDate >= monthAgo;
         default:
           return true;
@@ -468,17 +503,21 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
     // Apply sorting
     switch (matchSortOption) {
-      case 'newest':
-        return filteredItems.sort((a, b) => 
-          new Date(b.item?.dateReported) - new Date(a.item?.dateReported)
+      case "newest":
+        return filteredItems.sort(
+          (a, b) =>
+            new Date(b.item?.dateReported) - new Date(a.item?.dateReported),
         );
-      case 'oldest':
-        return filteredItems.sort((a, b) => 
-          new Date(a.item?.dateReported) - new Date(b.item?.dateReported)
+      case "oldest":
+        return filteredItems.sort(
+          (a, b) =>
+            new Date(a.item?.dateReported) - new Date(b.item?.dateReported),
         );
-      case 'bestMatch':
+      case "bestMatch":
       default:
-        return filteredItems.sort((a, b) => b.similarityScore - a.similarityScore);
+        return filteredItems.sort(
+          (a, b) => b.similarityScore - a.similarityScore,
+        );
     }
   };
 
@@ -494,13 +533,13 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
   const handleMatchItem = async (lostItem) => {
     if (!lostItem || isMatchingItem) return;
-    
+
     try {
       setIsMatchingItem(true);
-      
-      console.log('Matching items:', {
+
+      console.log("Matching items:", {
         foundProcessId: selectedItemForMatching.id,
-        lostProcessId: lostItem.id
+        lostProcessId: lostItem.id,
       });
 
       const response = await fetch(
@@ -512,9 +551,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
           },
           body: JSON.stringify({
             foundProcessId: selectedItemForMatching.id,
-            lostProcessId: lostItem.id
+            lostProcessId: lostItem.id,
           }),
-        }
+        },
       );
 
       if (!response.ok) {
@@ -522,16 +561,16 @@ const FoundItemsTab = memo(function FoundItemsTab({
         throw new Error(error.message || "Failed to match items");
       }
 
-      toast.success('Successfully matched items');
+      toast.success("Successfully matched items");
       setShowMatchDialog(false);
       setSelectedFoundItem(null);
-      
-      if (typeof onUpdateCounts === 'function') {
+
+      if (typeof onUpdateCounts === "function") {
         onUpdateCounts();
       }
     } catch (error) {
       console.error("Error matching items:", error);
-      toast.error(error.message || 'Failed to match items');
+      toast.error(error.message || "Failed to match items");
     } finally {
       setIsMatchingItem(false);
       setShowMatchDialog(false);
@@ -546,8 +585,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
           Found Items Management
         </h3>
         <p className="text-gray-600 mt-2">
-          Process found item reports and manage surrendered items. Verify item details, 
-          approve posts to make them visible, or handle inappropriate submissions.
+          Process found item reports and manage surrendered items. Verify item
+          details, approve posts to make them visible, or handle inappropriate
+          submissions.
         </p>
 
         {/* Status Cards with New Buttons */}
@@ -563,11 +603,14 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     Pending Approval
                   </p>
                   <p className="text-2xl font-bold text-[#0052cc]">
-                    {items.filter(process => 
-                      process.status === ProcessStatus.PENDING_APPROVAL && 
-                      process.item?.status?.toLowerCase() === "found" && 
-                      !process.item?.approved
-                    ).length}
+                    {
+                      items.filter(
+                        (process) =>
+                          process.status === ProcessStatus.PENDING_APPROVAL &&
+                          process.item?.status?.toLowerCase() === "found" &&
+                          !process.item?.approved,
+                      ).length
+                    }
                   </p>
                 </div>
               </div>
@@ -575,7 +618,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
           </Card>
 
           {/* QR Code Scanner Card */}
-          <Card 
+          <Card
             className="bg-gradient-to-br from-white via-[#F8FAFF] to-[#F0F7FF] hover:shadow-md transition-all duration-300 border-l-4 border border-[#0052cc]/30 cursor-pointer group"
             onClick={() => setShowScannerModal(true)}
           >
@@ -597,7 +640,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
           </Card>
 
           {/* Manual Report Card */}
-          <Card 
+          <Card
             className="bg-gradient-to-br from-white via-[#F8FAFF] to-[#F0F7FF] hover:shadow-md transition-all duration-300 border-l-4 border border-[#0052cc]/30 cursor-pointer group"
             onClick={() => setShowReportDialog(true)}
           >
@@ -611,7 +654,8 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     Report Found Item
                   </p>
                   <p className="text-sm text-slate-600 mt-1">
-                    Manually add a found item report on behalf of students or staff
+                    Manually add a found item report on behalf of students or
+                    staff
                   </p>
                 </div>
               </div>
@@ -635,15 +679,20 @@ const FoundItemsTab = memo(function FoundItemsTab({
                   // Skeleton loading state
                   <>
                     {[1, 2, 3].map((i) => (
-                      <Card key={i} className="overflow-hidden border border-gray-100 shadow-sm">
+                      <Card
+                        key={i}
+                        className="overflow-hidden border border-gray-100 shadow-sm"
+                      >
                         {/* ... skeleton content ... */}
                       </Card>
                     ))}
                   </>
-                ) : !items || items.filter(process => 
-                    process.status === ProcessStatus.PENDING_APPROVAL && 
-                    process.item?.status?.toLowerCase() === "found" && 
-                    !process.item?.approved
+                ) : !items ||
+                  items.filter(
+                    (process) =>
+                      process.status === ProcessStatus.PENDING_APPROVAL &&
+                      process.item?.status?.toLowerCase() === "found" &&
+                      !process.item?.approved,
                   ).length === 0 ? (
                   // Empty state
                   <Card className="border border-dashed bg-gray-50/50">
@@ -652,9 +701,12 @@ const FoundItemsTab = memo(function FoundItemsTab({
                         <div className="p-4 bg-blue-50 rounded-full">
                           <Inbox className="h-12 w-12 text-blue-500" />
                         </div>
-                        <h3 className="font-semibold text-xl text-gray-900">No Found Items</h3>
+                        <h3 className="font-semibold text-xl text-gray-900">
+                          No Found Items
+                        </h3>
                         <p className="text-gray-500 text-sm max-w-sm">
-                          There are currently no found items waiting for approval. New items will appear here.
+                          There are currently no found items waiting for
+                          approval. New items will appear here.
                         </p>
                       </div>
                     </CardContent>
@@ -662,14 +714,15 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 ) : (
                   // Items list
                   items
-                    .filter(process => 
-                      process.status === ProcessStatus.PENDING_APPROVAL && 
-                      !process.item?.approved && 
-                      process.item?.status?.toLowerCase() === "found"
+                    .filter(
+                      (process) =>
+                        process.status === ProcessStatus.PENDING_APPROVAL &&
+                        !process.item?.approved &&
+                        process.item?.status?.toLowerCase() === "found",
                     )
                     .map((process) => (
-                      <Card 
-                        key={process.id || process.Id} 
+                      <Card
+                        key={process.id || process.Id}
                         className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
                         onClick={() => handleItemClick(process.item)}
                       >
@@ -677,15 +730,20 @@ const FoundItemsTab = memo(function FoundItemsTab({
                           <div className="flex gap-6">
                             {/* Image Section */}
                             <div className="w-32 h-32 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100">
-                              {(process.item?.imageUrl || process.item?.ImageUrl) ? (
+                              {process.item?.imageUrl ||
+                              process.item?.ImageUrl ? (
                                 <div className="w-full h-full relative group">
                                   <img
-                                    src={process.item.imageUrl || process.item.ImageUrl}
+                                    src={
+                                      process.item.imageUrl ||
+                                      process.item.ImageUrl
+                                    }
                                     alt={process.item.name || process.item.Name}
                                     className="w-full h-full object-cover transition-transform group-hover:scale-105"
                                     onError={(e) => {
-                                      e.target.style.display = 'none';
-                                      e.target.nextSibling.style.display = 'flex';
+                                      e.target.style.display = "none";
+                                      e.target.nextSibling.style.display =
+                                        "flex";
                                     }}
                                   />
                                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -693,7 +751,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
                               ) : (
                                 <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
                                   <Package className="h-8 w-8 mb-2" />
-                                  <p className="text-xs text-center px-2">No Image</p>
+                                  <p className="text-xs text-center px-2">
+                                    No Image
+                                  </p>
                                 </div>
                               )}
                             </div>
@@ -706,36 +766,74 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                     <h3 className="font-bold text-lg truncate">
                                       {process.item?.name || process.item?.Name}
                                     </h3>
-                                    <Badge variant="outline" className="bg-yellow-100 text-yellow-800">
+                                    <Badge
+                                      variant="outline"
+                                      className="bg-yellow-100 text-yellow-800"
+                                    >
                                       For Approval
                                     </Badge>
                                   </div>
                                   <div className="space-y-1">
                                     <div className="flex items-center gap-2 text-sm text-gray-600">
                                       <span className="font-medium">
-                                        {process.item?.studentId?.startsWith('ADMIN') ? 'Reported by:' : 'Student ID:'}
+                                        {process.item?.studentId?.startsWith(
+                                          "ADMIN",
+                                        )
+                                          ? "Reported by:"
+                                          : "Student ID:"}
                                       </span>
-                                      <span>{process.item?.studentId || process.item?.StudentId || 'N/A'}</span>
+                                      <span>
+                                        {process.item?.studentId ||
+                                          process.item?.StudentId ||
+                                          "N/A"}
+                                      </span>
                                     </div>
                                   </div>
                                 </div>
-                                <Badge variant="outline" className="ml-2 flex-shrink-0">
-                                  {process.item?.category || process.item?.Category}
+                                <Badge
+                                  variant="outline"
+                                  className="ml-2 flex-shrink-0"
+                                >
+                                  {process.item?.category ||
+                                    process.item?.Category}
+                                </Badge>
+                                <Badge
+                                  variant="secondary"
+                                  className="flex-shrink-0"
+                                >
+                                  <p className="text-sm">
+                                    {formatDatefns(process.updatedAt)}
+                                  </p>
                                 </Badge>
                               </div>
                               <div className="space-y-1.5">
                                 <p className="text-sm">
-                                  <strong>Location:</strong> {process.item?.location || process.item?.Location}
+                                  <strong>Location:</strong>{" "}
+                                  {process.item?.location ||
+                                    process.item?.Location}
                                 </p>
                                 <p className="text-sm">
-                                  <strong>Description:</strong> {process.item?.description || process.item?.Description}
+                                  <strong>Description:</strong>{" "}
+                                  {process.item?.description ||
+                                    process.item?.Description}
                                 </p>
-                                {(process.item?.additionalDescriptions?.$values?.length > 0 || 
-                                  process.item?.AdditionalDescriptions?.$values?.length > 0) && (
+                                {(process.item?.additionalDescriptions?.$values
+                                  ?.length > 0 ||
+                                  process.item?.AdditionalDescriptions?.$values
+                                    ?.length > 0) && (
                                   <div className="mt-2">
                                     <p className="text-sm text-muted-foreground">
-                                      +{(process.item?.additionalDescriptions?.$values || 
-                                         process.item?.AdditionalDescriptions?.$values || []).length} additional details
+                                      +
+                                      {
+                                        (
+                                          process.item?.additionalDescriptions
+                                            ?.$values ||
+                                          process.item?.AdditionalDescriptions
+                                            ?.$values ||
+                                          []
+                                        ).length
+                                      }{" "}
+                                      additional details
                                     </p>
                                   </div>
                                 )}
@@ -743,7 +841,10 @@ const FoundItemsTab = memo(function FoundItemsTab({
                             </div>
 
                             {/* Actions Section - Stop event propagation */}
-                            <div className="flex flex-col gap-2 justify-start min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                            <div
+                              className="flex flex-col gap-2 justify-start min-w-[140px]"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -776,7 +877,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="destructive"
                                 size="sm"
                                 className="w-full bg-white hover:bg-red-50 text-red-600 border border-red-200 transition-all duration-200"
-                                onClick={() => handleDeleteClick(process.item?.id)}
+                                onClick={() =>
+                                  handleDeleteClick(process.item?.id)
+                                }
                                 disabled={deletingItems.has(process.item?.id)}
                               >
                                 {deletingItems.has(process.item?.id) ? (
@@ -795,7 +898,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                                 variant="secondary"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleMatchWithLostClick(process);  // Pass the entire process object
+                                  handleMatchWithLostClick(process); // Pass the entire process object
                                 }}
                                 className="bg-gradient-to-r from-[#1E293B] to-[#334155] text-white shadow-sm transition-all duration-200"
                               >
@@ -820,7 +923,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
             <DialogHeader>
               <DialogTitle>Report Found Item</DialogTitle>
             </DialogHeader>
-            <ReportSection 
+            <ReportSection
               onSubmit={() => setShowReportModal(false)}
               adminMode={true}
               activeSection="found"
@@ -829,14 +932,14 @@ const FoundItemsTab = memo(function FoundItemsTab({
         </Dialog>
 
         {/* Scanner Modal */}
-        <Dialog 
-          open={showScannerModal} 
+        <Dialog
+          open={showScannerModal}
           onOpenChange={(open) => {
             setShowScannerModal(open);
             if (!open) {
-              const element = document.getElementById('qr-reader');
+              const element = document.getElementById("qr-reader");
               if (element) {
-                element.innerHTML = '';
+                element.innerHTML = "";
               }
             }
           }}
@@ -859,7 +962,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
               {/* QR Scanner */}
               <div className="qr-container">
-                <div id="qr-reader" style={{ width: '100%' }}></div>
+                <div id="qr-reader" style={{ width: "100%" }}></div>
                 <style jsx>{`
                   .qr-container {
                     position: relative;
@@ -896,10 +999,14 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
               {/* File Upload Option with Drag & Drop */}
               <div className="text-center mt-4">
-                <p className="text-sm text-muted-foreground mb-2">Or upload a QR code image</p>
+                <p className="text-sm text-muted-foreground mb-2">
+                  Or upload a QR code image
+                </p>
                 <div
                   className={`border-2 border-dashed rounded-lg p-6 transition-colors ${
-                    isDragging ? "border-[#0052cc] bg-[#0052cc]/5" : "border-gray-200"
+                    isDragging
+                      ? "border-[#0052cc] bg-[#0052cc]/5"
+                      : "border-gray-200"
                   }`}
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -920,9 +1027,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     e.preventDefault();
                     e.stopPropagation();
                     setIsDragging(false);
-                    
+
                     const file = e.dataTransfer.files[0];
-                    if (file && file.type.startsWith('image/')) {
+                    if (file && file.type.startsWith("image/")) {
                       await processQRFile(file);
                     }
                   }}
@@ -958,13 +1065,16 @@ const FoundItemsTab = memo(function FoundItemsTab({
         </Dialog>
 
         {/* Scanned Data Modal */}
-        <Dialog open={showScannedDataModal} onOpenChange={setShowScannedDataModal}>
+        <Dialog
+          open={showScannedDataModal}
+          onOpenChange={setShowScannedDataModal}
+        >
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Scanned Item Details</DialogTitle>
             </DialogHeader>
             {scannedData && (
-              <ReportSection 
+              <ReportSection
                 onSubmit={() => setShowScannedDataModal(false)}
                 adminMode={true}
                 initialData={scannedData} // Pass scanned data as initial values
@@ -981,7 +1091,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
             <DialogHeader>
               <DialogTitle>Report Found Item</DialogTitle>
             </DialogHeader>
-            <ReportSection 
+            <ReportSection
               onSubmit={handleReportSubmit}
               adminMode={true}
               activeSection="found"
@@ -997,17 +1107,24 @@ const FoundItemsTab = memo(function FoundItemsTab({
               <DialogHeader>
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <DialogTitle className="text-xl font-semibold text-[#0052cc]">Item Details</DialogTitle>
+                    <DialogTitle className="text-xl font-semibold text-[#0052cc]">
+                      Item Details
+                    </DialogTitle>
                     <div className="flex items-center gap-2 text-sm text-gray-500">
                       <CalendarIcon className="h-4 w-4" />
-                      {selectedItemForDetails?.dateReported ? 
-                        format(new Date(selectedItemForDetails.dateReported), 'MMMM do, yyyy') 
-                        : 'Date not available'
-                      }
+                      {selectedItemForDetails?.dateReported
+                        ? format(
+                            new Date(selectedItemForDetails.dateReported),
+                            "MMMM do, yyyy",
+                          )
+                        : "Date not available"}
                     </div>
                   </div>
-                  <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 capitalize px-3 py-1.5">
-                    {selectedItemForDetails?.status || 'Found'}
+                  <Badge
+                    variant="secondary"
+                    className="bg-yellow-100 text-yellow-800 capitalize px-3 py-1.5"
+                  >
+                    {selectedItemForDetails?.status || "Found"}
                   </Badge>
                 </div>
               </DialogHeader>
@@ -1039,19 +1156,33 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     <div className="space-y-6">
                       <div className="grid grid-cols-2 gap-x-12 gap-y-4">
                         <div className="space-y-1">
-                          <h4 className="text-sm font-medium text-gray-500">Item Name</h4>
-                          <p className="font-medium">{selectedItemForDetails.name}</p>
+                          <h4 className="text-sm font-medium text-gray-500">
+                            Item Name
+                          </h4>
+                          <p className="font-medium">
+                            {selectedItemForDetails.name}
+                          </p>
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                          <p className="font-medium capitalize">{selectedItemForDetails.status || 'found'}</p>
+                          <h4 className="text-sm font-medium text-gray-500">
+                            Status
+                          </h4>
+                          <p className="font-medium capitalize">
+                            {selectedItemForDetails.status || "found"}
+                          </p>
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-sm font-medium text-gray-500">Category</h4>
-                          <p className="font-medium">{selectedItemForDetails.category}</p>
+                          <h4 className="text-sm font-medium text-gray-500">
+                            Category
+                          </h4>
+                          <p className="font-medium">
+                            {selectedItemForDetails.category}
+                          </p>
                         </div>
                         <div className="space-y-1">
-                          <h4 className="text-sm font-medium text-gray-500">Location</h4>
+                          <h4 className="text-sm font-medium text-gray-500">
+                            Location
+                          </h4>
                           <p className="font-medium flex items-center gap-1.5">
                             <MapPinIcon className="h-4 w-4 text-gray-400" />
                             {selectedItemForDetails.location}
@@ -1061,20 +1192,33 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
                       {/* Description */}
                       <div className="space-y-1">
-                        <h4 className="text-sm font-medium text-gray-500">Description</h4>
-                        <p className="text-gray-700">{selectedItemForDetails.description}</p>
+                        <h4 className="text-sm font-medium text-gray-500">
+                          Description
+                        </h4>
+                        <p className="text-gray-700">
+                          {selectedItemForDetails.description}
+                        </p>
                       </div>
 
                       {/* Additional Details if any */}
-                      {selectedItemForDetails?.additionalDescriptions?.length > 0 && (
+                      {selectedItemForDetails?.additionalDescriptions?.length >
+                        0 && (
                         <div className="space-y-2">
-                          <h4 className="text-sm font-medium text-gray-500">Additional Details</h4>
+                          <h4 className="text-sm font-medium text-gray-500">
+                            Additional Details
+                          </h4>
                           <div className="space-y-2">
-                            {selectedItemForDetails.additionalDescriptions.map((desc, index) => (
-                              <p key={index} className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200">
-                                <strong>{desc.title}:</strong> {desc.description}
-                              </p>
-                            ))}
+                            {selectedItemForDetails.additionalDescriptions.map(
+                              (desc, index) => (
+                                <p
+                                  key={index}
+                                  className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200"
+                                >
+                                  <strong>{desc.title}:</strong>{" "}
+                                  {desc.description}
+                                </p>
+                              ),
+                            )}
                           </div>
                         </div>
                       )}
@@ -1150,7 +1294,8 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     Select Matching Lost Item
                   </DialogTitle>
                   <DialogDescription>
-                    Please select the lost item that matches with the found item report.
+                    Please select the lost item that matches with the found item
+                    report.
                   </DialogDescription>
                 </div>
               </div>
@@ -1158,41 +1303,46 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
             {/* Found Item Details Box */}
             <div className="bg-blue-50 rounded-lg p-4 mb-4 w-full">
-              <h3 className="text-sm font-medium text-blue-800 mb-2">Found Item Details:</h3>
+              <h3 className="text-sm font-medium text-blue-800 mb-2">
+                Found Item Details:
+              </h3>
               <div className="space-y-2">
                 <div className="flex gap-x-12">
                   <div>
                     <span className="text-sm text-blue-700">Name:</span>{" "}
                     <span className="text-sm text-blue-600">
-                      {selectedItemForMatching?.item?.name || 'N/A'}
+                      {selectedItemForMatching?.item?.name || "N/A"}
                     </span>
                   </div>
                   <div>
                     <span className="text-sm text-blue-700">Category:</span>{" "}
                     <span className="text-sm text-blue-600">
-                      {selectedItemForMatching?.item?.category || 'N/A'}
+                      {selectedItemForMatching?.item?.category || "N/A"}
                     </span>
                   </div>
                   <div>
                     <span className="text-sm text-blue-700">Location:</span>{" "}
                     <span className="text-sm text-blue-600">
-                      {selectedItemForMatching?.item?.location || 'N/A'}
+                      {selectedItemForMatching?.item?.location || "N/A"}
                     </span>
                   </div>
                 </div>
                 <div>
                   <span className="text-sm text-blue-700">Description:</span>{" "}
                   <span className="text-sm text-blue-600">
-                    {selectedItemForMatching?.item?.description || 'No description available'}
+                    {selectedItemForMatching?.item?.description ||
+                      "No description available"}
                   </span>
                 </div>
                 <div>
                   <span className="text-sm text-blue-700">Date Found:</span>{" "}
                   <span className="text-sm text-blue-600">
-                    {selectedItemForMatching?.item?.dateReported ? 
-                      format(new Date(selectedItemForMatching.item.dateReported), 'MMM d, yyyy') : 
-                      'N/A'
-                    }
+                    {selectedItemForMatching?.item?.dateReported
+                      ? format(
+                          new Date(selectedItemForMatching.item.dateReported),
+                          "MMM d, yyyy",
+                        )
+                      : "N/A"}
                   </span>
                 </div>
               </div>
@@ -1202,7 +1352,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
             <div className="flex items-center gap-2 mb-4 w-full">
               <div className="relative flex-1">
                 <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input 
+                <Input
                   placeholder="Search by name, category, location"
                   className="pl-9 border-gray-200"
                   value={matchSearchQuery}
@@ -1210,26 +1360,33 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 />
               </div>
 
-              <Select value={matchCategoryFilter} onValueChange={setMatchCategoryFilter}>
+              <Select
+                value={matchCategoryFilter}
+                onValueChange={setMatchCategoryFilter}
+              >
                 <SelectTrigger className="w-[160px] border-gray-200">
                   <Package className="h-4 w-4 text-gray-400 mr-2" />
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
-                  {Array.from(new Set(lostItems.map(process => process.item?.category)))
+                  {Array.from(
+                    new Set(lostItems.map((process) => process.item?.category)),
+                  )
                     .filter(Boolean)
                     .sort()
-                    .map(category => (
+                    .map((category) => (
                       <SelectItem key={category} value={category.toLowerCase()}>
                         {category}
                       </SelectItem>
-                    ))
-                  }
+                    ))}
                 </SelectContent>
               </Select>
 
-              <Select value={matchDateFilter} onValueChange={setMatchDateFilter}>
+              <Select
+                value={matchDateFilter}
+                onValueChange={setMatchDateFilter}
+              >
                 <SelectTrigger className="w-[160px] border-gray-200">
                   <CalendarIcon className="h-4 w-4 text-gray-400 mr-2" />
                   <SelectValue placeholder="All Time" />
@@ -1242,7 +1399,10 @@ const FoundItemsTab = memo(function FoundItemsTab({
                 </SelectContent>
               </Select>
 
-              <Select value={matchSortOption} onValueChange={setMatchSortOption}>
+              <Select
+                value={matchSortOption}
+                onValueChange={setMatchSortOption}
+              >
                 <SelectTrigger className="w-[160px] border-gray-200">
                   <ArrowUpDown className="h-4 w-4 text-gray-400 mr-2" />
                   <SelectValue placeholder="Best Match" />
@@ -1257,10 +1417,12 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
             {/* Results Count */}
             <div className="text-sm text-gray-500 mb-4 w-full">
-              Showing {filterAndSortItems(lostItems).length} items | Sorted by: {
-                matchSortOption === 'bestMatch' ? 'Best Match' :
-                matchSortOption === 'newest' ? 'Newest First' : 'Oldest First'
-              }
+              Showing {filterAndSortItems(lostItems).length} items | Sorted by:{" "}
+              {matchSortOption === "bestMatch"
+                ? "Best Match"
+                : matchSortOption === "newest"
+                  ? "Newest First"
+                  : "Oldest First"}
             </div>
 
             {/* Items List */}
@@ -1272,17 +1434,20 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     onClick={() => setSelectedFoundItem(process)}
                     className={cn(
                       "p-4 rounded-lg border cursor-pointer transition-all relative mt-6 w-full",
-                      selectedFoundItem?.id === process.id 
-                        ? "border-blue-500 bg-blue-50/50 shadow-lg" 
-                        : "border-gray-200 hover:border-gray-300 hover:shadow-md"
+                      selectedFoundItem?.id === process.id
+                        ? "border-blue-500 bg-blue-50/50 shadow-lg"
+                        : "border-gray-200 hover:border-gray-300 hover:shadow-md",
                     )}
                     style={{
                       transition: "all 0.2s ease-in-out",
-                      transform: selectedFoundItem?.id === process.id ? "scale(1.01)" : "scale(1)",
+                      transform:
+                        selectedFoundItem?.id === process.id
+                          ? "scale(1.01)"
+                          : "scale(1)",
                     }}
                   >
                     {/* Match Percentage Badge - Top Left, overlapping */}
-                    <div 
+                    <div
                       className="absolute -top-2.5 left-0 px-1 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap"
                       style={getMatchPercentageStyle(process.similarityScore)}
                     >
@@ -1291,19 +1456,24 @@ const FoundItemsTab = memo(function FoundItemsTab({
 
                     {/* Status Badge - Top Right */}
                     <div className="absolute top-2 right-2">
-                      <Badge variant="outline" className="bg-red-50 text-red-700 px-2 py-0.5 text-xs font-medium">
+                      <Badge
+                        variant="outline"
+                        className="bg-red-50 text-red-700 px-2 py-0.5 text-xs font-medium"
+                      >
                         Lost
                       </Badge>
                     </div>
 
                     <div className="flex gap-4 mt-4">
                       {/* Image Section */}
-                      <div className={cn(
-                        "w-24 h-24 bg-gray-50 rounded-lg border flex-shrink-0 flex items-center justify-center",
-                        selectedFoundItem?.id === process.id 
-                          ? "border-blue-200 bg-blue-50" 
-                          : "border-gray-200"
-                      )}>
+                      <div
+                        className={cn(
+                          "w-24 h-24 bg-gray-50 rounded-lg border flex-shrink-0 flex items-center justify-center",
+                          selectedFoundItem?.id === process.id
+                            ? "border-blue-200 bg-blue-50"
+                            : "border-gray-200",
+                        )}
+                      >
                         {process.item?.imageUrl ? (
                           <img
                             src={process.item.imageUrl}
@@ -1312,18 +1482,24 @@ const FoundItemsTab = memo(function FoundItemsTab({
                           />
                         ) : (
                           <div className="flex flex-col items-center justify-center">
-                            <Package className={cn(
-                              "h-8 w-8",
-                              selectedFoundItem?.id === process.id 
-                                ? "text-blue-400" 
-                                : "text-gray-400"
-                            )} />
-                            <span className={cn(
-                              "text-xs mt-1",
-                              selectedFoundItem?.id === process.id 
-                                ? "text-blue-400" 
-                                : "text-gray-400"
-                            )}>No Image</span>
+                            <Package
+                              className={cn(
+                                "h-8 w-8",
+                                selectedFoundItem?.id === process.id
+                                  ? "text-blue-400"
+                                  : "text-gray-400",
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                "text-xs mt-1",
+                                selectedFoundItem?.id === process.id
+                                  ? "text-blue-400"
+                                  : "text-gray-400",
+                              )}
+                            >
+                              No Image
+                            </span>
                           </div>
                         )}
                       </div>
@@ -1332,16 +1508,28 @@ const FoundItemsTab = memo(function FoundItemsTab({
                       <div className="flex-1 min-w-0">
                         {/* Title and Date */}
                         <div className="mb-2">
-                          <h4 className={cn(
-                            "font-semibold text-lg",
-                            selectedFoundItem?.id === process.id && "text-blue-700"
-                          )}>{process.item.name}</h4>
-                          <div className={cn(
-                            "flex items-center text-sm",
-                            selectedFoundItem?.id === process.id ? "text-blue-500" : "text-gray-500"
-                          )}>
+                          <h4
+                            className={cn(
+                              "font-semibold text-lg",
+                              selectedFoundItem?.id === process.id &&
+                                "text-blue-700",
+                            )}
+                          >
+                            {process.item.name}
+                          </h4>
+                          <div
+                            className={cn(
+                              "flex items-center text-sm",
+                              selectedFoundItem?.id === process.id
+                                ? "text-blue-500"
+                                : "text-gray-500",
+                            )}
+                          >
                             <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-                            {format(new Date(process.item.dateReported), 'MMM d, yyyy')}
+                            {format(
+                              new Date(process.item.dateReported),
+                              "MMM d, yyyy",
+                            )}
                           </div>
                         </div>
 
@@ -1356,19 +1544,27 @@ const FoundItemsTab = memo(function FoundItemsTab({
                         <div className="grid grid-cols-[1fr,1.2fr] gap-y-2">
                           <div className="text-sm">
                             <span className="text-gray-600">Category:</span>{" "}
-                            <span className="text-gray-900">{process.item.category}</span>
+                            <span className="text-gray-900">
+                              {process.item.category}
+                            </span>
                           </div>
                           <div className="text-sm pl-12">
                             <span className="text-gray-600">Location:</span>{" "}
-                            <span className="text-gray-900">{process.item.location}</span>
+                            <span className="text-gray-900">
+                              {process.item.location}
+                            </span>
                           </div>
                           <div className="text-sm">
                             <span className="text-gray-600">Student ID:</span>{" "}
-                            <span className="text-gray-900">{process.item.studentId}</span>
+                            <span className="text-gray-900">
+                              {process.item.studentId}
+                            </span>
                           </div>
                           <div className="text-sm pl-12">
                             <span className="text-gray-600">Status:</span>{" "}
-                            <span className="text-gray-900 capitalize">Lost</span>
+                            <span className="text-gray-900 capitalize">
+                              Lost
+                            </span>
                           </div>
                         </div>
 
@@ -1409,7 +1605,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
                     Matching...
                   </>
                 ) : (
-                  'Confirm Match'
+                  "Confirm Match"
                 )}
               </Button>
             </DialogFooter>
