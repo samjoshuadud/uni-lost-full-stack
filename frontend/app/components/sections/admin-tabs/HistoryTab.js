@@ -63,30 +63,7 @@ export default function HistoryTab({ handleViewDetails }) {
           process.status === ProcessStatus.NO_SHOW
         ) || [];
         
-        // Add test items for November 2024
-        const testItems = [
-          {
-            id: 'test-nov-2024-1',
-            status: ProcessStatus.HANDED_OVER,
-            updatedAt: '2024-11-15T10:00:00',
-            item: {
-              name: 'Test Item 1 - November 2024',
-              studentId: 'TEST123',
-            }
-          },
-          {
-            id: 'test-nov-2024-2',
-            status: ProcessStatus.NO_SHOW,
-            updatedAt: '2024-11-20T14:30:00',
-            item: {
-              name: 'Test Item 2 - November 2024',
-              studentId: 'TEST456',
-            }
-          }
-        ];
-        
-        // Combine real items with test items
-        setItems([...historyItems, ...testItems]);
+        setItems([...historyItems]);
       } catch (error) {
         console.error("Error fetching history:", error);
       } finally {
