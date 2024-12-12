@@ -29,8 +29,11 @@ public class ItemRepository : BaseRepository<Item>, IItemRepository
         var item = await GetByIdAsync(id);
         if (item != null)
         {
+            var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+            var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+            
             item.Approved = approved;
-            item.UpdatedAt = DateTime.UtcNow;
+            item.UpdatedAt = currentDateTime;
             await UpdateAsync(item);
         }
     }

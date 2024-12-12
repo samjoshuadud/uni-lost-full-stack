@@ -88,9 +88,12 @@ public class PendingProcessRepository : BaseRepository<PendingProcess>, IPending
             var process = await GetByIdAsync(id);
             if (process != null)
             {
+                var manilaTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Manila");
+                var currentDateTime = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, manilaTimeZone);
+                
                 process.status = status;
                 process.Message = message;
-                process.UpdatedAt = DateTime.UtcNow;
+                process.UpdatedAt = currentDateTime;
                 await UpdateAsync(process);
                 _logger.LogInformation($"Updated process {id} status to {status}");
             }
