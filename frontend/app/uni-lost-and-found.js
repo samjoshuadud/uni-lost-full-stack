@@ -29,8 +29,6 @@ import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { authApi, itemApi } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/api-config';
 import Image from "next/image"
-import { exportToPDF, exportToExcel } from '@/lib/export-utils';
-import { Skeleton } from "@/components/ui/skeleton"
 const styles = `
   @keyframes fadeIn {
     from {
@@ -232,32 +230,16 @@ export default function UniLostAndFound() {
       // Only show approved items in dashboard
       if (!item.approved) return false;
 
-      // Category filter - updated logic for "Others" category
-      const itemCategory = (item.category || item.Category || '').toLowerCase().trim();
-      const searchCat = searchCategory.toLowerCase().trim();
-      
-      // Define main categories in lowercase for comparison
-      const mainCategories = [
-        "books", 
-        "electronics", 
-        "personal items", 
-        "documents", 
-        "bags"
-      ];
-
-      // Check if category matches
-      const matchesCategory = 
-        searchCategory === "all" || 
-        (searchCat === "others" 
-          ? !mainCategories.includes(itemCategory) // Match if category is not in main categories
-          : itemCategory === searchCat);
+      // Category filter
+      const matchesCategory = searchCategory === "all" || 
+        item.category?.toLowerCase() === searchCategory.toLowerCase();
 
       // Claim status filter
       const matchesClaimStatus = claimStatus === "all" || 
         (claimStatus === "none" && !process.requestorUserId) ||
         (claimStatus === "pending" && process.requestorUserId);
 
-      // Search terms
+      // Search terms - only filter if there's a search query
       if (searchQuery.trim()) {
         const searchTerms = searchQuery.toLowerCase().trim();
         const matchesSearch = 
@@ -269,6 +251,7 @@ export default function UniLostAndFound() {
         return matchesCategory && matchesSearch && matchesClaimStatus;
       }
 
+      // If no search query, just filter by category and claim status
       return matchesCategory && matchesClaimStatus;
     });
   }, [items, searchCategory, searchQuery, claimStatus]);
@@ -349,61 +332,7 @@ export default function UniLostAndFound() {
     }
   };
 
-  const renderSkeletonCards = () => {
-    return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="overflow-hidden bg-white shadow-md">
-            {/* Card Header - Warmer and more subtle blue gradient background */}
-            <div className="bg-gradient-to-r from-[#1A5BB5] to-[#3D7DD9] p-4">
-              <div className="flex justify-between items-center">
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-24 bg-white/20" /> {/* Title */}
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-3 w-3 rounded-full bg-white/20" /> {/* Location icon */}
-                    <Skeleton className="h-3 w-16 bg-white/20" /> {/* Location text */}
-                  </div>
-                </div>
-                <Skeleton className="h-6 w-12 rounded-full bg-yellow-400/30" /> {/* Status badge */}
-              </div>
-            </div>
-
-            {/* Card Body */}
-            <div className="p-4">
-              {/* Image placeholder */}
-              <div className="mb-4 bg-gray-100 rounded-lg flex items-center justify-center" style={{ height: "200px" }}>
-                <Skeleton className="h-full w-full bg-[#E3EDFF]" />
-              </div>
-
-              {/* Item name */}
-              <Skeleton className="h-5 w-3/4 mb-4 bg-[#E3EDFF]" />
-
-              {/* Bottom section */}
-              <div className="flex items-center justify-between mt-2">
-                <Skeleton className="h-4 w-24 bg-[#E3EDFF]" /> {/* Date */}
-                <div className="flex gap-2">
-                  <Skeleton className="h-9 w-24 rounded-md bg-[#E3EDFF]" /> {/* View Details button */}
-                  <Skeleton className="h-9 w-9 rounded-md bg-[#E3EDFF]" /> {/* Report icon */}
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    )
-  }
-
   const renderSection = () => {
-    if (isLoading) {
-      return (
-        <div className="space-y-8">
-          <div className="animate-pulse">
-            {renderSkeletonCards()}
-          </div>
-        </div>
-      );
-    }
-
     switch (activeSection) {
       case "dashboard":
         const dashboardItems = items
@@ -984,73 +913,26 @@ export default function UniLostAndFound() {
             const data = await response.json();
             
             if (data && data.$values) {
+                // Set items first
                 setItems(data.$values);
                 setIsLoading(false);
 
-                // Calculate count for user's pending processes
+                // Calculate count based on:
+                // 1. User's regular processes (where UserId matches)
+                // 2. User's claim processes (where RequestorUserId matches)
+                // 3. Exclude awaiting_surrender status
                 const newCount = data.$values.filter(process => 
-                    process.status !== ProcessStatus.AWAITING_SURRENDER && (
+                      process.status !== ProcessStatus.AWAITING_SURRENDER && (
                         process.userId === user.uid || 
                         (process.requestorUserId === user.uid && process.status === ProcessStatus.CLAIM_REQUEST)
                     )
                 ).length;
 
-                if (isAdmin) {
-                    // Define excluded statuses at the start
-                    const excludedStatuses = [
-                        ProcessStatus.APPROVED,
-                        ProcessStatus.AWAITING_SURRENDER,
-                        ProcessStatus.HANDED_OVER,
-                        ProcessStatus.NO_SHOW,
-                        ProcessStatus.IN_VERIFICATION,
-                        ProcessStatus.VERIFIED,
-                        ProcessStatus.VERIFICATION_FAILED,
-                        ProcessStatus.AWAITING_REVIEW
-                    ];
-
-                    // Count items that need admin attention in specific tabs
-                    const adminCounts = data.$values.reduce((counts, process) => {
-                        const status = process.status;
-                        const item = process.item || process.Item;
-                        
-                        // Lost Items tab - items pending approval with status "lost"
-                        if (status === ProcessStatus.PENDING_APPROVAL && 
-                            item?.status?.toLowerCase() === "lost") {
-                            counts.lostItems++;
-                        }
-                        
-                        // Found Items tab - items pending approval with status "found"
-                        if (status === ProcessStatus.PENDING_APPROVAL && 
-                            item?.status?.toLowerCase() === "found") {
-                            counts.foundItems++;
-                        }
-                        
-                        // Ready for Pickup tab - items pending retrieval
-                        if (status === ProcessStatus.PENDING_RETRIEVAL) {
-                            counts.readyForPickup++;
-                        }
-
-                        // Count items that need attention
-                        if (!excludedStatuses.includes(status)) {
-                            counts.totalAttention++;
-                        }
-
-                        return counts;
-                    }, {
-                        lostItems: 0,
-                        foundItems: 0,
-                        readyForPickup: 0,
-                        totalAttention: 0
-                    });
-
-                    console.log('Final counts:', adminCounts);
-                    setTotalPendingCount(adminCounts.totalAttention);
-                    
-                    setPendingProcessCount(newCount);
-                } else {
-                    setPendingProcessCount(newCount);
-                    setTotalPendingCount(newCount);
-                }
+                // Calculate total pending count (all statuses except AWAITING_SURRENDER and APPROVED)
+                const newTotalCount = data.$values.filter(process => 
+                    process.status !== ProcessStatus.AWAITING_SURRENDER && 
+                    process.status !== ProcessStatus.APPROVED
+                ).length;
 
                 setPendingProcessCount(prevCount => {
                     if (prevCount !== newCount) {
@@ -1058,6 +940,8 @@ export default function UniLostAndFound() {
                     }
                     return prevCount;
                 });
+
+                setTotalPendingCount(newTotalCount);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -1081,7 +965,7 @@ export default function UniLostAndFound() {
         setIsLoading(false);
         setIsProcessCountLoading(false);
     }
-  }, [user, authLoading, isAdmin]);
+  }, [user, authLoading]);
 
   // Add sort state
   const [sortOrder, setSortOrder] = useState("newest");
@@ -1117,426 +1001,404 @@ export default function UniLostAndFound() {
     });
   };
 
-  const handleExportPDF = () => {
-    exportToPDF(items, {
-      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
-      end: new Date()
-    });
-  };
-
-  const handleExportExcel = () => {
-    exportToExcel(items, {
-      start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      end: new Date()
-    });
-  };
+  // // Loading state
+  // if (isLoading) {
+  //   return (
+  //     <div className="min-h-screen flex items-center justify-center">
+  //       <div className="flex flex-col items-center gap-4">
+  //         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+  //         <p className="text-muted-foreground">Loading...</p>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
-    <div className="min-h-screen relative">
-      <div className="absolute inset-0">
-        <div 
-          className="fixed inset-0 bg-[url('/images/umak-logo.png')] bg-no-repeat opacity-[0.35] will-change-auto"
-          style={{ 
-            backgroundSize: '100% 100%',
-            backgroundPosition: '50% 50%',
-            minHeight: '100vh',
-            width: '100%',
-            transform: 'translateZ(0)'  // Hardware acceleration
-          }}
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-white/25 via-white/15 to-white/25" />
-        </div>
-      </div>
-      
-      <div className="relative z-10">
-        <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Item Deleted Successfully!</DialogTitle>
-              <DialogDescription>The item has been successfully cancelled/deleted.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+    <div className="min-h-screen bg-[#f8f9fa]">
+      <Dialog open={isSuccessDialogOpen} onOpenChange={setIsSuccessDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item Deleted Successfully!</DialogTitle>
+            <DialogDescription>The item has been successfully cancelled/deleted.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsSuccessDialogOpen(false)}>Okay</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Error Dialog */}
-        <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Item Not Deleted - Error</DialogTitle>
-              <DialogDescription>There was an issue with deleting the item. Please try again later.</DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button onClick={() => setIsErrorDialogOpen(false)}>Okay</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      {/* Error Dialog */}
+      <Dialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Item Not Deleted - Error</DialogTitle>
+            <DialogDescription>There was an issue with deleting the item. Please try again later.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setIsErrorDialogOpen(false)}>Okay</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        {/* Header */}
-        <header style={{ background: "linear-gradient(to right, #023265 40%, #004C99 100%)", boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)", borderBottom: "1px solid #004C99", }}>
-          <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="/logo/logo.png" 
-                alt="UMAK Logo" 
-                width={40} 
-                height={40} 
-                className="rounded-full bg-white p-1 shadow-sm hover:shadow-md transition-shadow duration-300"
-              />
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
-                  Lost & Found
-                </h1>
-                <span className="text-xs text-yellow-400/80">
-                  University of Makati
-                </span>
-              </div>
+      {/* Header */}
+      <header style={{ background: "linear-gradient(to right, #023265 40%, #004C99 100%)", boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)", borderBottom: "1px solid #004C99", }}>
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Image 
+              src="/logo/logo.png" 
+              alt="UMAK Logo" 
+              width={40} 
+              height={40} 
+              className="rounded-full bg-white p-1 shadow-sm hover:shadow-md transition-shadow duration-300"
+            />
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
+                Lost & Found
+              </h1>
+              <span className="text-xs text-yellow-400/80">
+                University of Makati
+              </span>
             </div>
-            <nav className="flex items-center gap-3">
-              {isAdmin ? (
-                <>
-                  <Button 
-                    variant="ghost"
-                    className={`text-white transition-colors relative
-                      ${activeSection === "dashboard" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40 " : 
-                        "hover:text-[#004C99] hover:font-bold"
-                      }
-                    `}
-                    onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
-                  >
-                    View Items
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button 
-                    variant="ghost"
-                    className={`text-white transition-colors relative
-                      ${activeSection === "dashboard" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                        "hover:text-[#004C99] hover:font-bold"
-                      }
-                    `}
-                    onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
-                  >
-                    Home
-                  </Button>
-                  <Button 
-                    variant="ghost"
-                    className={`text-white transition-colors relative
-                      ${activeSection === "report" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                        "hover:text-[#004C99] hover:font-bold"
-                      }
-                    `}
-                    onClick={() => { 
-                      if (requireAuth()) return;
-                      setActiveSection("report"); 
-                      setSelectedItem(null); 
-                    }}
-                  >
-                    Report Item
-                  </Button>
-                  {user && (
-                    <>
-                      <Button 
-                        variant="ghost"
-                        className={`text-white transition-colors relative
-                          ${activeSection === "pending_process" ? 
-                            "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                            "hover:text-[#004C99] hover:font-bold"
-                          }
-                        `}
-                        onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
-                      >
-                        Pending Process
-                        {pendingProcessCount > 0 && (
-                          <span className="absolute -top-1 -right-1 bg-yellow-400 text-[#0052cc] rounded-full px-2 py-0.5 text-xs font-medium">
-                            {pendingProcessCount}
-                          </span>
-                        )}
-                      </Button>
-                      <Button 
-                        variant="ghost"
-                        className={`text-white transition-colors relative
-                          ${activeSection === "profile" ? 
-                            "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                            "hover:text-[#004C99] hover:font-bold"
-                          }
-                        `}
-                        onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        Profile
-                      </Button>
-                    </>
-                  )}
-                </>
-              )}
-              <LoginButton />
-            </nav>
           </div>
-        </header>
+          <nav className="flex items-center gap-3">
+            {isAdmin ? (
+              <>
+                <Button 
+                  variant="ghost"
+                  className={`text-white transition-colors relative
+                    ${activeSection === "dashboard" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40 " : 
+                      "hover:text-[#004C99] hover:font-bold"
+                    }
+                  `}
+                  onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
+                >
+                  View Items
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button 
+                  variant="ghost"
+                  className={`text-white transition-colors relative
+                    ${activeSection === "dashboard" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                      "hover:text-[#004C99] hover:font-bold"
+                    }
+                  `}
+                  onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
+                >
+                  Home
+                </Button>
+                <Button 
+                  variant="ghost"
+                  className={`text-white transition-colors relative
+                    ${activeSection === "report" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                      "hover:text-[#004C99] hover:font-bold"
+                    }
+                  `}
+                  onClick={() => { 
+                    if (requireAuth()) return;
+                    setActiveSection("report"); 
+                    setSelectedItem(null); 
+                  }}
+                >
+                  Report Item
+                </Button>
+                {user && (
+                  <>
+                    <Button 
+                      variant="ghost"
+                      className={`text-white transition-colors relative
+                        ${activeSection === "pending_process" ? 
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                          "hover:text-[#004C99] hover:font-bold"
+                        }
+                      `}
+                      onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
+                    >
+                      Pending Process
+                      {pendingProcessCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-yellow-400 text-[#0052cc] rounded-full px-2 py-0.5 text-xs font-medium">
+                          {pendingProcessCount}
+                        </span>
+                      )}
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      className={`text-white transition-colors relative
+                        ${activeSection === "profile" ? 
+                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
+                          "hover:text-[#004C99] hover:font-bold"
+                        }
+                      `}
+                      onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
+                    >
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Button>
+                  </>
+                )}
+              </>
+            )}
+            <LoginButton />
+          </nav>
+        </div>
+      </header>
 
-        <main className="container mx-auto px-4 py-8">
-          {/* Admin Cards */}
-          {user && isAdmin && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-              <Card className="bg-gradient-to-br from-[#FFFFFF] to-[#F5F9FF] backdrop-blur-sm shadow-sm border border-[#4B9FFF]/30 drop-shadow-[0_4px_4px_rgba(75,159,255,0.1)]">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Pending Actions</h3>
-                      <p className="text-gray-500">
-                        {isProcessCountLoading ? (
-                          <Loader2 className="h-4 w-4 inline animate-spin mr-2" />
-                        ) : (
-                          <>
-                            <span className="font-medium text-[#0052cc]">{totalPendingCount}</span> items need attention
-                          </>
-                        )}
-                      </p>
-                    </div>
+      <main className="container mx-auto px-4 py-8">
+        {/* Admin Cards */}
+        {user && isAdmin && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Pending Actions</h3>
+                    <p className="text-gray-500">
+                      {isProcessCountLoading ? (
+                        <Loader2 className="h-4 w-4 inline animate-spin mr-2" />
+                      ) : (
+                        <>
+                          <span className="font-medium text-[#0052cc]">{totalPendingCount}</span> items need attention
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <Button 
+                    className={`transition-colors relative
+                      ${activeSection === "admin" ? 
+                        "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                        "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                      }
+                    `}
+                    onClick={() => { setActiveSection("admin"); setSelectedItem(null); }}
+                  >
+                    View Admin Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Item Database</h3>
+                    <p className="text-gray-500">View and manage all items</p>
+                  </div>
+                  <div className="flex gap-3">
                     <Button 
                       className={`transition-colors relative
-                        ${activeSection === "admin" ? 
+                        ${activeSection === "lost" ? 
                           "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
                           "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
                         }
                       `}
-                      onClick={() => { setActiveSection("admin"); setSelectedItem(null); }}
+                      onClick={() => { setActiveSection("lost"); setSelectedItem(null); }}
                     >
-                      View Admin Dashboard
+                      Lost Items
+                    </Button>
+                    <Button 
+                      className={`transition-colors relative
+                        ${activeSection === "found" ? 
+                          "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
+                          "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
+                        }
+                      `}
+                      onClick={() => { setActiveSection("found"); setSelectedItem(null); }}
+                    >
+                      Found Items
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-[#FFFFFF] to-[#F5F9FF] backdrop-blur-sm shadow-sm border border-[#4B9FFF]/30 drop-shadow-[0_4px_4px_rgba(75,159,255,0.1)]">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-xl font-semibold text-[#0052cc] mb-2">Item Database</h3>
-                      <p className="text-gray-500">View and manage all items</p>
-                    </div>
-                    <div className="flex gap-3">
-                      <Button 
-                        className={`transition-colors relative
-                          ${activeSection === "lost" ? 
-                            "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                            "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
-                          }
-                        `}
-                        onClick={() => { setActiveSection("lost"); setSelectedItem(null); }}
-                      >
-                        Lost Items
-                      </Button>
-                      <Button 
-                        className={`transition-colors relative
-                          ${activeSection === "found" ? 
-                            "bg-[#0052cc] text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400" : 
-                            "bg-[#0052cc] text-white hover:bg-[#0052cc]/90"
-                          }
-                        `}
-                        onClick={() => { setActiveSection("found"); setSelectedItem(null); }}
-                      >
-                        Found Items
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Navigation Tabs */}
-          {!isAdmin && user && 
-            !["profile", "report", "pending_process"].includes(activeSection) && (
-            <div className="mb-6">
-              <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
-                <div className="flex space-x-1">
-                  <Button
-                    variant={activeSection === "dashboard" ? "secondary" : "ghost"}
-                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                      ${activeSection === "dashboard" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                        "text-white hover:text-[#004C99] font-bold"
-                      }
-                    `}
-                    onClick={() => setActiveSection("dashboard")}
-                  >
-                    Dashboard
-                  </Button>
-                  <Button
-                    variant={activeSection === "lost" ? "secondary" : "ghost"}
-                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                      ${activeSection === "lost" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                        "text-white hover:text-[#004C99] font-bold"
-                      }
-                    `}
-                    onClick={() => setActiveSection("lost")}
-                  >
-                    Lost Items
-                  </Button>
-                  <Button
-                    variant={activeSection === "found" ? "secondary" : "ghost"}
-                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                      ${activeSection === "found" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                        "text-white hover:text-[#004C99] font-bold"
-                      }
-                    `}
-                    onClick={() => setActiveSection("found")}
-                  >
-                    Found Items
-                  </Button>
-                  
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Search Section */}
-          {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
-            <div className="flex gap-4 mb-4 pb-10 mt-10">
-              {/* Search Input */}
-              <div className="flex-1 bg-gradient-to-br from-[#FFFFFF] to-[#F5F9FF] backdrop-blur-sm rounded-full shadow-[0_20px_15px_rgba(75,159,255,0.1)] border border-[#4B9FFF]/30">
-                <div className="relative flex items-center">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    type="text"
-                    placeholder="Search lost and found items..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 border-0 focus:ring-0 rounded-full h-12"
-                  />
-                </div>
-              </div>
-
-              {/* Categories Dropdown */}
-              <div className="bg-gradient-to-br from-[#FFFFFF] to-[#F5F9FF] backdrop-blur-sm rounded-full shadow-[0_20px_15px_rgba(75,159,255,0.1)] border border-[#4B9FFF]/30">
-                <Select
-                  value={searchCategory}
-                  onValueChange={setSearchCategory}
-                >
-                  <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    <SelectItem value="books">Books</SelectItem>
-                    <SelectItem value="electronics">Electronics</SelectItem>
-                    <SelectItem value="personal items">Personal Items</SelectItem>
-                    <SelectItem value="documents">Documents</SelectItem>
-                    <SelectItem value="bags">Bags</SelectItem>
-                    <SelectItem value="others">Others</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Claim Status Dropdown - Only show for non-admin users */}
-              {!isAdmin && (
-                <div className="bg-gradient-to-br from-[#FFFFFF] to-[#F5F9FF] backdrop-blur-sm rounded-full shadow-[0_20px_15px_rgba(75,159,255,0.1)] border border-[#4B9FFF]/30">
-                  <Select
-                    value={claimStatus}
-                    onValueChange={setClaimStatus}
-                  >
-                    <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                      <SelectValue placeholder="Claim Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Items</SelectItem>
-                      <SelectItem value="none">No Claims</SelectItem>
-                      <SelectItem value="pending">Pending Claims</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Sort Dropdown */}
-              <div className="bg-gradient-to-br from-[#FFFFFF] to-[#F5F9FF] backdrop-blur-sm rounded-full shadow-[0_20px_15px_rgba(75,159,255,0.1)] border border-[#4B9FFF]/30">
-                <Select
-                  value={sortOrder}
-                  onValueChange={setSortOrder}
-                >
-                  <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="a-z">A to Z</SelectItem>
-                    <SelectItem value="z-a">Z to A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {/* Main Content */}
-          <div className="relative">
-            {renderSection()}
+              </CardContent>
+            </Card>
           </div>
+        )}
 
-          <style jsx>{styles}</style>
+        {/* Navigation Tabs */}
+        {!isAdmin && user && 
+          !["profile", "report", "pending_process"].includes(activeSection) && (
+          <div className="mb-6">
+            <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
+              <div className="flex space-x-1">
+                <Button
+                  variant={activeSection === "dashboard" ? "secondary" : "ghost"}
+                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
+                    ${activeSection === "dashboard" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                      "text-white hover:text-[#004C99] font-bold"
+                    }
+                  `}
+                  onClick={() => setActiveSection("dashboard")}
+                >
+                  Dashboard
+                </Button>
+                <Button
+                  variant={activeSection === "lost" ? "secondary" : "ghost"}
+                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
+                    ${activeSection === "lost" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                      "text-white hover:text-[#004C99] font-bold"
+                    }
+                  `}
+                  onClick={() => setActiveSection("lost")}
+                >
+                  Lost Items
+                </Button>
+                <Button
+                  variant={activeSection === "found" ? "secondary" : "ghost"}
+                  className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
+                    ${activeSection === "found" ? 
+                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
+                      "text-white hover:text-[#004C99] font-bold"
+                    }
+                  `}
+                  onClick={() => setActiveSection("found")}
+                >
+                  Found Items
+                </Button>
+                
+              </div>
+            </div>
+          </div>
+        )}
 
-          <ItemDetailSection 
-            item={selectedItem}
-            open={showDetailsDialog}
-            onClose={() => {
-              setShowDetailsDialog(false);
-              setSelectedItem(null);
-            }}
-            onDelete={handleDelete}
-            isAdmin={isAdmin}
-            userId={user?.uid}
-            onUnapprove={handleUnapprove}
-          />
+        {/* Search Section */}
+        {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
+          <div className="flex gap-4 mb-4 pb-10 mt-10">
+            {/* Search Input */}
+            <div className="flex-1 bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+              <div className="relative flex items-center">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search lost and found items..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 border-0 focus:ring-0 rounded-full h-12"
+                />
+              </div>
+            </div>
 
-          <AuthRequiredDialog 
-            open={showAuthDialog} 
-            onOpenChange={setShowAuthDialog}
-          />
-        </main>
+            {/* Categories Dropdown */}
+            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+              <Select
+                value={searchCategory}
+                onValueChange={setSearchCategory}
+              >
+                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="Books">Books</SelectItem>
+                  <SelectItem value="Electronics">Electronics</SelectItem>
+                  <SelectItem value="Personal Items">Personal Items</SelectItem>
+                  <SelectItem value="Documents">Documents</SelectItem>
+                  <SelectItem value="Bags">Bags</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <ReportConfirmDialog 
-          open={showReportConfirmDialog}
-          onOpenChange={setShowReportConfirmDialog}
-          onConfirm={handleConfirmReport}
-        />
+            {/*Claim Status Dropdown */}
+            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+              <Select
+                value={claimStatus}
+                onValueChange={setClaimStatus}
+              >
+                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                  <SelectValue placeholder="Claim Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Items</SelectItem>
+                  <SelectItem value="none">No Claims</SelectItem>
+                  <SelectItem value="pending">Pending Claims</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-        <VerificationDialog 
-          open={showVerificationDialog}
-          onOpenChange={setShowVerificationDialog}
-          onSubmit={handleSubmitVerification}
-          onCancel={() => setShowVerificationDialog(false)}
-          questions={currentNotification?.verificationQuestions || []}
-          answers={verificationAnswers}
-          onAnswerChange={(index, value) => {
-            const newAnswers = [...verificationAnswers];
-            newAnswers[index] = value;
-            setVerificationAnswers(newAnswers);
+            {/* Sort Dropdown */}
+            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+              <Select
+                value={sortOrder}
+                onValueChange={setSortOrder}
+              >
+                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">Newest First</SelectItem>
+                  <SelectItem value="oldest">Oldest First</SelectItem>
+                  <SelectItem value="a-z">A to Z</SelectItem>
+                  <SelectItem value="z-a">Z to A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="relative">
+          {renderSection()}
+        </div>
+
+        <style jsx>{styles}</style>
+
+        <ItemDetailSection 
+          item={selectedItem}
+          open={showDetailsDialog}
+          onClose={() => {
+            setShowDetailsDialog(false);
+            setSelectedItem(null);
           }}
+          onDelete={handleDelete}
+          isAdmin={isAdmin}
+          userId={user?.uid}
+          onUnapprove={handleUnapprove}
         />
 
-        <VerificationSuccessDialog 
-          open={showVerificationSuccessDialog}
-          onOpenChange={setShowVerificationSuccessDialog}
+        <AuthRequiredDialog 
+          open={showAuthDialog} 
+          onOpenChange={setShowAuthDialog}
         />
+      </main>
 
-        <VerificationFailDialog 
-          open={showVerificationFailDialog}
-          onOpenChange={setShowVerificationFailDialog}
-          onTryAgain={() => {
-            setShowVerificationFailDialog(false);
-            setShowVerificationDialog(true);
-          }}
-        />
-      </div>
+      <ReportConfirmDialog 
+        open={showReportConfirmDialog}
+        onOpenChange={setShowReportConfirmDialog}
+        onConfirm={handleConfirmReport}
+      />
+
+      <VerificationDialog 
+        open={showVerificationDialog}
+        onOpenChange={setShowVerificationDialog}
+        onSubmit={handleSubmitVerification}
+        onCancel={() => setShowVerificationDialog(false)}
+        questions={currentNotification?.verificationQuestions || []}
+        answers={verificationAnswers}
+        onAnswerChange={(index, value) => {
+          const newAnswers = [...verificationAnswers];
+          newAnswers[index] = value;
+          setVerificationAnswers(newAnswers);
+        }}
+      />
+
+      <VerificationSuccessDialog 
+        open={showVerificationSuccessDialog}
+        onOpenChange={setShowVerificationSuccessDialog}
+      />
+
+      <VerificationFailDialog 
+        open={showVerificationFailDialog}
+        onOpenChange={setShowVerificationFailDialog}
+        onTryAgain={() => {
+          setShowVerificationFailDialog(false);
+          setShowVerificationDialog(true);
+        }}
+      />
     </div>
   )
 }
