@@ -40,14 +40,15 @@ public class UserAccessRepository : IUserAccessRepository
             .ToListAsync();
     }
 
-    public async Task<bool> AddAdminEmailAsync(string email)
+    public async Task<bool> AddAdminEmailAsync(string email, DateTime currentDateTime)
     {
         try
         {
             await _context.UserAccess.AddAsync(new UserAccess
             {
                 Type = "admin",
-                Value = email
+                Value = email,
+                CreatedAt = currentDateTime
             });
             await _context.SaveChangesAsync();
             return true;

@@ -16,7 +16,7 @@ public class UserAccess
     [MaxLength(255)]
     public string Value { get; set; } = string.Empty;  // email or domain
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? CreatedAt { get; set; }
 
     // Static helper properties for default values
     public static List<string> DefaultDevelopmentEmails => new() 
@@ -28,4 +28,4 @@ public class UserAccess
     { 
         "umak.edu.ph" 
     };
-} 
+}

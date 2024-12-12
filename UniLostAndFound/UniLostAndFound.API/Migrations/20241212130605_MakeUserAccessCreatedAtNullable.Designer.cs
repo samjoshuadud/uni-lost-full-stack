@@ -11,8 +11,8 @@ using UniLostAndFound.API.Data;
 namespace UniLostAndFound.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20241212123545_AddCreatedAtDefaultValue")]
-    partial class AddCreatedAtDefaultValue
+    [Migration("20241212130605_MakeUserAccessCreatedAtNullable")]
+    partial class MakeUserAccessCreatedAtNullable
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -189,10 +189,8 @@ namespace UniLostAndFound.API.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime(6)")
-                        .HasDefaultValueSql("CONVERT_TZ(CURRENT_TIMESTAMP(6), '+00:00', '+08:00')");
+                    b.Property<DateTime?>("CreatedAt")
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Type")
                         .IsRequired()
