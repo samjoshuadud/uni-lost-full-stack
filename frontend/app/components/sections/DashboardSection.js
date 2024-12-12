@@ -254,50 +254,48 @@ export default function DashboardSection({
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card 
+          <div 
             key={i} 
-            className="bg-white overflow-hidden shadow-sm border border-gray-200 animate-shimmer"
-            style={{
-              animationDelay: `${i * 0.05}s`,
-              animationFillMode: 'both',
-              opacity: 0
-            }}
+            className="bg-white rounded-lg overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.1)] border border-gray-200/80 animate-pulse"
+            style={staggerDelay(i)}
           >
-            <CardContent className="p-4">
-              {/* Image Skeleton with subtle animation */}
-              <div className="w-full h-48 mb-4 relative overflow-hidden">
-                <Skeleton className="w-full h-full rounded-lg bg-gray-200/60 animate-pulse" />
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer" />
+            {/* Header Skeleton */}
+            <div className="p-4 bg-gradient-to-r from-[#0F3A99]/10 to-[#0873E0]/10">
+              <div className="h-6 w-3/4 bg-[#0F3A99]/10 rounded-full mb-2"></div>
+              <div className="flex items-center gap-2">
+                <div className="h-4 w-4 rounded-full bg-[#0F3A99]/10"></div>
+                <div className="h-4 w-1/2 bg-[#0F3A99]/10 rounded-full"></div>
+              </div>
+            </div>
+
+            {/* Content Skeleton */}
+            <div className="p-4">
+              {/* Image Placeholder */}
+              <div className="w-full h-48 mb-4 rounded-lg bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 relative overflow-hidden">
+                <div className="absolute inset-0 bg-shimmer"></div>
               </div>
 
-              {/* Content Skeletons */}
+              {/* Details Skeleton */}
               <div className="space-y-4">
-                {/* Category Badge */}
                 <div className="flex gap-2">
-                  <Skeleton className="h-6 w-20 rounded-full bg-gray-200/60" />
-                  <Skeleton className="h-6 w-24 rounded-full bg-gray-200/60" />
+                  <div className="h-6 w-20 rounded-full bg-gray-200"></div>
+                  <div className="h-6 w-24 rounded-full bg-gray-200"></div>
                 </div>
 
-                {/* Description Lines */}
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full bg-gray-200/60" />
-                  <Skeleton className="h-4 w-4/5 bg-gray-200/60" />
-                </div>
-
-                {/* Footer Section */}
+                {/* Action Buttons Skeleton */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4 rounded-full bg-gray-200/60" />
-                    <Skeleton className="h-4 w-24 bg-gray-200/60" />
+                    <div className="h-4 w-4 rounded-full bg-gray-200"></div>
+                    <div className="h-4 w-24 rounded bg-gray-200"></div>
                   </div>
                   <div className="flex gap-2">
-                    <Skeleton className="h-9 w-[120px] rounded-md bg-gray-200/60" />
-                    <Skeleton className="h-9 w-9 rounded-md bg-gray-200/60" />
+                    <div className="h-9 w-[120px] rounded-md bg-[#0F3A99]/10"></div>
+                    <div className="h-9 w-9 rounded-md bg-gray-200"></div>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -628,9 +626,17 @@ export default function DashboardSection({
                 >
                   <Card 
                     id={`item-${item.id}`}
-                    className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] 
+                    className={`bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] 
                       hover:shadow-xl transition-all duration-300 border border-gray-200/80 
-                      relative group h-full transform-gpu"
+                      relative group h-full transform-gpu ${
+                        (isAdmin || (!isAdmin && item.status?.toLowerCase() === "lost")) ? 
+                        'cursor-pointer' : ''
+                      }`}
+                    onClick={() => {
+                      if (isAdmin || (!isAdmin && item.status?.toLowerCase() === "lost")) {
+                        handleViewDetails(item);
+                      }
+                    }}
                   >
                     {/* Status Badge - Moved outside header for better visibility */}
                     <Badge 
@@ -756,14 +762,6 @@ export default function DashboardSection({
                           <div className="flex gap-2">
                             {isAdmin ? (
                               <>
-                                <Button 
-                                  className="bg-[#004C99] text-white hover:bg-[#0052cc]/90 shadow-sm"
-                                  size="sm"
-                                  onClick={() => handleViewDetails(item)}
-                                >
-                                  <ExternalLink className="h-4 w-4 mr-2" />
-                                  View Details
-                                </Button>
                                 {canDelete(item) && (
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -857,39 +855,30 @@ export default function DashboardSection({
                               </>
                             ) : (
                               <>
-                                {/* For non-admin: Show View Details only for lost items */}
                                 {item.status?.toLowerCase() === "lost" ? (
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      className="bg-[#004C99] text-white hover:bg-[#0052cc]/90 shadow-sm"
-                                      size="sm"
-                                      onClick={() => handleViewDetails(item)}
-                                    >
-                                      <ExternalLink className="h-4 w-4 mr-2" />
-                                      View Details
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
-                                      onClick={() => handleFoundThisClick(item)}
-                                      disabled={generatingQRForItem === item.id || userId === item.reporterId}
-                                    >
-                                      {generatingQRForItem === item.id ? (
-                                        <>
-                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                          Generating QR...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Package className="h-4 w-4 mr-2" />
-                                          {userId === item.reporterId ? "You reported this item" : "I Found This"}
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleFoundThisClick(item);
+                                    }}
+                                    disabled={generatingQRForItem === item.id || userId === item.reporterId}
+                                  >
+                                    {generatingQRForItem === item.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Generating QR...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Package className="h-4 w-4 mr-2" />
+                                        {userId === item.reporterId ? "You reported this item" : "I Found This"}
+                                      </>
+                                    )}
+                                  </Button>
                                 ) : (
-                                  // For found items, only show claim button
                                   <Button
                                     variant="outline"
                                     size="sm"

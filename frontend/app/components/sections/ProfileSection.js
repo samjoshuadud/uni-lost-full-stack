@@ -114,94 +114,176 @@ export default function ProfileSection() {
   };
 
   return (
-    <div className="min-h-[80vh] w-[80%] mx-auto rounded-3xl bg-gradient-to-br from-blue-100 to-yellow-100 p-12 shadow-[0_10px_20px_rgba(0,0,0,0.15)]">
-      <div className="max-w-3xl mx-auto space-y-6 mt-10">
+    <div className="min-h-[80vh] w-full sm:w-[95%] lg:w-[90%] xl:w-[80%] mx-auto rounded-2xl sm:rounded-3xl 
+      bg-gradient-to-br from-blue-50 via-blue-100/50 to-yellow-100/50 p-4 sm:p-8 lg:p-12 
+      shadow-[0_8px_30px_rgb(0,0,0,0.12)] backdrop-blur-sm"
+    >
+      <div className="max-w-4xl mx-auto space-y-4 sm:space-y-6 mt-4 sm:mt-10">
         {/* Profile Info Section */}
-        <div className="flex items-start gap-8">
-          {/* Avatar */}
-          <div className="w-32 h-32 bg-white rounded-full shadow-lg flex items-center justify-center">
-            {user.photoURL ? (
-              <img 
-                src={user.photoURL} 
-                alt="Profile" 
-                className="w-32 h-32 rounded-full"
-              />
-            ) : (
-              <svg
-                className="w-16 h-16 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+        <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 sm:gap-8">
+            {/* Avatar Container */}
+            <div className="relative group">
+              <div className="w-28 h-28 sm:w-32 sm:h-32 bg-gradient-to-br from-blue-100 to-blue-50 
+                rounded-full shadow-lg flex items-center justify-center flex-shrink-0
+                transform transition-transform duration-300 group-hover:scale-105"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
-                />
-              </svg>
-            )}
-          </div>
+                {user.photoURL ? (
+                  <img 
+                    src={user.photoURL} 
+                    alt="Profile" 
+                    className="w-28 h-28 sm:w-32 sm:h-32 rounded-full object-cover p-1 bg-white"
+                  />
+                ) : (
+                  <div className="bg-white p-6 rounded-full">
+                    <svg
+                      className="w-12 h-12 sm:w-14 sm:h-14 text-blue-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.5}
+                        d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"
+                      />
+                    </svg>
+                  </div>
+                )}
+              </div>
+              {/* Online Status Indicator */}
+              <div className="absolute bottom-1 right-1 w-4 h-4 bg-green-500 rounded-full 
+                border-2 border-white shadow-sm"
+              />
+            </div>
 
-          {/* User Details */}
-          <div className="flex flex-col">
-            <h2 className="text-2xl font-black text-[#2E3F65] mb-2">
-              {user.displayName || "UMAK User"}
-            </h2>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Mail className="w-4 h-4 text-gray-500" />
-                <span className="text-sm">{user.email}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <IdCard className="w-4 h-4 text-gray-500" />
-                <span className="text-sm">{userData?.studentId || "No Student ID"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <School className="w-4 h-4 text-gray-500" />
-                <span className="text-sm">University of Makati</span>
+            {/* User Details */}
+            <div className="flex flex-col text-center sm:text-left">
+              <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-[#2E3F65] to-[#0052cc] 
+                bg-clip-text text-transparent mb-3"
+              >
+                {user.displayName || "UMAK User"}
+              </h2>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 text-gray-600
+                  hover:text-[#0052cc] transition-colors duration-200 group cursor-default"
+                >
+                  <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                    <Mail className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <span className="text-sm break-all">{user.email}</span>
+                </div>
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 text-gray-600
+                  hover:text-[#0052cc] transition-colors duration-200 group cursor-default"
+                >
+                  <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                    <IdCard className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <span className="text-sm">{userData?.studentId || "No Student ID"}</span>
+                </div>
+                <div className="flex items-center justify-center sm:justify-start gap-2.5 text-gray-600
+                  hover:text-[#0052cc] transition-colors duration-200 group cursor-default"
+                >
+                  <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
+                    <School className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <span className="text-sm">University of Makati</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Tabs Section */}
-        <Tabs defaultValue="reports" className="w-full">
-          <TabsList className="w-full bg-[#2E3F65] p-1.5 rounded-full shadow-[0_10px_20px_rgba(0,0,0,0.15)] mt-10">
+        <Tabs defaultValue="reports" className="w-full mt-8">
+          <TabsList className="w-full bg-[#2E3F65]/90 backdrop-blur-sm p-1.5 rounded-full 
+            shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10"
+          >
             <TabsTrigger 
               value="reports" 
-              className="flex-1 py-1.5 px-6 rounded-full data-[state=active]:bg-yellow-400 data-[state=active]:text-[#0052cc] text-white"
+              className="
+                flex-1 py-2.5 px-6 sm:px-8
+                rounded-full 
+                data-[state=active]:bg-gradient-to-r 
+                data-[state=active]:from-yellow-400 
+                data-[state=active]:to-yellow-300
+                data-[state=active]:text-[#2E3F65]
+                data-[state=active]:shadow-md
+                data-[state=active]:font-medium
+                data-[state=active]:scale-[0.97]
+                text-white/90 
+                text-sm sm:text-base 
+                transition-all duration-300
+                hover:bg-white/10 
+                hover:text-yellow-400
+                group
+              "
             >
-              My Reports
+              <div className="flex items-center justify-center gap-2.5">
+                <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                  <ClipboardList className="w-4 h-4" />
+                </div>
+                <span>My Reports</span>
+              </div>
             </TabsTrigger>
             <TabsTrigger 
               value="activity"
-              className="flex-1 py-1.5 px-6 rounded-full data-[state=active]:bg-yellow-400 data-[state=active]:text-[#0052cc] text-white"
+              className="
+                flex-1 py-2.5 px-6 sm:px-8
+                rounded-full 
+                data-[state=active]:bg-gradient-to-r 
+                data-[state=active]:from-yellow-400 
+                data-[state=active]:to-yellow-300
+                data-[state=active]:text-[#2E3F65]
+                data-[state=active]:shadow-md
+                data-[state=active]:font-medium
+                data-[state=active]:scale-[0.97]
+                text-white/90 
+                text-sm sm:text-base 
+                transition-all duration-300
+                hover:bg-white/10 
+                hover:text-yellow-400
+                group
+              "
             >
-              Recent Activity
+              <div className="flex items-center justify-center gap-2.5">
+                <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <span>Recent Activity</span>
+              </div>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="reports" className="mt-10">
-            <div className="bg-white rounded-2xl shadow-[0_10px_20px_rgba(0,0,0,0.15)] p-6">
-              <div className="flex items-center justify-between mb-6">
+          <TabsContent value="reports" className="mt-6 sm:mt-10">
+            <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+              {/* Reports Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-50 rounded-lg">
-                    <ClipboardList className="h-5 w-5 text-blue-500" />
+                  <div className="p-2.5 bg-gradient-to-br from-blue-500/10 to-blue-500/20 rounded-xl">
+                    <ClipboardList className="h-5 w-5 text-blue-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-[#0052cc]">
-                    Reports History
-                  </h3>
+                  <div>
+                    <h3 className="text-lg font-semibold bg-gradient-to-r from-[#2E3F65] to-[#0052cc] bg-clip-text text-transparent">
+                      Reports History
+                    </h3>
+                    <p className="text-sm text-gray-500">Track your lost and found reports</p>
+                  </div>
                 </div>
-                <Badge variant="secondary" className="bg-gray-100">
+                <Badge className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
                   {reports.length} {reports.length === 1 ? 'Report' : 'Reports'}
                 </Badge>
               </div>
 
+              {/* Reports Content */}
               {isLoading ? (
-                <div className="flex items-center justify-center py-12">
+                <div className="flex items-center justify-center py-16">
                   <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-8 w-8 animate-spin text-[#0052cc]" />
+                    <div className="relative">
+                      <div className="w-12 h-12 rounded-full border-2 border-blue-100 animate-pulse" />
+                      <Loader2 className="h-6 w-6 animate-spin text-blue-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                    </div>
                     <p className="text-sm text-gray-500">Loading your reports...</p>
                   </div>
                 </div>
@@ -212,31 +294,40 @@ export default function ProfileSection() {
                   initial="hidden"
                   animate="show"
                 >
-                  <div className="max-h-[400px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-gray-200 scrollbar-track-gray-50">
+                  <div className="max-h-[500px] overflow-y-auto pr-3 scrollbar-thin scrollbar-thumb-blue-200 
+                    scrollbar-track-transparent hover:scrollbar-thumb-blue-300 transition-colors"
+                  >
                     <div className="space-y-4">
-                      {reports.map((report, index) => (
+                      {reports.map((report) => (
                         <motion.div key={report.id} variants={item}>
                           <div className="group">
-                            <div className="flex items-start gap-4 p-4 bg-white hover:bg-gray-50 transition-all duration-200 rounded-xl border border-gray-200 shadow-sm hover:shadow-md">
-                              <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                                <Package className="h-5 w-5 text-blue-500" />
+                            <div className="flex items-start gap-4 p-5 bg-white hover:bg-blue-50/50 
+                              transition-all duration-200 rounded-xl border border-gray-100 
+                              shadow-sm hover:shadow-md hover:border-blue-100"
+                            >
+                              <div className="p-3 bg-gradient-to-br from-blue-500/10 to-blue-500/20 
+                                rounded-xl group-hover:from-blue-500/20 group-hover:to-blue-500/30 
+                                transition-colors"
+                              >
+                                <Package className="h-5 w-5 text-blue-600" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between gap-4">
                                   <div>
-                                    <h4 className="font-semibold text-gray-900 truncate">{report.itemName}</h4>
-                                    <div className="flex items-center gap-2 mt-1.5">
-                                      <Badge variant="secondary" className="bg-gray-100/80 text-gray-700 group-hover:bg-gray-100">
-                                        {report.category === "Others" && report.specification 
-                                          ? `Others - ${report.specification}`
-                                          : report.category}
+                                    <h4 className="font-semibold text-gray-900 mb-1.5">{report.itemName}</h4>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary" 
+                                        className="bg-gray-50 text-gray-700 group-hover:bg-blue-100/50 
+                                          group-hover:text-blue-800 transition-colors"
+                                      >
+                                        {report.category}
                                       </Badge>
                                     </div>
                                   </div>
                                   {getStatusBadge(report.status, report.itemStatus)}
                                 </div>
-                                <div className="mt-2 flex items-center text-sm text-gray-600">
-                                  <CalendarDays className="h-4 w-4 mr-2 text-gray-400" />
+                                <div className="mt-3 flex items-center text-sm text-gray-500 group-hover:text-gray-600">
+                                  <CalendarDays className="h-4 w-4 mr-2 text-gray-400 group-hover:text-gray-500" />
                                   <time dateTime={report.date}>
                                     {format(new Date(report.date), "MMM d, yyyy 'at' h:mm a")}
                                   </time>
@@ -248,19 +339,23 @@ export default function ProfileSection() {
                       ))}
                     </div>
                   </div>
-                  <div className="absolute bottom-0 left-0 right-2 h-12 bg-gradient-to-t from-white to-transparent pointer-events-none" />
+                  <div className="absolute bottom-0 left-0 right-3 h-16 
+                    bg-gradient-to-t from-white/50 via-white/30 to-transparent pointer-events-none" 
+                  />
                 </motion.div>
               ) : (
                 <motion.div 
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-center py-12"
+                  className="text-center py-16"
                 >
-                  <div className="w-16 h-16 bg-gray-100/80 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <div className="w-20 h-20 bg-gradient-to-br from-gray-50 to-gray-100/80 
+                    rounded-full flex items-center justify-center mx-auto mb-4 shadow-inner"
+                  >
                     <AlertCircle className="h-8 w-8 text-gray-400" />
                   </div>
-                  <h4 className="text-gray-900 font-medium mb-1">No Reports Yet</h4>
-                  <p className="text-gray-500 text-sm">
+                  <h4 className="text-gray-900 font-medium mb-2">No Reports Yet</h4>
+                  <p className="text-gray-500 text-sm max-w-sm mx-auto">
                     When you report lost or found items, they will appear here.
                   </p>
                 </motion.div>
@@ -268,26 +363,37 @@ export default function ProfileSection() {
             </div>
           </TabsContent>
 
-          <TabsContent value="activity" className="mt-10">
-            <div className="bg-white rounded-2xl shadow-[0_10px_20px_rgba(0,0,0,0.15)] p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-indigo-50 rounded-lg">
-                  <Activity className="h-5 w-5 text-indigo-500" />
+          <TabsContent value="activity" className="mt-6 sm:mt-10">
+            <div className="bg-white/50 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20">
+              {/* Activity Header */}
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-2.5 bg-gradient-to-br from-indigo-500/10 to-indigo-500/20 rounded-xl">
+                  <Activity className="h-5 w-5 text-indigo-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-[#0052cc]">
-                  Recent Activity
-                </h3>
+                <div>
+                  <h3 className="text-lg font-semibold bg-gradient-to-r from-[#2E3F65] to-[#0052cc] bg-clip-text text-transparent">
+                    Recent Activity
+                  </h3>
+                  <p className="text-sm text-gray-500">Your account activity timeline</p>
+                </div>
               </div>
-              <div className="space-y-4">
+
+              {/* Activity Timeline */}
+              <div className="space-y-6">
                 <motion.div 
-                  className="relative pl-8 pb-8 before:absolute before:left-[15px] before:top-2 before:h-full before:w-[2px] before:bg-gray-100"
+                  className="relative pl-10 pb-8 before:absolute before:left-[19px] before:top-2 
+                    before:h-full before:w-[2px] before:bg-gradient-to-b before:from-green-200 before:to-transparent"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                 >
-                  <div className="absolute left-0 top-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <CalendarDays className="h-4 w-4 text-green-600" />
+                  <div className="absolute left-0 top-0 w-10 h-10 bg-gradient-to-br from-green-100 to-green-200 
+                    rounded-full flex items-center justify-center shadow-sm"
+                  >
+                    <CalendarDays className="h-5 w-5 text-green-600" />
                   </div>
-                  <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <div className="bg-white/80 hover:bg-white p-4 rounded-xl border border-gray-100 
+                    shadow-sm hover:shadow-md transition-all duration-200 hover:border-green-100"
+                  >
                     <h4 className="font-medium text-gray-900">Account Created</h4>
                     <p className="text-sm text-gray-600 mt-1">
                       {format(new Date(userData?.createdAt || user.metadata.creationTime), 
@@ -297,15 +403,19 @@ export default function ProfileSection() {
                 </motion.div>
 
                 <motion.div 
-                  className="relative pl-8"
+                  className="relative pl-10"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.1 }}
                 >
-                  <div className="absolute left-0 top-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                    <Clock className="h-4 w-4 text-blue-600" />
+                  <div className="absolute left-0 top-0 w-10 h-10 bg-gradient-to-br from-blue-100 to-blue-200 
+                    rounded-full flex items-center justify-center shadow-sm"
+                  >
+                    <Clock className="h-5 w-5 text-blue-600" />
                   </div>
-                  <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <div className="bg-white/80 hover:bg-white p-4 rounded-xl border border-gray-100 
+                    shadow-sm hover:shadow-md transition-all duration-200 hover:border-blue-100"
+                  >
                     <h4 className="font-medium text-gray-900">Last Sign In</h4>
                     <p className="text-sm text-gray-600 mt-1">
                       {format(new Date(userData?.lastLogin || user.metadata.lastSignInTime), 

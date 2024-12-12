@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,8 @@ import {
   AlertTriangle,
   History,
   QrCode,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import StatisticsSection from "./admin-tabs/StatisticsSection";
@@ -57,6 +59,7 @@ import HistoryTab from "./admin-tabs/HistoryTab";
 import { QRScannerDialog } from "../dialogs/QRScannerDialog";
 import { toast } from "react-hot-toast";
 import { ProcessStatus, ProcessMessages } from "@/lib/constants";
+import { motion } from "framer-motion";
 
 export default function AdminSection({
   items = [],
@@ -109,6 +112,9 @@ export default function AdminSection({
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [pendingLostCount, setPendingLostCount] = useState(0);
   const [pendingFoundCount, setPendingFoundCount] = useState(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const tabsRef = useRef(null);
 
   // Memoize the filtered data
   const memoizedPendingProcesses = useMemo(() => {
@@ -545,6 +551,44 @@ export default function AdminSection({
     fetchItems();
   };
 
+  // Add this useEffect to handle scroll checks
+  useEffect(() => {
+    const handleScroll = () => {
+      if (tabsRef.current) {
+        const { scrollLeft, scrollWidth, clientWidth } = tabsRef.current;
+        setCanScrollLeft(scrollLeft > 0);
+        setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 5);
+      }
+    };
+
+    const tabsElement = tabsRef.current;
+    if (tabsElement) {
+      tabsElement.addEventListener('scroll', handleScroll);
+      // Initial check
+      handleScroll();
+
+      // Check on window resize
+      window.addEventListener('resize', handleScroll);
+
+      return () => {
+        tabsElement.removeEventListener('scroll', handleScroll);
+        window.removeEventListener('resize', handleScroll);
+      };
+    }
+  }, []);
+
+  // Add this function to handle scrolling
+  const scrollTabs = (direction) => {
+    if (tabsRef.current) {
+      const scrollAmount = 200;
+      const scrollLeft = tabsRef.current.scrollLeft;
+      tabsRef.current.scrollTo({
+        left: direction === 'left' ? scrollLeft - scrollAmount : scrollLeft + scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   if (!isAdmin) {
     return (
       <Card>
@@ -592,80 +636,155 @@ export default function AdminSection({
       <Card className="border-0 shadow-sm bg-white relative drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
         <CardContent className="p-6">
           <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-            <TabsList className="w-full grid grid-cols-5 gap-4 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px]">
+            <TabsList className="w-full flex flex-wrap sm:flex-nowrap gap-2 bg-[#2E3F65] p-2 rounded-[15px] mb-6 min-h-[60px] overflow-x-auto scrollbar-none">
               {/* Overview Tab */}
               <TabsTrigger 
                 value="statistics"
-                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                  hover:bg-white/10"
+                className="
+                  flex-1 min-w-[150px] relative group 
+                  flex items-center justify-center gap-2 
+                  h-[44px] text-white rounded-[10px] 
+                  transition-all duration-200
+                  data-[state=active]:bg-gradient-to-r 
+                  data-[state=active]:from-yellow-400 
+                  data-[state=active]:to-yellow-300
+                  data-[state=active]:text-[#2E3F65] 
+                  data-[state=active]:shadow-md
+                  data-[state=active]:scale-[0.97]
+                  hover:bg-white/10
+                  text-sm sm:text-base
+                "
               >
-                <BarChart className="h-4 w-4" />
-                <span className="font-medium">Overview</span>
+                <div className="flex items-center justify-center gap-2">
+                  <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                    <BarChart className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Overview</span>
+                </div>
               </TabsTrigger>
 
               {/* Lost Items Tab */}
               <TabsTrigger 
                 value="reports"
-                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                  hover:bg-white/10"
+                className="
+                  flex-1 min-w-[150px] relative group 
+                  flex items-center justify-center gap-2 
+                  h-[44px] text-white rounded-[10px] 
+                  transition-all duration-200
+                  data-[state=active]:bg-gradient-to-r 
+                  data-[state=active]:from-yellow-400 
+                  data-[state=active]:to-yellow-300
+                  data-[state=active]:text-[#2E3F65] 
+                  data-[state=active]:shadow-md
+                  data-[state=active]:scale-[0.97]
+                  hover:bg-white/10
+                  text-sm sm:text-base
+                "
               >
-                <ClipboardList className="h-4 w-4" />
-                <span className="font-medium">Lost Items</span>
-                {pendingLostCount > 0 && (
-                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
-                    {pendingLostCount}
-                  </Badge>
-                )}
+                <div className="flex items-center justify-center gap-2">
+                  <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Lost Items</span>
+                  {pendingLostCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {pendingLostCount}
+                    </Badge>
+                  )}
+                </div>
               </TabsTrigger>
 
               {/* Found Items Tab */}
               <TabsTrigger 
                 value="found"
-                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                  hover:bg-white/10"
+                className="
+                  flex-1 min-w-[150px] relative group 
+                  flex items-center justify-center gap-2 
+                  h-[44px] text-white rounded-[10px] 
+                  transition-all duration-200
+                  data-[state=active]:bg-gradient-to-r 
+                  data-[state=active]:from-yellow-400 
+                  data-[state=active]:to-yellow-300
+                  data-[state=active]:text-[#2E3F65] 
+                  data-[state=active]:shadow-md
+                  data-[state=active]:scale-[0.97]
+                  hover:bg-white/10
+                  text-sm sm:text-base
+                "
               >
-                <Package className="h-4 w-4" />
-                <span className="font-medium">Found Items</span>
-                {pendingFoundCount > 0 && (
-                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
-                    {pendingFoundCount}
-                  </Badge>
-                )}
+                <div className="flex items-center justify-center gap-2">
+                  <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                    <Package className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Found Items</span>
+                  {pendingFoundCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-red-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {pendingFoundCount}
+                    </Badge>
+                  )}
+                </div>
               </TabsTrigger>
 
               {/* Retrieval Tab */}
               <TabsTrigger 
                 value="retrieval"
-                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                  hover:bg-white/10"
+                className="
+                  flex-1 min-w-[150px] relative group 
+                  flex items-center justify-center gap-2 
+                  h-[44px] text-white rounded-[10px] 
+                  transition-all duration-200
+                  data-[state=active]:bg-gradient-to-r 
+                  data-[state=active]:from-yellow-400 
+                  data-[state=active]:to-yellow-300
+                  data-[state=active]:text-[#2E3F65] 
+                  data-[state=active]:shadow-md
+                  data-[state=active]:scale-[0.97]
+                  hover:bg-white/10
+                  text-sm sm:text-base
+                "
               >
-                <PieChart className="h-4 w-4" />
-                <span className="font-medium">Ready for Pickup</span>
-                {readyForPickupCount > 0 && (
-                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-green-500 text-white border-2 border-[#2E3F65] shadow-md">
-                    {readyForPickupCount}
-                  </Badge>
-                )}
+                <div className="flex items-center justify-center gap-2">
+                  <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                    <PieChart className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">Ready for Pickup</span>
+                  {readyForPickupCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-green-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {readyForPickupCount}
+                    </Badge>
+                  )}
+                </div>
               </TabsTrigger>
 
               {/* History Tab */}
               <TabsTrigger 
                 value="history"
-                className="relative group flex items-center justify-center gap-2 h-[44px] text-white rounded-[10px] transition-all duration-200
-                  data-[state=active]:bg-yellow-400 data-[state=active]:text-[#2E3F65] data-[state=active]:shadow-md
-                  hover:bg-white/10"
+                className="
+                  flex-1 min-w-[150px] relative group 
+                  flex items-center justify-center gap-2 
+                  h-[44px] text-white rounded-[10px] 
+                  transition-all duration-200
+                  data-[state=active]:bg-gradient-to-r 
+                  data-[state=active]:from-yellow-400 
+                  data-[state=active]:to-yellow-300
+                  data-[state=active]:text-[#2E3F65] 
+                  data-[state=active]:shadow-md
+                  data-[state=active]:scale-[0.97]
+                  hover:bg-white/10
+                  text-sm sm:text-base
+                "
               >
-                <History className="h-4 w-4" />
-                <span className="font-medium">History</span>
-                {historyCount > 0 && (
-                  <Badge variant="secondary" className="absolute -top-2 -right-2 bg-gray-500 text-white border-2 border-[#2E3F65] shadow-md">
-                    {historyCount}
-                  </Badge>
-                )}
+                <div className="flex items-center justify-center gap-2">
+                  <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
+                    <History className="h-4 w-4" />
+                  </div>
+                  <span className="font-medium">History</span>
+                  {historyCount > 0 && (
+                    <Badge variant="secondary" className="absolute -top-2 -right-2 bg-gray-500 text-white border-2 border-[#2E3F65] shadow-md">
+                      {historyCount}
+                    </Badge>
+                  )}
+                </div>
               </TabsTrigger>
             </TabsList>
 
@@ -754,6 +873,18 @@ export default function AdminSection({
         onOpenChange={setShowQRScanner}
         onScanComplete={handleScanComplete}
       />
+
+      {/* Add these styles somewhere in your component */}
+      <style jsx global>{`
+        .scrollbar-none::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-none {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+          scroll-behavior: smooth;
+        }
+      `}</style>
     </div>
   );
 }
