@@ -723,124 +723,101 @@ const formatDatefns = (dateString) => {
                     .map((process) => (
                       <Card
                         key={process.id || process.Id}
-                        className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer group"
+                        className="overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-all duration-300 group relative"
                         onClick={() => handleItemClick(process.item)}
                       >
                         <CardContent className="p-6">
                           <div className="flex gap-6">
-                            {/* Image Section */}
-                            <div className="w-32 h-32 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100">
-                              {process.item?.imageUrl ||
-                              process.item?.ImageUrl ? (
+                            {/* Enhanced Image Section */}
+                            <div className="w-32 h-32 bg-gray-50 rounded-xl overflow-hidden flex-shrink-0 border border-gray-100 group-hover:border-blue-200 transition-all duration-300 relative">
+                              {process.item?.imageUrl || process.item?.ImageUrl ? (
                                 <div className="w-full h-full relative group">
                                   <img
-                                    src={
-                                      process.item.imageUrl ||
-                                      process.item.ImageUrl
-                                    }
+                                    src={process.item.imageUrl || process.item.ImageUrl}
                                     alt={process.item.name || process.item.Name}
-                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                                     onError={(e) => {
                                       e.target.style.display = "none";
-                                      e.target.nextSibling.style.display =
-                                        "flex";
+                                      e.target.nextSibling.style.display = "flex";
                                     }}
                                   />
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 </div>
                               ) : (
-                                <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-gray-50">
-                                  <Package className="h-8 w-8 mb-2" />
-                                  <p className="text-xs text-center px-2">
+                                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                                  <Package className="h-8 w-8 text-gray-400 group-hover:text-blue-400 transition-colors duration-300" />
+                                  <p className="text-xs text-center px-2 mt-2 text-gray-400 group-hover:text-blue-400 transition-colors duration-300">
                                     No Image
                                   </p>
                                 </div>
                               )}
                             </div>
 
-                            {/* Info Section */}
+                            {/* Enhanced Info Section */}
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between mb-3">
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <h3 className="font-bold text-lg truncate">
+                                    <h3 className="font-bold text-lg text-gray-900 group-hover:text-blue-600 transition-colors duration-300">
                                       {process.item?.name || process.item?.Name}
                                     </h3>
                                     <Badge
                                       variant="outline"
-                                      className="bg-yellow-100 text-yellow-800"
+                                      className="bg-yellow-50 text-yellow-700 border-yellow-200 group-hover:bg-yellow-100 transition-colors duration-300"
                                     >
                                       For Approval
                                     </Badge>
                                   </div>
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                                      <span className="font-medium">
-                                        {process.item?.studentId?.startsWith(
-                                          "ADMIN",
-                                        )
-                                          ? "Reported by:"
-                                          : "Student ID:"}
-                                      </span>
-                                      <span>
-                                        {process.item?.studentId ||
-                                          process.item?.StudentId ||
-                                          "N/A"}
-                                      </span>
+                                  <div className="mt-1 flex items-center gap-3 text-sm text-gray-500">
+                                    <div className="flex items-center gap-1.5">
+                                      <CalendarIcon className="h-4 w-4 text-gray-400" />
+                                      <span>{formatDatefns(process.updatedAt)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                      <MapPinIcon className="h-4 w-4 text-gray-400" />
+                                      <span>{process.item?.location || process.item?.Location}</span>
                                     </div>
                                   </div>
                                 </div>
                                 <Badge
                                   variant="outline"
-                                  className="ml-2 flex-shrink-0"
+                                  className="capitalize bg-blue-50 text-blue-700 border-blue-200 group-hover:bg-blue-100 transition-colors duration-300"
                                 >
-                                  {process.item?.category ||
-                                    process.item?.Category}
-                                </Badge>
-                                <Badge
-                                  variant="secondary"
-                                  className="flex-shrink-0"
-                                >
-                                  <p className="text-sm">
-                                    {formatDatefns(process.updatedAt)}
-                                  </p>
+                                  {process.item?.category || process.item?.Category}
                                 </Badge>
                               </div>
-                              <div className="space-y-1.5">
-                                <p className="text-sm">
-                                  <strong>Location:</strong>{" "}
-                                  {process.item?.location ||
-                                    process.item?.Location}
+
+                              {/* Description and Details */}
+                              <div className="space-y-3">
+                                <p className="text-sm text-gray-600 line-clamp-2 group-hover:text-gray-900 transition-colors duration-300">
+                                  {process.item?.description || process.item?.Description}
                                 </p>
-                                <p className="text-sm">
-                                  <strong>Description:</strong>{" "}
-                                  {process.item?.description ||
-                                    process.item?.Description}
-                                </p>
-                                {(process.item?.additionalDescriptions?.$values
-                                  ?.length > 0 ||
-                                  process.item?.AdditionalDescriptions?.$values
-                                    ?.length > 0) && (
-                                  <div className="mt-2">
-                                    <p className="text-sm text-muted-foreground">
-                                      +
-                                      {
-                                        (
-                                          process.item?.additionalDescriptions
-                                            ?.$values ||
-                                          process.item?.AdditionalDescriptions
-                                            ?.$values ||
-                                          []
-                                        ).length
-                                      }{" "}
-                                      additional details
-                                    </p>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-medium text-gray-700">Student ID:</span>
+                                    <span className="text-gray-600">
+                                      {process.item?.studentId?.startsWith("ADMIN")
+                                        ? "Admin Report"
+                                        : process.item?.studentId || process.item?.StudentId || "N/A"}
+                                    </span>
                                   </div>
-                                )}
+                                  {(process.item?.additionalDescriptions?.$values?.length > 0 ||
+                                    process.item?.AdditionalDescriptions?.$values?.length > 0) && (
+                                    <span className="text-blue-600 text-xs font-medium">
+                                      +
+                                      {(
+                                        process.item?.additionalDescriptions?.$values ||
+                                        process.item?.AdditionalDescriptions?.$values ||
+                                        []
+                                      ).length}{" "}
+                                      additional details
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
 
-                            {/* Actions Section - Stop event propagation */}
+                            {/* Enhanced Actions Section */}
                             <div
                               className="flex flex-col gap-2 justify-start min-w-[140px]"
                               onClick={(e) => e.stopPropagation()}
@@ -848,16 +825,16 @@ const formatDatefns = (dateString) => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-200 transition-all duration-200"
+                                className="w-full bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-all duration-300 hover:border-slate-300"
                                 onClick={() => handleItemClick(process.item)}
                               >
-                                <ExternalLink className="h-4 w-4 mr-2 text-gray-500" />
+                                <ExternalLink className="h-4 w-4 mr-2 text-slate-500" />
                                 View Details
                               </Button>
                               <Button
                                 variant="default"
                                 size="sm"
-                                className="w-full bg-gradient-to-r from-[#10B981] to-[#059669] hover:from-[#059669] hover:to-[#047857] text-white shadow-sm transition-all duration-200"
+                                className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-sm transition-all duration-300"
                                 onClick={() => handleApprove(process.item?.id)}
                                 disabled={approvingItems.has(process.item?.id)}
                               >
@@ -876,10 +853,8 @@ const formatDatefns = (dateString) => {
                               <Button
                                 variant="destructive"
                                 size="sm"
-                                className="w-full bg-white hover:bg-red-50 text-red-600 border border-red-200 transition-all duration-200"
-                                onClick={() =>
-                                  handleDeleteClick(process.item?.id)
-                                }
+                                className="w-full bg-white hover:bg-rose-50 text-rose-600 border border-rose-200 hover:border-rose-300 transition-all duration-300"
+                                onClick={() => handleDeleteClick(process.item?.id)}
                                 disabled={deletingItems.has(process.item?.id)}
                               >
                                 {deletingItems.has(process.item?.id) ? (
@@ -890,20 +865,21 @@ const formatDatefns = (dateString) => {
                                 ) : (
                                   <>
                                     <Trash className="h-4 w-4 mr-2" />
-                                    Delete Report
+                                    Delete
                                   </>
                                 )}
                               </Button>
                               <Button
                                 variant="secondary"
+                                size="sm"
+                                className="w-full bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white shadow-sm transition-all duration-300"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleMatchWithLostClick(process); // Pass the entire process object
+                                  handleMatchWithLostClick(process);
                                 }}
-                                className="bg-gradient-to-r from-[#1E293B] to-[#334155] text-white shadow-sm transition-all duration-200"
                               >
                                 <Package className="h-4 w-4 mr-2" />
-                                Match with Lost Item
+                                Match Item
                               </Button>
                             </div>
                           </div>
@@ -1201,23 +1177,24 @@ const formatDatefns = (dateString) => {
                       </div>
 
                       {/* Additional Details if any */}
-                      {selectedItemForDetails?.additionalDescriptions?.length >
-                        0 && (
+                      {selectedItemForDetails?.additionalDescriptions?.$values?.length > 0 && (
                         <div className="space-y-2">
                           <h4 className="text-sm font-medium text-gray-500">
                             Additional Details
                           </h4>
                           <div className="space-y-2">
-                            {selectedItemForDetails.additionalDescriptions.map(
+                            {selectedItemForDetails.additionalDescriptions.$values.map(
                               (desc, index) => (
-                                <p
+                                <div
                                   key={index}
                                   className="text-sm text-gray-600 pl-3 border-l-2 border-gray-200"
                                 >
-                                  <strong>{desc.title}:</strong>{" "}
-                                  {desc.description}
-                                </p>
-                              ),
+                                  <p>
+                                    <span className="font-medium">{desc.title}:</span>{" "}
+                                    {desc.description}
+                                  </p>
+                                </div>
+                              )
                             )}
                           </div>
                         </div>

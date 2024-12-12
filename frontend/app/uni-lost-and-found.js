@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bell, Search, User, Loader2 } from "lucide-react"
+import { Bell, Search, User, Loader2, LogOut } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import LoginButton from "./components/login-button"
 import { useAuth } from "@/lib/AuthContext"
@@ -29,6 +29,7 @@ import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { authApi, itemApi } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/api-config';
 import Image from "next/image"
+import { motion } from "framer-motion"
 const styles = `
   @keyframes fadeIn {
     from {
@@ -59,7 +60,7 @@ const sortItems = (items, order) => {
 };
 
 export default function UniLostAndFound() {
-  const { user, isAdmin, loading: authLoading, makeAuthenticatedRequest } = useAuth();
+  const { user, isAdmin, loading: authLoading, makeAuthenticatedRequest, logout } = useAuth();
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [activeSection, setActiveSection] = useState("dashboard")
   const [selectedItem, setSelectedItem] = useState(null)
@@ -1169,37 +1170,66 @@ export default function UniLostAndFound() {
               <div className="ml-2 flex items-center">
                 {user ? (
                   <div className="flex items-center gap-2">
-                    <Button 
-                      variant="ghost"
-                      className={`
-                        text-white transition-all duration-200 px-4 py-2 h-auto
-                        hover:bg-white/10 hover:text-yellow-400
-                        relative after:absolute after:bottom-0 after:left-0 after:right-0 
-                        after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
-                        after:transition-transform after:duration-300
-                        ${activeSection === "profile" ? 
-                          "after:scale-x-100 font-semibold bg-white/10" : 
-                          "after:scale-x-0"
-                        }
-                      `}
-                      onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
-                            <User className="h-4 w-4 text-yellow-400" />
+                    {/* Only show profile button for non-admin users */}
+                    {!isAdmin && (
+                      <motion.button
+                        onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
+                        className={`
+                          text-white transition-all duration-200 px-4 py-2 h-auto
+                          hover:bg-white/10 hover:text-yellow-400
+                          relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                          after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                          after:transition-transform after:duration-300
+                          ${activeSection === "profile" ? 
+                            "after:scale-x-100 font-semibold bg-white/10" : 
+                            "after:scale-x-0"
+                          }
+                        `}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                              <User className="h-4 w-4 text-yellow-400" />
+                            </div>
+                            {/* Online indicator */}
+                            <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#023265]"></div>
                           </div>
-                          {/* Online indicator */}
-                          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#023265]"></div>
+                          <div className="flex flex-col items-start">
+                            <span className="text-sm font-medium leading-none">My Profile</span>
+                            <span className="text-xs text-yellow-400/70 leading-none mt-1">
+                              {user.email?.split('@')[0]?.substring(0, 15)}
+                              {user.email?.split('@')[0]?.length > 15 ? '...' : ''}
+                            </span>
+                          </div>
                         </div>
-                        <div className="flex flex-col items-start">
-                          <span className="text-sm font-medium leading-none">My Profile</span>
-                          <span className="text-xs text-yellow-400/70 leading-none mt-1">
-                            {user.email?.split('@')[0]?.substring(0, 15)}
-                            {user.email?.split('@')[0]?.length > 15 ? '...' : ''}
-                          </span>
-                        </div>
+                      </motion.button>
+                    )}
+
+                    {/* Logout Button */}
+                    <Button
+                      variant="ghost"
+                      onClick={logout}
+                      className="
+                        relative group
+                        ml-2 px-4 py-2 h-auto
+                        text-white/90 
+                        hover:text-red-400
+                        hover:bg-white/10
+                        transition-all duration-300
+                        flex items-center gap-2.5
+                        rounded-full
+                        border border-transparent
+                        hover:border-red-400/20
+                        hover:shadow-[0_0_15px_rgba(248,113,113,0.1)]
+                        active:scale-95
+                      "
+                    >
+                      <div className="p-1.5 rounded-full bg-white/10 
+                        group-hover:bg-red-400/10 transition-colors duration-300"
+                      >
+                        <LogOut className="h-4 w-4 group-hover:scale-110 transition-transform duration-300" />
                       </div>
+                      <span className="text-sm font-medium">Logout</span>
                     </Button>
                   </div>
                 ) : (
