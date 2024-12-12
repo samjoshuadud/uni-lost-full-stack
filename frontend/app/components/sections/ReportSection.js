@@ -729,23 +729,23 @@ export default function ReportSection({
       {/* Summary Dialog */}
       {showConfirmDialog && (
         <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-          <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[85vh] flex flex-col">
-            <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0">
+          <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden max-h-[85vh] flex flex-col rounded-2xl sm:rounded-lg">
+            <DialogHeader className="px-6 py-4 border-b bg-[#f8f9fa] flex-shrink-0 rounded-t-2xl sm:rounded-t-lg">
               <DialogTitle className="text-xl font-semibold text-[#0052cc]">Report Summary</DialogTitle>
               <p className="text-sm text-gray-600">Please review your report details before submitting.</p>
             </DialogHeader>
 
-            <div className="px-6 py-4 space-y-6 overflow-y-auto flex-grow">
+            <div className="px-4 sm:px-6 py-4 space-y-4 sm:space-y-6 overflow-y-auto flex-grow">
               {/* Status-specific notices */}
               {itemStatus === ItemStatus.FOUND ? (
-                <div className="rounded-lg border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
-                  <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50">
+                <div className="rounded-xl border border-yellow-200 bg-gradient-to-r from-yellow-50 to-yellow-100">
+                  <div className="px-4 py-3 border-b border-yellow-200 bg-yellow-50/50 rounded-t-xl">
                     <div className="flex items-center space-x-2">
                       <AlertTriangle className="h-5 w-5 text-yellow-600" />
                       <span className="font-medium text-yellow-800">Important Notice</span>
                     </div>
                   </div>
-                  <div className="px-4 py-3">
+                  <div className="px-4 py-3 rounded-b-xl">
                     <p className="text-sm text-yellow-700 leading-relaxed">
                       Please surrender the found item to the University's Lost and Found after submitting this report.
                       <span className="block mt-1 font-medium">
@@ -755,14 +755,14 @@ export default function ReportSection({
                   </div>
                 </div>
               ) : (
-                <div className="rounded-lg border border-[#0052cc]/20 bg-gradient-to-r from-[#0052cc]/5 to-[#0052cc]/10">
-                  <div className="px-4 py-3 border-b border-[#0052cc]/20 bg-[#0052cc]/5">
+                <div className="rounded-xl border border-[#0052cc]/20 bg-gradient-to-r from-[#0052cc]/5 to-[#0052cc]/10">
+                  <div className="px-4 py-3 border-b border-[#0052cc]/20 bg-[#0052cc]/5 rounded-t-xl">
                     <div className="flex items-center space-x-2">
                       <Bell className="h-5 w-5 text-[#0052cc]" />
                       <span className="font-medium text-[#0052cc]">Admin Review Process</span>
                     </div>
                   </div>
-                  <div className="px-4 py-3">
+                  <div className="px-4 py-3 rounded-b-xl">
                     <p className="text-sm text-gray-600 leading-relaxed">
                       Our admin will verify if the item is in possession before posting it to the system.
                       You will be notified once your report has been processed.
@@ -772,10 +772,10 @@ export default function ReportSection({
               )}
 
               {/* Report Details Card */}
-              <div className="rounded-lg border bg-white shadow-[0_4px_16px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgb(0,0,0,0.12)] transition-shadow duration-300">
+              <div className="rounded-xl border bg-white shadow-[0_4px_16px_rgb(0,0,0,0.08)] hover:shadow-[0_8px_24px_rgb(0,0,0,0.12)] transition-shadow duration-300">
                 {imagePreview && (
                   <div className="border-b">
-                    <div className="aspect-video relative overflow-hidden">
+                    <div className="aspect-video relative overflow-hidden rounded-t-xl">
                       <img 
                         src={imagePreview} 
                         alt="Item preview" 
@@ -785,11 +785,10 @@ export default function ReportSection({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
                   <div className="space-y-3">
                     <DetailItem label="Report Type" value={itemStatus === ItemStatus.LOST ? "Lost Item" : "Found Item"} />
-                    <DetailItem label={adminMode ? "Reported By" : "Student ID"
-                    } value={studentId} />
+                    <DetailItem label={adminMode ? "Reported By" : "Student ID"} value={studentId} />
                     <DetailItem label="Item Name" value={name} />
                   </div>
                   <div className="space-y-3">
@@ -809,7 +808,7 @@ export default function ReportSection({
                     <h4 className="font-medium text-gray-700 mb-3">Additional Details</h4>
                     <div className="space-y-2">
                       {additionalDescriptions.map((desc, index) => (
-                        <div key={index} className="bg-gray-50 rounded p-3">
+                        <div key={index} className="bg-gray-50 rounded-xl p-3">
                           <DetailItem label={desc.title} value={desc.description} fullWidth />
                         </div>
                       ))}
@@ -819,29 +818,31 @@ export default function ReportSection({
               </div>
             </div>
 
-            <DialogFooter className="px-6 py-4 border-t bg-gray-50 flex-shrink-0">
-              <Button 
-                variant="outline" 
-                onClick={() => setShowConfirmDialog(false)}
-                disabled={isSubmitting}
-                className="border-gray-300"
-              >
-                Edit Report
-              </Button>
-              <Button 
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-                className="bg-[#0052cc] hover:bg-[#0052cc]/90"
-              >
-                {isSubmitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Submitting...
-                  </>
-                ) : (
-                  "Submit Report"
-                )}
-              </Button>
+            <DialogFooter className="px-4 sm:px-6 py-4 border-t bg-gray-50 flex-shrink-0 rounded-b-2xl sm:rounded-b-lg">
+              <div className="w-full flex flex-col sm:flex-row gap-3 sm:gap-2 sm:justify-end">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowConfirmDialog(false)}
+                  disabled={isSubmitting}
+                  className="border-gray-300 w-full sm:w-auto rounded-xl sm:rounded-md"
+                >
+                  Edit Report
+                </Button>
+                <Button 
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="bg-[#0052cc] hover:bg-[#0052cc]/90 w-full sm:w-auto rounded-xl sm:rounded-md"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit Report"
+                  )}
+                </Button>
+              </div>
             </DialogFooter>
           </DialogContent>
         </Dialog>

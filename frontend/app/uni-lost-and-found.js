@@ -1043,116 +1043,192 @@ export default function UniLostAndFound() {
       </Dialog>
 
       {/* Header */}
-      <header style={{ background: "linear-gradient(to right, #023265 40%, #004C99 100%)", boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.1)", borderBottom: "1px solid #004C99", }}>
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Image 
-              src="/logo/logo.png" 
-              alt="UMAK Logo" 
-              width={40} 
-              height={40} 
-              className="rounded-full bg-white p-1 shadow-sm hover:shadow-md transition-shadow duration-300"
-            />
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
-                Lost & Found
-              </h1>
-              <span className="text-xs text-yellow-400/80">
-                University of Makati
-              </span>
+      <header className="bg-gradient-to-r from-[#023265] to-[#004C99] shadow-md border-b border-[#004C99]/50">
+        <div className="container mx-auto px-4 py-4">
+          {/* Main Header Content */}
+          <div className="flex flex-col lg:flex-row items-center gap-6">
+            {/* Logo and Title Section */}
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <Image 
+                  src="/logo/logo.png" 
+                  alt="UMAK Logo" 
+                  width={48} 
+                  height={48} 
+                  className="rounded-full bg-white/95 p-1.5 shadow-md group-hover:shadow-lg transition-all duration-300
+                    transform group-hover:scale-105"
+                />
+                <div className="absolute inset-0 rounded-full bg-white/10 opacity-0 group-hover:opacity-100 
+                  transition-opacity duration-300"></div>
+              </div>
+              <div className="flex flex-col">
+                <h1 className="text-2xl font-bold text-yellow-400 tracking-tight">
+                  Lost & Found
+                </h1>
+                <span className="text-sm text-yellow-400/80">
+                  University of Makati
+                </span>
+              </div>
             </div>
-          </div>
-          <nav className="flex items-center gap-3">
-            {isAdmin ? (
-              <>
-                <Button 
-                  variant="ghost"
-                  className={`text-white transition-colors relative
-                    ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-40 " : 
-                      "hover:text-[#004C99] hover:font-bold"
-                    }
-                  `}
-                  onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
-                >
-                  View Items
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button 
-                  variant="ghost"
-                  className={`text-white transition-colors relative
-                    ${activeSection === "dashboard" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                      "hover:text-[#004C99] hover:font-bold"
-                    }
-                  `}
-                  onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
-                >
-                  Home
-                </Button>
-                <Button 
-                  variant="ghost"
-                  className={`text-white transition-colors relative
-                    ${activeSection === "report" ? 
-                      "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                      "hover:text-[#004C99] hover:font-bold"
-                    }
-                  `}
-                  onClick={() => { 
-                    if (requireAuth()) return;
-                    setActiveSection("report"); 
-                    setSelectedItem(null); 
-                  }}
-                >
-                  Report Item
-                </Button>
-                {user && (
+
+            {/* Navigation Section */}
+            <nav className="flex flex-wrap items-center justify-center gap-3 lg:ml-auto">
+              <div className="flex flex-wrap justify-center gap-2">
+                {isAdmin ? (
+                  <Button 
+                    variant="ghost"
+                    className={`
+                      text-white transition-all duration-200 px-4 py-2 h-auto
+                      hover:bg-white/10 hover:text-yellow-400
+                      relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                      after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                      after:transition-transform after:duration-300
+                      ${activeSection === "dashboard" ? 
+                        "after:scale-x-100 font-semibold" : 
+                        "after:scale-x-0"
+                      }
+                    `}
+                    onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
+                  >
+                    View Items
+                  </Button>
+                ) : (
                   <>
                     <Button 
                       variant="ghost"
-                      className={`text-white transition-colors relative
-                        ${activeSection === "pending_process" ? 
-                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                          "hover:text-[#004C99] hover:font-bold"
+                      className={`
+                        text-white transition-all duration-200 px-4 py-2 h-auto
+                        hover:bg-white/10 hover:text-yellow-400
+                        relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                        after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                        after:transition-transform after:duration-300
+                        ${activeSection === "dashboard" ? 
+                          "after:scale-x-100 font-semibold" : 
+                          "after:scale-x-0"
                         }
                       `}
-                      onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
+                      onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
                     >
-                      Pending Process
-                      {pendingProcessCount > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-yellow-400 text-[#0052cc] rounded-full px-2 py-0.5 text-xs font-medium">
-                          {pendingProcessCount}
-                        </span>
-                      )}
+                      Home
                     </Button>
                     <Button 
                       variant="ghost"
-                      className={`text-white transition-colors relative
+                      className={`
+                        text-white transition-all duration-200 px-4 py-2 h-auto
+                        hover:bg-white/10 hover:text-yellow-400
+                        relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                        after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                        after:transition-transform after:duration-300
+                        ${activeSection === "report" ? 
+                          "after:scale-x-100 font-semibold" : 
+                          "after:scale-x-0"
+                        }
+                      `}
+                      onClick={() => { 
+                        if (requireAuth()) return;
+                        setActiveSection("report"); 
+                        setSelectedItem(null); 
+                      }}
+                    >
+                      Report Item
+                    </Button>
+                    {user && (
+                      <>
+                        <Button 
+                          variant="ghost"
+                          className={`
+                            text-white transition-all duration-200 px-4 py-2 h-auto
+                            hover:bg-white/10 hover:text-yellow-400
+                            relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                            after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                            after:transition-transform after:duration-300
+                            ${activeSection === "pending_process" ? 
+                              "after:scale-x-100 font-semibold" : 
+                              "after:scale-x-0"
+                            }
+                          `}
+                          onClick={() => { setActiveSection("pending_process"); setSelectedItem(null); }}
+                        >
+                          <span className="relative">
+                            Pending Process
+                            {pendingProcessCount > 0 && (
+                              <span className="absolute -top-3 -right-3 bg-yellow-400 text-[#0052cc] 
+                                rounded-full px-2 py-0.5 text-xs font-medium min-w-[20px] text-center">
+                                {pendingProcessCount}
+                              </span>
+                            )}
+                          </span>
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </div>
+              
+              {/* User Profile & Login Section */}
+              <div className="ml-2 flex items-center">
+                {user ? (
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost"
+                      className={`
+                        text-white transition-all duration-200 px-4 py-2 h-auto
+                        hover:bg-white/10 hover:text-yellow-400
+                        relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                        after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                        after:transition-transform after:duration-300
                         ${activeSection === "profile" ? 
-                          "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-yellow-400 font-bold" : 
-                          "hover:text-[#004C99] hover:font-bold"
+                          "after:scale-x-100 font-semibold bg-white/10" : 
+                          "after:scale-x-0"
                         }
                       `}
                       onClick={() => { setActiveSection("profile"); setSelectedItem(null); }}
                     >
-                      <User className="mr-2 h-4 w-4" />
-                      Profile
+                      <div className="flex items-center gap-2">
+                        <div className="relative">
+                          <div className="w-8 h-8 rounded-full bg-yellow-400/20 flex items-center justify-center">
+                            <User className="h-4 w-4 text-yellow-400" />
+                          </div>
+                          {/* Online indicator */}
+                          <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#023265]"></div>
+                        </div>
+                        <div className="flex flex-col items-start">
+                          <span className="text-sm font-medium leading-none">My Profile</span>
+                          <span className="text-xs text-yellow-400/70 leading-none mt-1">
+                            {user.email?.split('@')[0]?.substring(0, 15)}
+                            {user.email?.split('@')[0]?.length > 15 ? '...' : ''}
+                          </span>
+                        </div>
+                      </div>
                     </Button>
-                  </>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="ghost" 
+                    className="
+                      bg-yellow-400/20 hover:bg-yellow-400/30
+                      text-yellow-400 hover:text-yellow-400
+                      transition-colors duration-200
+                      px-4 py-2 h-auto
+                      rounded-full
+                      border border-yellow-400/30
+                    "
+                    onClick={() => setShowAuthDialog(true)}
+                  >
+                    <User className="h-4 w-4 mr-2" />
+                    Sign In
+                  </Button>
                 )}
-              </>
-            )}
-            <LoginButton />
-          </nav>
+              </div>
+            </nav>
+          </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 md:px-6 py-4 md:py-8">
         {/* Admin Cards */}
         {user && isAdmin && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-8">
             <Card className="bg-white shadow-sm border border-gray-200 drop-shadow-[0_4px_4px_rgba(0,0,0,0.25)]">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -1225,7 +1301,7 @@ export default function UniLostAndFound() {
           !["profile", "report", "pending_process"].includes(activeSection) && (
           <div className="mb-6">
             <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
-              <div className="flex space-x-1">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1">
                 <Button
                   variant={activeSection === "dashboard" ? "secondary" : "ghost"}
                   className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
@@ -1270,7 +1346,7 @@ export default function UniLostAndFound() {
 
         {/* Search Section */}
         {(activeSection === "dashboard" || activeSection === "lost" || activeSection === "found") && (
-          <div className="flex gap-4 mb-4 pb-10 mt-10">
+          <div className="flex flex-col md:flex-row gap-4 mb-4 pb-6 md:pb-10 mt-6 md:mt-10">
             {/* Search Input */}
             <div className="flex-1 bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
               <div className="relative flex items-center">
@@ -1280,64 +1356,58 @@ export default function UniLostAndFound() {
                   placeholder="Search lost and found items..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 border-0 focus:ring-0 rounded-full h-12"
+                  className="pl-10 border-0 focus:ring-0 rounded-full h-12 w-full"
                 />
               </div>
             </div>
 
-            {/* Categories Dropdown */}
-            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-              <Select
-                value={searchCategory}
-                onValueChange={setSearchCategory}
-              >
-                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Books">Books</SelectItem>
-                  <SelectItem value="Electronics">Electronics</SelectItem>
-                  <SelectItem value="Personal Items">Personal Items</SelectItem>
-                  <SelectItem value="Documents">Documents</SelectItem>
-                  <SelectItem value="Bags">Bags</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Filters Container */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              {/* Categories Dropdown */}
+              <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                <Select value={searchCategory} onValueChange={setSearchCategory}>
+                  <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="Books">Books</SelectItem>
+                    <SelectItem value="Electronics">Electronics</SelectItem>
+                    <SelectItem value="Personal Items">Personal Items</SelectItem>
+                    <SelectItem value="Documents">Documents</SelectItem>
+                    <SelectItem value="Bags">Bags</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/*Claim Status Dropdown */}
-            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-              <Select
-                value={claimStatus}
-                onValueChange={setClaimStatus}
-              >
-                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                  <SelectValue placeholder="Claim Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Items</SelectItem>
-                  <SelectItem value="none">No Claims</SelectItem>
-                  <SelectItem value="pending">Pending Claims</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Claim Status Dropdown */}
+              <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                <Select value={claimStatus} onValueChange={setClaimStatus}>
+                  <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                    <SelectValue placeholder="Claim Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Items</SelectItem>
+                    <SelectItem value="none">No Claims</SelectItem>
+                    <SelectItem value="pending">Pending Claims</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            {/* Sort Dropdown */}
-            <div className="bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
-              <Select
-                value={sortOrder}
-                onValueChange={setSortOrder}
-              >
-                <SelectTrigger className="w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
-                  <SelectItem value="a-z">A to Z</SelectItem>
-                  <SelectItem value="z-a">Z to A</SelectItem>
-                </SelectContent>
-              </Select>
+              {/* Sort Dropdown */}
+              <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+                <Select value={sortOrder} onValueChange={setSortOrder}>
+                  <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="newest">Newest First</SelectItem>
+                    <SelectItem value="oldest">Oldest First</SelectItem>
+                    <SelectItem value="a-z">A to Z</SelectItem>
+                    <SelectItem value="z-a">Z to A</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         )}
