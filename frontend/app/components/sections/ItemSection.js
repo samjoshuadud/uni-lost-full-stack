@@ -279,7 +279,17 @@ export default function ItemSection({
           <Card 
             key={item.id}
             id={`item-${item.id}`}
-            className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] hover:shadow-md transition-all duration-300 border border-gray-200/80 relative group animate-slideUp"
+            className={`bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] 
+              hover:shadow-md transition-all duration-300 border border-gray-200/80 
+              relative group animate-slideUp ${
+                item.status?.toLowerCase() === "lost" && !isAdmin ? 
+                'cursor-pointer' : ''
+              }`}
+            onClick={() => {
+              if (item.status?.toLowerCase() === "lost" && !isAdmin) {
+                handleViewDetails(item);
+              }
+            }}
             style={{
               animationDelay: `${index * 0.05}s`,
               animationFillMode: 'both',
@@ -517,39 +527,30 @@ export default function ItemSection({
                         </>
                       ) : (
                         <>
-                          {/* For non-admin: Show View Details only for lost items */}
                           {item.status?.toLowerCase() === "lost" ? (
-                            <div className="flex gap-2">
-                              <Button 
-                                className="bg-[#004C99] text-white hover:bg-[#0052cc]/90 shadow-sm"
-                                size="sm"
-                                onClick={() => handleViewDetails(item)}
-                              >
-                                <ExternalLink className="h-4 w-4 mr-2" />
-                                View Details
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
-                                onClick={() => handleFoundThisClick(item)}
-                                disabled={generatingQRForItem === item.id}
-                              >
-                                {generatingQRForItem === item.id ? (
-                                  <>
-                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                    Generating QR...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Package className="h-4 w-4 mr-2" />
-                                    I Found This
-                                  </>
-                                )}
-                              </Button>
-                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                              onClick={(e) => {
+                                e.stopPropagation(); // Prevent card click when clicking this button
+                                handleFoundThisClick(item);
+                              }}
+                              disabled={generatingQRForItem === item.id}
+                            >
+                              {generatingQRForItem === item.id ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                  Generating QR...
+                                </>
+                              ) : (
+                                <>
+                                  <Package className="h-4 w-4 mr-2" />
+                                  I Found This
+                                </>
+                              )}
+                            </Button>
                           ) : (
-                            // For found items, only show claim button
                             <Button
                               variant="outline"
                               size="sm"

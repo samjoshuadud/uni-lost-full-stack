@@ -628,9 +628,17 @@ export default function DashboardSection({
                 >
                   <Card 
                     id={`item-${item.id}`}
-                    className="bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] 
+                    className={`bg-white overflow-hidden shadow-[0_15px_20px_rgba(0,0,0,0.25)] 
                       hover:shadow-xl transition-all duration-300 border border-gray-200/80 
-                      relative group h-full transform-gpu"
+                      relative group h-full transform-gpu ${
+                        item.status?.toLowerCase() === "lost" && !isAdmin ? 
+                        'cursor-pointer' : ''
+                      }`}
+                    onClick={() => {
+                      if (item.status?.toLowerCase() === "lost" && !isAdmin) {
+                        handleViewDetails(item);
+                      }
+                    }}
                   >
                     {/* Status Badge - Moved outside header for better visibility */}
                     <Badge 
@@ -857,39 +865,30 @@ export default function DashboardSection({
                               </>
                             ) : (
                               <>
-                                {/* For non-admin: Show View Details only for lost items */}
                                 {item.status?.toLowerCase() === "lost" ? (
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      className="bg-[#004C99] text-white hover:bg-[#0052cc]/90 shadow-sm"
-                                      size="sm"
-                                      onClick={() => handleViewDetails(item)}
-                                    >
-                                      <ExternalLink className="h-4 w-4 mr-2" />
-                                      View Details
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
-                                      onClick={() => handleFoundThisClick(item)}
-                                      disabled={generatingQRForItem === item.id || userId === item.reporterId}
-                                    >
-                                      {generatingQRForItem === item.id ? (
-                                        <>
-                                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                          Generating QR...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <Package className="h-4 w-4 mr-2" />
-                                          {userId === item.reporterId ? "You reported this item" : "I Found This"}
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleFoundThisClick(item);
+                                    }}
+                                    disabled={generatingQRForItem === item.id || userId === item.reporterId}
+                                  >
+                                    {generatingQRForItem === item.id ? (
+                                      <>
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                        Generating QR...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Package className="h-4 w-4 mr-2" />
+                                        {userId === item.reporterId ? "You reported this item" : "I Found This"}
+                                      </>
+                                    )}
+                                  </Button>
                                 ) : (
-                                  // For found items, only show claim button
                                   <Button
                                     variant="outline"
                                     size="sm"
