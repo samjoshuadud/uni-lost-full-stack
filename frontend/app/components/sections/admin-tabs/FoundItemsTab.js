@@ -591,8 +591,7 @@ const formatDatefns = (dateString) => {
         </h3>
         <p className="text-gray-600 mt-2">
           Process found item reports and manage surrendered items. Verify item
-          details, approve posts to make them visible, or handle inappropriate
-          submissions.
+          details, approve posts to make them visible, or match the surrendered found items to reported lost items.
         </p>
 
         {/* Status Cards with New Buttons */}

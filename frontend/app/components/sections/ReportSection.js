@@ -891,7 +891,7 @@ export default function ReportSection({
                 <div>
                   <h4 className="font-semibold text-[#B27B16] mb-1 text-sm">Important Reminder</h4>
                   <p className="text-[#B27B16] text-xs leading-relaxed">
-                    Please surrender this found item to the University of Makati Lost and Found office and present this QR code. Failure to surrender the item within 3 days will result in the automatic cancellation of your report. This helps us maintain the integrity of our lost and found system.
+                    Please surrender this found item to the <span className="font-medium">Occupational Health and Safety Office - Admin Building Basement</span> and present this QR code. Failure to surrender the item within 3 days will result in the automatic cancellation of your report. This helps us maintain the integrity of our lost and found system.
                   </p>
                 </div>
               </div>
