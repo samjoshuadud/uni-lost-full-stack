@@ -159,37 +159,118 @@ export default function ProfileSection() {
             </div>
 
             {/* User Details */}
-            <div className="flex flex-col text-center sm:text-left">
-              <h2 className="text-xl sm:text-2xl font-black bg-gradient-to-r from-[#2E3F65] to-[#0052cc] 
-                bg-clip-text text-transparent mb-3"
-              >
-                {user.displayName || "UMAK User"}
-              </h2>
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-center sm:justify-start gap-2.5 text-gray-600
-                  hover:text-[#0052cc] transition-colors duration-200 group cursor-default"
+            <div className="flex flex-col text-center sm:text-left space-y-6">
+              <div className="relative">
+                <h2 className="text-2xl sm:text-3xl font-black bg-gradient-to-r from-[#2E3F65] via-blue-500 to-[#0052cc] 
+                  bg-clip-text text-transparent"
                 >
-                  <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <Mail className="w-4 h-4 text-blue-500" />
+                  {user.displayName || "UMAK User"}
+                </h2>
+                <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-[#2E3F65] via-blue-500 to-[#0052cc] 
+                  rounded-full opacity-20"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="group relative">
+                  {/* Decorative Background Elements */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent rounded-2xl 
+                    transform transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-white/50 rounded-2xl backdrop-blur-sm border border-white/80
+                    shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  />
+                  
+                  {/* Content */}
+                  <div className="relative p-4 sm:p-5 flex flex-col items-center sm:items-start gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-blue-100 to-blue-50 rounded-xl
+                      shadow-inner group-hover:shadow-blue-100/50 transition-shadow duration-300"
+                    >
+                      <Mail className="w-5 h-5 text-blue-600 transform group-hover:scale-110 
+                        transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="space-y-1 text-center sm:text-left">
+                      <p className="text-xs font-medium text-blue-600/80 uppercase tracking-wider">Email Address</p>
+                      <p className="text-sm text-gray-700 break-all font-medium">{user.email}</p>
+                    </div>
                   </div>
-                  <span className="text-sm break-all">{user.email}</span>
                 </div>
-                <div className="flex items-center justify-center sm:justify-start gap-2.5 text-gray-600
-                  hover:text-[#0052cc] transition-colors duration-200 group cursor-default"
+
+                <div className="group relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-transparent rounded-2xl 
+                    transform transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-white/50 rounded-2xl backdrop-blur-sm border border-white/80
+                    shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  />
+                  
+                  <div className="relative p-4 sm:p-5 flex flex-col items-center sm:items-start gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-indigo-100 to-indigo-50 rounded-xl
+                      shadow-inner group-hover:shadow-indigo-100/50 transition-shadow duration-300"
+                    >
+                      <IdCard className="w-5 h-5 text-indigo-600 transform group-hover:scale-110 
+                        transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="space-y-1 text-center sm:text-left">
+                      <p className="text-xs font-medium text-indigo-600/80 uppercase tracking-wider">Student ID</p>
+                      <p className="text-sm text-gray-700 font-medium">{userData?.studentId || "No Student ID"}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="group relative">
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-50 to-transparent rounded-2xl 
+                    transform transition-transform duration-300 group-hover:scale-105"
+                  />
+                  <div className="absolute inset-0 bg-white/50 rounded-2xl backdrop-blur-sm border border-white/80
+                    shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                  />
+                  
+                  <div className="relative p-4 sm:p-5 flex flex-col items-center sm:items-start gap-3">
+                    <div className="p-2.5 bg-gradient-to-br from-purple-100 to-purple-50 rounded-xl
+                      shadow-inner group-hover:shadow-purple-100/50 transition-shadow duration-300"
+                    >
+                      <School className="w-5 h-5 text-purple-600 transform group-hover:scale-110 
+                        transition-transform duration-300"
+                      />
+                    </div>
+                    <div className="space-y-1 text-center sm:text-left">
+                      <p className="text-xs font-medium text-purple-600/80 uppercase tracking-wider">Institution</p>
+                      <p className="text-sm text-gray-700 font-medium">University of Makati</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Status */}
+              <div className="flex items-center justify-center sm:justify-start gap-3">
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-green-50 to-blue-50 
+                  rounded-full border border-blue-100/50 shadow-sm"
                 >
-                  <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <IdCard className="w-4 h-4 text-blue-500" />
-                  </div>
-                  <span className="text-sm">{userData?.studentId || "No Student ID"}</span>
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <span className="text-xs font-medium text-gray-600">Active Now</span>
                 </div>
-                <div className="flex items-center justify-center sm:justify-start gap-2.5 text-gray-600
-                  hover:text-[#0052cc] transition-colors duration-200 group cursor-default"
-                >
-                  <div className="p-1.5 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
-                    <School className="w-4 h-4 text-blue-500" />
+                
+                {userData?.isVerified && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-blue-50 to-indigo-50 
+                    rounded-full border border-blue-100/50 shadow-sm"
+                  >
+                    <svg
+                      className="w-3.5 h-3.5 text-blue-600"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="text-xs font-medium text-gray-600">Verified Account</span>
                   </div>
-                  <span className="text-sm">University of Makati</span>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -197,13 +278,18 @@ export default function ProfileSection() {
 
         {/* Tabs Section */}
         <Tabs defaultValue="reports" className="w-full mt-8">
-          <TabsList className="w-full bg-[#2E3F65]/90 backdrop-blur-sm p-1.5 rounded-full 
+          <TabsList className="
+            w-full bg-[#2E3F65]/90 
+            h-14
+            p-1.5
+            flex gap-2
+            rounded-full
             shadow-[0_8px_30px_rgb(0,0,0,0.12)] border border-white/10"
           >
             <TabsTrigger 
               value="reports" 
               className="
-                flex-1 py-2.5 px-6 sm:px-8
+                flex-1 py-2 px-4
                 rounded-full 
                 data-[state=active]:bg-gradient-to-r 
                 data-[state=active]:from-yellow-400 
@@ -211,18 +297,18 @@ export default function ProfileSection() {
                 data-[state=active]:text-[#2E3F65]
                 data-[state=active]:shadow-md
                 data-[state=active]:font-medium
-                data-[state=active]:scale-[0.97]
+                data-[state=active]:scale-[0.98]
                 text-white/90 
-                text-sm sm:text-base 
+                text-sm
                 transition-all duration-300
                 hover:bg-white/10 
                 hover:text-yellow-400
                 group
               "
             >
-              <div className="flex items-center justify-center gap-2.5">
+              <div className="flex items-center justify-center gap-2">
                 <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
-                  <ClipboardList className="w-4 h-4" />
+                  <ClipboardList className="w-3.5 h-3.5" />
                 </div>
                 <span>My Reports</span>
               </div>
@@ -230,7 +316,7 @@ export default function ProfileSection() {
             <TabsTrigger 
               value="activity"
               className="
-                flex-1 py-2.5 px-6 sm:px-8
+                flex-1 py-2 px-4
                 rounded-full 
                 data-[state=active]:bg-gradient-to-r 
                 data-[state=active]:from-yellow-400 
@@ -238,18 +324,18 @@ export default function ProfileSection() {
                 data-[state=active]:text-[#2E3F65]
                 data-[state=active]:shadow-md
                 data-[state=active]:font-medium
-                data-[state=active]:scale-[0.97]
+                data-[state=active]:scale-[0.98]
                 text-white/90 
-                text-sm sm:text-base 
+                text-sm
                 transition-all duration-300
                 hover:bg-white/10 
                 hover:text-yellow-400
                 group
               "
             >
-              <div className="flex items-center justify-center gap-2.5">
+              <div className="flex items-center justify-center gap-2">
                 <div className="p-1.5 rounded-full bg-white/10 group-data-[state=active]:bg-[#2E3F65]/10">
-                  <Activity className="w-4 h-4" />
+                  <Activity className="w-3.5 h-3.5" />
                 </div>
                 <span>Recent Activity</span>
               </div>
