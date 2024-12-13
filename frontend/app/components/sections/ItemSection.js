@@ -16,6 +16,14 @@ import { toast } from "react-hot-toast"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
 import { itemApi } from "@/lib/api-client"
 import ClaimInstructionsDialog from "../dialogs/ClaimInstructionsDialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 const staggerDelay = (index) => ({
   animationDelay: `${index * 0.1}s`
@@ -67,14 +75,12 @@ export default function ItemSection({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [deletingItemId, setDeletingItemId] = useState(null);
-  const [showQRDialog, setShowQRDialog] = useState(false);
-  const [currentQRData, setCurrentQRData] = useState(null);
-  const [generatingQRForItem, setGeneratingQRForItem] = useState(null);
   const [showAuthDialog, setShowAuthDialog] = useState(false);
   const [showClaimDialog, setShowClaimDialog] = useState(false);
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
   const [processes, setProcesses] = useState([]);
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
+  const [showSurrenderDialog, setShowSurrenderDialog] = useState(false);
 
   useEffect(() => {
     const fetchProcesses = async () => {
@@ -144,51 +150,6 @@ export default function ItemSection({
 
   const canDelete = (item) => {
     return isAdmin || userId === item.reporterId;
-  };
-
-  const handleFoundThis = async (item) => {
-    try {
-      setGeneratingQRForItem(item.id);
-      
-      // Get the existing process for this item
-      const processResponse = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-      const processData = await processResponse.json();
-      
-      // Find the process that matches our item
-      const process = processData.$values?.find(p => {
-        const processItemId = p.itemId || p.ItemId;
-        return processItemId === item.id;
-      });
-
-      if (!process) {
-        throw new Error('No process found for this item');
-      }
-
-      const processId = process.id || process.Id;
-
-      // Generate QR code data with the existing process ID
-      const qrData = {
-        p: processId,
-        t: 'surrender'
-      };
-
-      setCurrentQRData(qrData);
-      setShowQRDialog(true);
-      
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-      toast.error(error.message || "Failed to generate QR code. Please try again.");
-    } finally {
-      setGeneratingQRForItem(null);
-    }
-  };
-
-  const handleFoundThisClick = (item) => {
-    if (!user) {
-      setShowAuthDialog(true);
-      return;
-    }
-    handleFoundThis(item);
   };
 
   const handleClaimClick = (item) => {
@@ -578,22 +539,16 @@ export default function ItemSection({
                               size="sm"
                               className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                               onClick={(e) => {
-                                e.stopPropagation(); // Prevent card click when clicking this button
-                                handleFoundThisClick(item);
+                                e.stopPropagation();
+                                if (!user) {
+                                  setShowAuthDialog(true);
+                                  return;
+                                }
+                                setShowSurrenderDialog(true);
                               }}
-                              disabled={generatingQRForItem === item.id}
                             >
-                              {generatingQRForItem === item.id ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  Generating QR...
-                                </>
-                              ) : (
-                                <>
-                                  <Package className="h-4 w-4 mr-2" />
-                                  I Found This
-                                </>
-                              )}
+                              <Package className="h-4 w-4 mr-2" />
+                              I Found This
                             </Button>
                           ) : (
                             <Button
@@ -640,23 +595,6 @@ export default function ItemSection({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* QR Code Dialog */}
-      {showQRDialog && currentQRData && (
-        <QRCodeDialog
-          open={showQRDialog}
-          onOpenChange={setShowQRDialog}
-          qrData={currentQRData}
-          title="Found Item QR Code"
-          description="Please take a screenshot of this QR code and present it to the Lost & Found office when surrendering the item. The office will scan this code to verify the item."
-          instructions={[
-            "1. Take a screenshot or save this QR code",
-            "2. Bring the found item to the Lost & Found office",
-            "3. Present this QR code when surrendering the item",
-            "4. Office staff will verify the item matches the description"
-          ]}
-        />
-      )}
-
       {/* Auth Dialog */}
       <AuthRequiredDialog 
         open={showAuthDialog} 
@@ -668,6 +606,61 @@ export default function ItemSection({
         isOpen={showInstructionsDialog}
         onClose={() => setShowInstructionsDialog(false)}
       />
+
+      {/* Surrender Instructions Dialog */}
+      <Dialog open={showSurrenderDialog} onOpenChange={setShowSurrenderDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-700">
+              <Package className="h-5 w-5" />
+              Surrender Found Item
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Thank you for finding this item! Please follow these instructions to surrender it:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Surrender Location:</h4>
+              <p className="text-blue-800">
+                OHSO (Occupational Health & Safety Office)
+                <br />
+                Admin Building Basement
+              </p>
+            </div>
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-700">Important Notes:</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                  <span>Please bring the found item to the OHSO office during office hours (8:00 AM - 5:00 PM, Monday to Friday)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                  <span>The staff will verify and document the surrendered item</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setShowSurrenderDialog(false)}
+            >
+              Close
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                setShowSurrenderDialog(false);
+                toast.success("Thank you for your help! Please surrender the item to OHSO office.");
+              }}
+            >
+              I Understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

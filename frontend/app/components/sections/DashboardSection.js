@@ -21,6 +21,14 @@ import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
 import { itemApi } from "@/lib/api-client"
 import { motion, AnimatePresence } from "framer-motion";
 import ClaimInstructionsDialog from "../dialogs/ClaimInstructionsDialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
 
 const staggerDelay = (index) => ({
   animationDelay: `${index * 0.1}s`
@@ -137,6 +145,7 @@ export default function DashboardSection({
   const [selectedClaimItem, setSelectedClaimItem] = useState(null);
   const [processes, setProcesses] = useState([]);
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
+  const [showSurrenderDialog, setShowSurrenderDialog] = useState(false);
 
   // Move the highlight effect here, before other useEffects
   useEffect(() => {
@@ -787,12 +796,15 @@ export default function DashboardSection({
                                     className="bg-white hover:bg-gray-50 shadow-sm border-gray-200"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleClaimClick(item);
+                                      if (!user) {
+                                        setShowAuthDialog(true);
+                                        return;
+                                      }
+                                      setShowSurrenderDialog(true);
                                     }}
-                                    disabled={userId === item.reporterId}
                                   >
                                     <Package className="h-4 w-4 mr-2" />
-                                    {userId === item.reporterId ? "You reported this item" : "I Found This"}
+                                    I Found This
                                   </Button>
                                 ) : (
                                   <Button
@@ -864,6 +876,62 @@ export default function DashboardSection({
         isOpen={showInstructionsDialog}
         onClose={() => setShowInstructionsDialog(false)}
       />
+
+      {/* Surrender Instructions Dialog */}
+      <Dialog open={showSurrenderDialog} onOpenChange={setShowSurrenderDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-blue-700">
+              <Package className="h-5 w-5" />
+              Surrender Found Item
+            </DialogTitle>
+            <DialogDescription className="text-gray-600">
+              Thank you for finding this item! Please follow these instructions to surrender it:
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-medium text-blue-900 mb-2">Surrender Location:</h4>
+              <p className="text-blue-800">
+                OHSO (Occupational Health & Safety Office)
+                <br />
+                Admin Building Basement
+              </p>
+            </div>
+            <div className="space-y-3">
+              <h4 className="font-medium text-gray-700">Important Notes:</h4>
+              <ul className="space-y-2 text-sm text-gray-600">
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">1</span>
+                  <span>Please bring the found item to the OHSO office during office hours (8:00 AM - 5:00 PM, Monday to Friday)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="bg-blue-100 text-blue-700 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">2</span>
+                  <span>The staff will verify and document the surrendered item</span>
+                </li>
+              
+              </ul>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              variant="outline"
+              onClick={() => setShowSurrenderDialog(false)}
+            >
+              Close
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                setShowSurrenderDialog(false);
+                toast.success("Thank you for your help! Please surrender the item to OHSO office.");
+              }}
+            >
+              I Understand
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 
