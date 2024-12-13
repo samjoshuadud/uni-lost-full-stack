@@ -18,6 +18,7 @@ import AdminSection from "./components/sections/AdminSection"
 import ProfileSection from "./components/sections/ProfileSection"
 import PendingProcessSection from "./components/sections/PendingProcessSection"
 import ItemDetailSection from "./components/sections/ItemDetailSection"
+import AboutUs from "./components/sections/About-us"
 
 // Import dialogs
 import ReportConfirmDialog from "./components/dialogs/ReportConfirmDialog"
@@ -476,6 +477,8 @@ export default function UniLostAndFound() {
           handleDelete={handleDelete}
           onViewPost={handleViewPost}
         />
+      case "about":
+        return <AboutUs />;
       default:
         return <DashboardSection items={filteredItems} onSeeMore={setSelectedItem} />
     }
@@ -1448,6 +1451,23 @@ export default function UniLostAndFound() {
                           </Button>
                         </>
                       )}
+                      <Button 
+                        variant="ghost"
+                        className={`
+                          text-white transition-all duration-200 px-4 py-2 h-auto
+                          hover:bg-white/10 hover:text-yellow-400
+                          relative after:absolute after:bottom-0 after:left-0 after:right-0 
+                          after:h-0.5 after:bg-yellow-400 after:scale-x-0 hover:after:scale-x-100
+                          after:transition-transform after:duration-300
+                          ${activeSection === "about" ? 
+                            "after:scale-x-100 font-semibold" : 
+                            "after:scale-x-0"
+                          }
+                        `}
+                        onClick={() => { setActiveSection("about"); setSelectedItem(null); }}
+                      >
+                        About Us
+                      </Button>
                     </>
                   )}
                 </div>
@@ -1614,7 +1634,7 @@ export default function UniLostAndFound() {
 
           {/* Navigation Tabs */}
           {!isAdmin && user && 
-            !["profile", "report", "pending_process"].includes(activeSection) && (
+            !["profile", "report", "pending_process", "about"].includes(activeSection) && (
             <div className="mb-6">
               <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1">
