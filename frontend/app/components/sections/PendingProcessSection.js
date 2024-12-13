@@ -90,22 +90,43 @@ const canDelete = (process) => {
           process.item?.reporterId === user?.uid); // Claims on user's items
 };
 
-// Simplified grouping helper
-const groupProcesses = (processes) => {
+// Modify the groupProcesses function
+const groupProcesses = (regularProcesses, involvedProcesses, currentUser) => {
   const groups = {
-    pending_retrieval: [],
-    pending_approval: [],
-    approved: [],
-    handed_over: [],
-    no_show: []
+    [ProcessStatus.PENDING_RETRIEVAL]: [],
+    [ProcessStatus.PENDING_APPROVAL]: [],
+    [ProcessStatus.APPROVED]: [],
+    [ProcessStatus.HANDED_OVER]: [],
+    [ProcessStatus.NO_SHOW]: []
   };
 
-  processes.forEach(process => {
+  // Process regular processes
+  regularProcesses.forEach(process => {
     const status = process.status?.toLowerCase();
-    if (!groups[status]) {
-      groups[status] = [];
+    const matchingStatus = Object.entries(ProcessStatus).find(
+      ([_, value]) => value.toLowerCase() === status
+    )?.[1];
+    
+    if (!matchingStatus || !groups[matchingStatus]) return;
+    
+    if (process.userId === currentUser?.uid) {
+      groups[matchingStatus].push(process);
     }
-    groups[status].push(process);
+  });
+
+  // Process involved processes
+  involvedProcesses.forEach(process => {
+    const status = process.status?.toLowerCase();
+    const matchingStatus = Object.entries(ProcessStatus).find(
+      ([_, value]) => value.toLowerCase() === status
+    )?.[1];
+    
+    if (!matchingStatus || !groups[matchingStatus]) return;
+    
+    const isDuplicate = groups[matchingStatus].some(p => p.id === process.id);
+    if (!isDuplicate) {
+      groups[matchingStatus].push(process);
+    }
   });
 
   return groups;
@@ -114,11 +135,11 @@ const groupProcesses = (processes) => {
 // Simplified section title helper
 const getSectionTitle = (status) => {
   const titles = {
-    'pending_retrieval': 'Ready for Pickup',
-    'pending_approval': 'Pending Approval',
-    'approved': 'Posted Items',
-    'handed_over': 'Handed Over',
-    'no_show': 'No Show'
+    [ProcessStatus.PENDING_RETRIEVAL]: 'Ready for Pickup',
+    [ProcessStatus.PENDING_APPROVAL]: 'Pending Approval',
+    [ProcessStatus.APPROVED]: 'Posted Items',
+    [ProcessStatus.HANDED_OVER]: 'Handed Over',
+    [ProcessStatus.NO_SHOW]: 'No Show'
   };
 
   return titles[status] || status.split('_')
@@ -241,6 +262,8 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const tabsRef = useRef(null);
+  const [regularProcesses, setRegularProcesses] = useState([]);
+  const [involvedProcesses, setInvolvedProcesses] = useState([]);
 
   // Update localProcesses when pendingProcesses changes
   useEffect(() => {
@@ -480,10 +503,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
   const renderProcessCard = (process) => {
     // Add debug logs
-    console.log('Process:', process);
-    console.log('Current user:', user?.uid);
-    console.log('Process status:', process.status);
-    console.log('RequestorUserId:', process.requestorUserId);
 
     let cardStyle = "";
     let statusBadge = null;
@@ -956,12 +975,25 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                 <h3 className="font-bold text-lg truncate">
                   {process.item?.name || process.item?.Name}
                 </h3>
-                <Badge variant="outline" className={`${
-                  process.item?.status?.toLowerCase() === "lost" 
-                    ? "bg-red-100 text-red-800" 
-                    : "bg-green-100 text-green-800"
-                }`}>
-                  {process.item?.status?.toLowerCase() === "lost" ? "Lost" : "Found"}
+                <Badge 
+                  variant="outline" 
+                  className={`${
+                    process.status?.toLowerCase() === ProcessStatus.PENDING_RETRIEVAL ||
+                    process.status?.toLowerCase() === ProcessStatus.NO_SHOW.toLowerCase() ||
+                    process.status?.toLowerCase() === ProcessStatus.HANDED_OVER.toLowerCase()
+                      ? ""
+                      : process.item?.status?.toLowerCase() === "lost" 
+                      ? "bg-red-100 text-red-800" 
+                      : "bg-green-100 text-green-800"
+                  }`}
+                >
+                  {process.status?.toLowerCase() === ProcessStatus.PENDING_RETRIEVAL.toLowerCase() ||
+                  process.status?.toLowerCase() === ProcessStatus.NO_SHOW.toLowerCase() ||
+                  process.status?.toLowerCase() === ProcessStatus.HANDED_OVER.toLowerCase()
+                    ? "Match"
+                    : process.item?.status?.toLowerCase() === "lost"
+                    ? "Lost"
+                    : "Found"}
                 </Badge>
               </div>
               {statusBadge}
@@ -1051,21 +1083,30 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   };
 
   // Filter processes based on selected filters
-  const filteredProcesses = validProcesses.filter(process => {
+  const filteredProcesses = regularProcesses?.filter(process => {
     const matchesType = typeFilter === "all" || process.item?.status?.toLowerCase() === typeFilter;
     return matchesType;
-  });
+  }) || [];
 
-  // Group filtered processes
-  const groupedProcesses = groupProcesses(filteredProcesses);
+  const filteredInvolvedProcesses = involvedProcesses?.filter(process => {
+    const matchesType = typeFilter === "all" || process.item?.status?.toLowerCase() === typeFilter;
+    return matchesType;
+  }) || [];
+
+  // Add debug logs to verify the grouping
+  console.log('Filtered regular processes:', filteredProcesses);
+  console.log('Filtered involved processes:', filteredInvolvedProcesses);
+
+  // Use both sets of processes
+  const groupedProcesses = groupProcesses(filteredProcesses, filteredInvolvedProcesses, user);
 
   // Define section order
   const sectionOrder = [
-    'pending_retrieval',    // Ready for Pickup
-    'pending_approval',     // Pending Approval
-    'approved',            // Posted Items
-    'handed_over',         // Handed Over
-    'no_show'              // No Show
+    ProcessStatus.PENDING_RETRIEVAL,    // Ready for Pickup
+    ProcessStatus.PENDING_APPROVAL,     // Pending Approval
+    ProcessStatus.APPROVED,            // Posted Items
+    ProcessStatus.HANDED_OVER,         // Handed Over
+    ProcessStatus.NO_SHOW              // No Show
   ];
 
   // Add this helper function for badge styles
@@ -1081,6 +1122,34 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         return 'bg-blue-500 text-white group-hover:bg-blue-600';
     }
   };
+
+  useEffect(() => {
+    const fetchAllProcesses = async () => {
+      if (!user) return;
+      
+      try {
+        const [regularResponse, involvedResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/Item/pending/all`),
+          fetch(`${API_BASE_URL}/api/Item/process/user/${user.uid}/involved`)
+        ]);
+
+        const [regularData, involvedData] = await Promise.all([
+          regularResponse.json(),
+          involvedResponse.json()
+        ]);
+
+        setRegularProcesses(regularData.$values || []);
+        setInvolvedProcesses(involvedData?.data?.$values || []);
+        
+      } catch (error) {
+        console.error('Error fetching processes:', error);
+        setRegularProcesses([]);
+        setInvolvedProcesses([]);
+      }
+    };
+
+    fetchAllProcesses();
+  }, [user]);
 
   return (
     <div className="max-w-full mx-auto space-y-4 sm:space-y-6">
@@ -1174,11 +1243,11 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                 >
                   <div className="flex items-center justify-center gap-3 whitespace-nowrap">
                     {/* Status Icons */}
-                    {status === 'pending_retrieval' && <Clock className="h-4 w-4 flex-shrink-0" />}
-                    {status === 'pending_approval' && <Clock className="h-4 w-4 flex-shrink-0" />}
-                    {status === 'approved' && <CheckCircle className="h-4 w-4 flex-shrink-0" />}
-                    {status === 'handed_over' && <Package className="h-4 w-4 flex-shrink-0" />}
-                    {status === 'no_show' && <XCircle className="h-4 w-4 flex-shrink-0" />}
+                    {status === ProcessStatus.PENDING_RETRIEVAL && <Clock className="h-4 w-4 flex-shrink-0" />}
+                    {status === ProcessStatus.PENDING_APPROVAL && <Clock className="h-4 w-4 flex-shrink-0" />}
+                    {status === ProcessStatus.APPROVED && <CheckCircle className="h-4 w-4 flex-shrink-0" />}
+                    {status === ProcessStatus.HANDED_OVER && <Package className="h-4 w-4 flex-shrink-0" />}
+                    {status === ProcessStatus.NO_SHOW && <XCircle className="h-4 w-4 flex-shrink-0" />}
                     
                     <span className="font-medium">
                       {getSectionTitle(status)}
@@ -1262,7 +1331,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                             }
                           }}
                         >
-                          {status === 'pending_retrieval' 
+                          {status === ProcessStatus.PENDING_RETRIEVAL 
                             ? renderPickupCard(process)
                             : renderProcessCard(process)
                           }

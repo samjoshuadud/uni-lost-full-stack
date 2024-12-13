@@ -6,6 +6,11 @@
   --font-inter: 'Inter', sans-serif;
 }
 
+/* Hide the Next.js portal the error message/warning*/
+nextjs-portal {
+  display: none;
+}
+
 body {
   font-family: var(--font-inter);
 }
