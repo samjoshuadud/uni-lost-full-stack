@@ -1205,7 +1205,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   key={status}
                   value={status}
                   className={`
-                    flex-none
+                    flex-1 
                     px-4 py-2.5 
                     rounded-xl
                     data-[state=active]:bg-[#FFD43B]
@@ -1219,7 +1219,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                     hover:text-[#FFD43B]
                     group
                     text-sm
-                    min-w-[160px]
                     h-full
                   `}
                 >

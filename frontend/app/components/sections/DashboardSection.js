@@ -86,6 +86,34 @@ const loadingVariants = {
   }
 };
 
+const isDateInRange = (date, range) => {
+  if (!range.from && !range.to) return true;
+  const itemDate = new Date(date);
+  itemDate.setHours(0, 0, 0, 0);
+
+  if (range.from && range.to) {
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(0, 0, 0, 0);
+    return itemDate >= from && itemDate <= to;
+  }
+
+  if (range.from) {
+    const from = new Date(range.from);
+    from.setHours(0, 0, 0, 0);
+    return itemDate >= from;
+  }
+
+  if (range.to) {
+    const to = new Date(range.to);
+    to.setHours(0, 0, 0, 0);
+    return itemDate <= to;
+  }
+
+  return true;
+};
+
 export default function DashboardSection({ 
   items = [], 
   handleViewDetails,
@@ -95,7 +123,7 @@ export default function DashboardSection({
   onUnapprove,
   searchQuery = "",
   searchCategory = "all",
-  claimStatus = "all"
+  dateFilter = null
 }) {
   const { userData, user } = useAuth();
   const [localItems, setLocalItems] = useState([]);
@@ -188,23 +216,12 @@ export default function DashboardSection({
       const searchCat = searchCategory.toLowerCase();
       const matchesCategory = 
         searchCategory === "all" || 
-        (searchCat === "others" ? itemCategory.startsWith("others") : itemCategory === searchCat);
+        (searchCat === "others" 
+          ? itemCategory.startsWith("others") 
+          : itemCategory === searchCat);
 
-      // Claim status filter
-      const process = processes.find(p => p.itemId === item.id);
-      const isClaimRequestPending = process?.status === ProcessStatus.CLAIM_REQUEST;
-
-      // For "pending" claims tab - show only items with pending claim requests
-      if (claimStatus === "pending") {
-        return matchesCategory && isClaimRequestPending;
-      }
-      
-      // For "none" claims tab - show only found items without pending claims
-      if (claimStatus === "none") {
-        return matchesCategory && 
-               item.status?.toLowerCase() === "found" && 
-               !isClaimRequestPending;
-      }
+      // Date filter
+      const matchesDate = isDateInRange(item.dateReported, dateFilter);
 
       // Search terms
       if (searchQuery.trim()) {
@@ -215,10 +232,10 @@ export default function DashboardSection({
           item.description?.toLowerCase().includes(searchTerms) ||
           itemCategory.includes(searchTerms);
 
-        return matchesCategory && matchesSearch;
+        return matchesCategory && matchesSearch && matchesDate;
       }
 
-      return matchesCategory;
+      return matchesCategory && matchesDate;
     }).map(item => {
       const itemCategory = item.category?.toLowerCase() || '';
       const isOthers = itemCategory.startsWith('others');
@@ -240,7 +257,7 @@ export default function DashboardSection({
     
     setLocalItems(filteredItems);
     setIsLoading(false);
-  }, [items, searchQuery, searchCategory, processes, claimStatus]);
+  }, [items, searchQuery, searchCategory, processes, dateFilter]);
 
   const handleQRDialogChange = (open) => {
     setShowQRDialog(open);
@@ -480,28 +497,10 @@ export default function DashboardSection({
       <Card className="col-span-full">
         <CardContent className="p-8 text-center">
           <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-          {claimStatus === "none" ? (
-            <>
-              <p className="font-medium text-muted-foreground">No Available Items to Claim</p>
-              <p className="text-sm text-muted-foreground/80 mt-2">
-                Check back later for items that you can claim
-              </p>
-            </>
-          ) : claimStatus === "pending" ? (
-            <>
-              <p className="font-medium text-muted-foreground">No Pending Claims</p>
-              <p className="text-sm text-muted-foreground/80 mt-2">
-                Items you claim will appear here
-              </p>
-            </>
-          ) : (
-            <>
-              <p className="font-medium text-muted-foreground">No Items Found</p>
-              <p className="text-sm text-muted-foreground/80 mt-2">
-                No items match your current filters
-              </p>
-            </>
-          )}
+          <p className="font-medium text-muted-foreground">No Available Items to Claim</p>
+          <p className="text-sm text-muted-foreground/80 mt-2">
+            Check back later for items that you can claim
+          </p>
         </CardContent>
       </Card>
     );
@@ -568,28 +567,10 @@ export default function DashboardSection({
             <Card className="col-span-full">
               <CardContent className="p-8 text-center">
                 <Package className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-                {claimStatus === "none" ? (
-                  <>
-                    <p className="font-medium text-muted-foreground">No Available Items to Claim</p>
-                    <p className="text-sm text-muted-foreground/80 mt-2">
-                      Check back later for items that you can claim
-                    </p>
-                  </>
-                ) : claimStatus === "pending" ? (
-                  <>
-                    <p className="font-medium text-muted-foreground">No Pending Claims</p>
-                    <p className="text-sm text-muted-foreground/80 mt-2">
-                      Items you claim will appear here
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <p className="font-medium text-muted-foreground">No Items Found</p>
-                    <p className="text-sm text-muted-foreground/80 mt-2">
-                      No items match your current filters
-                    </p>
-                  </>
-                )}
+                <p className="font-medium text-muted-foreground">No Available Items to Claim</p>
+                <p className="text-sm text-muted-foreground/80 mt-2">
+                  Check back later for items that you can claim
+                </p>
               </CardContent>
             </Card>
           </motion.div>
@@ -604,7 +585,7 @@ export default function DashboardSection({
             <AnimatePresence mode="popLayout">
               {localItems.map((item, index) => (
                 <motion.div
-                  key={`${item.id}-${searchCategory}-${searchQuery}-${claimStatus}`}
+                  key={`${item.id}-${searchCategory}-${searchQuery}`}
                   variants={itemVariants}
                   initial="hidden"
                   animate="visible"
