@@ -1131,7 +1131,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
       </div>
 
       {/* Tabs Section */}
-      <Tabs defaultValue="pending_retrieval" className="w-full">
+      <Tabs defaultValue="pending_approval" className="w-full">
         <div className="bg-[#2E3F65] rounded-2xl shadow-lg overflow-hidden relative group">
           {/* Scroll Indicator */}
           <motion.div
