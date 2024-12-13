@@ -1189,7 +1189,10 @@ export default function UniLostAndFound() {
             <div className="flex flex-col lg:flex-row items-center gap-6">
               {/* Logo and Title Section */}
               <div className="flex items-center gap-4">
-                <div className="relative group">
+                <div 
+                  className="relative group cursor-pointer"
+                  onClick={() => { setActiveSection("dashboard"); setSelectedItem(null); }}
+                >
                   <Image 
                     src="/logo/logo.png" 
                     alt="UMAK Logo" 
