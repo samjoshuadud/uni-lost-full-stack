@@ -94,7 +94,6 @@ const canDelete = (process) => {
 const groupProcesses = (processes) => {
   const groups = {
     pending_retrieval: [],
-    claim_request: [],
     pending_approval: [],
     approved: [],
     handed_over: [],
@@ -116,7 +115,6 @@ const groupProcesses = (processes) => {
 const getSectionTitle = (status) => {
   const titles = {
     'pending_retrieval': 'Ready for Pickup',
-    'claim_request': 'Claim Requests',
     'pending_approval': 'Pending Approval',
     'approved': 'Posted Items',
     'handed_over': 'Handed Over',
@@ -447,8 +445,7 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
            process.item && 
            process.status !== "awaiting_surrender" && (
                process.userId === user?.uid || // User's reported items
-               (process.requestorUserId === user?.uid && process.status === "claim_request") || // User's claim requests
-               (process.item.reporterId === user?.uid && process.status === "claim_request") // Claims on user's items
+               process.item.reporterId === user?.uid // Claims on user's items
            );
   });
 
@@ -1074,7 +1071,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   // Define section order
   const sectionOrder = [
     'pending_retrieval',    // Ready for Pickup
-    'claim_request',        // Claim Requests
     'pending_approval',     // Pending Approval
     'approved',            // Posted Items
     'handed_over',         // Handed Over
@@ -1086,8 +1082,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
     switch (status) {
       case 'pending_retrieval':
         return 'bg-red-500 text-white group-hover:bg-red-600';
-      case 'claim_request':
-        return 'bg-blue-500 text-white group-hover:bg-blue-600';
       case 'pending_approval':
         return 'bg-[#FFD43B] text-[#2E3F65] group-hover:bg-[#FFB800]';
       case 'approved':
@@ -1190,7 +1184,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                   <div className="flex items-center justify-center gap-3 whitespace-nowrap">
                     {/* Status Icons */}
                     {status === 'pending_retrieval' && <Clock className="h-4 w-4 flex-shrink-0" />}
-                    {status === 'claim_request' && <MessageSquare className="h-4 w-4 flex-shrink-0" />}
                     {status === 'pending_approval' && <Clock className="h-4 w-4 flex-shrink-0" />}
                     {status === 'approved' && <CheckCircle className="h-4 w-4 flex-shrink-0" />}
                     {status === 'handed_over' && <Package className="h-4 w-4 flex-shrink-0" />}
