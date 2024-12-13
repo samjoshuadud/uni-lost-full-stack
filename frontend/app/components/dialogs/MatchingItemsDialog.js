@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,38 +39,53 @@ export default function MatchingItemsDialog({
   const [selectedFoundItem, setSelectedFoundItem] = useState(null);
 
   useEffect(() => {
-    if (open) {
-      fetchFoundItems();
-    }
-  }, [open, fetchFoundItems]);
+    let mounted = true;
 
-  useEffect(() => {
-    const rankItems = async () => {
-      if (!selectedItem || !items.length) return;
-      
-      setIsRankingItems(true);
+    const initializeData = async () => {
+      if (!open || !items.length) return;
+
+      setIsLoadingFoundItems(true);
       try {
-        const rankedItems = await Promise.all(
-          items.map(async (item) => {
-            const score = await rankItemSimilarity(selectedItem, item);
-            return {
-              ...item,
-              similarityScore: score
-            };
-          })
-        );
-        
-        setFoundItems(rankedItems.sort((a, b) => b.similarityScore - a.similarityScore));
+        // First fetch the found items
+        if (fetchFoundItems) {
+          await fetchFoundItems();
+        }
+
+        // Then rank them if we have a selected item
+        if (selectedItem && mounted) {
+          setIsRankingItems(true);
+          const rankedItems = await Promise.all(
+            items.map(async (item) => {
+              const score = await rankItemSimilarity(selectedItem, item);
+              return { ...item, similarityScore: score };
+            })
+          );
+
+          if (mounted) {
+            setFoundItems(rankedItems.sort((a, b) => b.similarityScore - a.similarityScore));
+          }
+        } else if (mounted) {
+          setFoundItems(items);
+        }
       } catch (error) {
-        console.error('Error ranking items:', error);
-        setFoundItems(items);
+        console.error('Error initializing data:', error);
+        if (mounted) {
+          setFoundItems(items);
+        }
       } finally {
-        setIsRankingItems(false);
+        if (mounted) {
+          setIsLoadingFoundItems(false);
+          setIsRankingItems(false);
+        }
       }
     };
 
-    rankItems();
-  }, [selectedItem, items]);
+    initializeData();
+
+    return () => {
+      mounted = false;
+    };
+  }, [open, items, selectedItem, fetchFoundItems]);
 
   const handleMatchItem = async (matchItem) => {
     if (!matchItem || !selectedItem) return;
@@ -173,36 +188,44 @@ export default function MatchingItemsDialog({
     }
   };
 
+  const filterItem = useCallback((item) => {
+    const searchStr = searchQuery.toLowerCase();
+    const matchesSearch = (
+      item.name?.toLowerCase().includes(searchStr) ||
+      item.description?.toLowerCase().includes(searchStr) ||
+      item.category?.toLowerCase().includes(searchStr) ||
+      item.location?.toLowerCase().includes(searchStr)
+    );
+    
+    const matchesDate = isWithinDateRange(item.createdAt, dateFilter);
+    
+    return matchesSearch && matchesDate;
+  }, [searchQuery, dateFilter]);
+
+  const sortItems = useCallback((a, b) => {
+    switch (sortOption) {
+      case 'newest':
+        return new Date(b.createdAt) - new Date(a.createdAt);
+      case 'oldest':
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      case 'nameAZ':
+        return (a.name || '').localeCompare(b.name || '');
+      case 'nameZA':
+        return (b.name || '').localeCompare(a.name || '');
+      default:
+        return 0;
+    }
+  }, [sortOption]);
+
   const sortedAndFilteredItems = useMemo(() => {
     return foundItems
-      .filter(item => {
-        const searchStr = searchQuery.toLowerCase();
-        const matchesSearch = (
-          item.name?.toLowerCase().includes(searchStr) ||
-          item.description?.toLowerCase().includes(searchStr) ||
-          item.category?.toLowerCase().includes(searchStr) ||
-          item.location?.toLowerCase().includes(searchStr)
-        );
-        
-        const matchesDate = isWithinDateRange(item.createdAt, dateFilter);
-        
-        return matchesSearch && matchesDate;
-      })
-      .sort((a, b) => {
-        switch (sortOption) {
-          case 'newest':
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          case 'oldest':
-            return new Date(a.createdAt) - new Date(b.createdAt);
-          case 'nameAZ':
-            return (a.name || '').localeCompare(b.name || '');
-          case 'nameZA':
-            return (b.name || '').localeCompare(a.name || '');
-          default:
-            return 0;
-        }
-      });
-  }, [foundItems, searchQuery, dateFilter, dateRange, sortOption]);
+      .filter(filterItem)
+      .sort(sortItems);
+  }, [foundItems, filterItem, sortItems]);
+
+  const handleSelectItem = useCallback((item) => {
+    setSelectedFoundItem(item);
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -308,7 +331,7 @@ export default function MatchingItemsDialog({
                       : 'border-gray-200 hover:border-blue-200 hover:bg-blue-50/30'
                     } p-4 cursor-pointer`
                   }
-                  onClick={() => setSelectedMatchItem(item)}
+                  onClick={() => handleSelectItem(item)}
                 >
                   <div className="flex gap-6">
                     {/* Image Section */}
