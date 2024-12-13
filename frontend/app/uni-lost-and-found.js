@@ -30,7 +30,7 @@ import { ItemStatus, ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { authApi, itemApi } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/api-config';
 import Image from "next/image"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { Calendar } from "@/components/ui/calendar"
@@ -62,6 +62,37 @@ const styles = `
 
   .bg-overlay {
     background: rgba(248, 249, 250, 0.80);  /* Adjust the last value (0.95) for transparency */
+  }
+
+  @keyframes tabFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .tab-content-enter {
+    animation: tabFadeIn 0.3s ease forwards;
+  }
+
+  .active-tab-indicator {
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: #FCD34D;
+    transform-origin: left;
+    transition: transform 0.3s ease;
+  }
+
+  .grid-container {
+    will-change: transform, opacity;
+    transform-origin: center top;
   }
 `;
 
@@ -1636,47 +1667,56 @@ export default function UniLostAndFound() {
           {!isAdmin && user && 
             !["profile", "report", "pending_process", "about"].includes(activeSection) && (
             <div className="mb-6">
-              <div className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto">
+              <motion.div 
+                className="bg-[#2E3F65] rounded-[40px] shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-blue-900 p-2 max-w-[950px] mx-auto"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              >
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-1">
-                  <Button
-                    variant={activeSection === "dashboard" ? "secondary" : "ghost"}
-                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                      ${activeSection === "dashboard" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                        "text-white hover:text-[#004C99] font-bold"
-                      }
-                    `}
-                    onClick={() => setActiveSection("dashboard")}
-                  >
-                    Dashboard
-                  </Button>
-                  <Button
-                    variant={activeSection === "lost" ? "secondary" : "ghost"}
-                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                      ${activeSection === "lost" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                        "text-white hover:text-[#004C99] font-bold"
-                      }
-                    `}
-                    onClick={() => setActiveSection("lost")}
-                  >
-                    Lost Items
-                  </Button>
-                  <Button
-                    variant={activeSection === "found" ? "secondary" : "ghost"}
-                    className={`flex-1 relative transition-colors rounded-[50px] text-sm py-2.5 h-auto
-                      ${activeSection === "found" ? 
-                        "after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0 after:bg-yellow-400 bg-yellow-400 text-[#003d99] hover:bg-yellow-500 font-bold" : 
-                        "text-white hover:text-[#004C99] font-bold"
-                      }
-                    `}
-                    onClick={() => setActiveSection("found")}
-                  >
-                    Found Items
-                  </Button>
-                  
+                  {[
+                    { id: "dashboard", label: "Home" },
+                    { id: "lost", label: "Lost Items" },
+                    { id: "found", label: "Found Items" }
+                  ].map((tab) => (
+                    <motion.div
+                      key={tab.id}
+                      className="relative flex-1"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Button
+                        variant={activeSection === tab.id ? "secondary" : "ghost"}
+                        className={`
+                          w-full relative transition-all duration-300 rounded-[50px] 
+                          text-sm py-2.5 h-auto font-bold
+                          ${activeSection === tab.id 
+                            ? "bg-yellow-400 text-[#003d99] hover:bg-yellow-500" 
+                            : "text-white hover:text-[#004C99] hover:bg-white/10"
+                          }
+                        `}
+                        onClick={() => {
+                          setActiveSection(tab.id);
+                        }}
+                      >
+                        {tab.label}
+                        {activeSection === tab.id && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute inset-0 bg-yellow-400 rounded-[50px] -z-10"
+                            initial={false}
+                            transition={{
+                              type: "spring",
+                              stiffness: 500,
+                              damping: 35
+                            }}
+                          />
+                        )}
+                      </Button>
+                    </motion.div>
+                  ))}
                 </div>
-              </div>
+              </motion.div>
             </div>
           )}
 
@@ -1789,7 +1829,21 @@ export default function UniLostAndFound() {
 
           {/* Main Content */}
           <div className="relative">
-            {renderSection()}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeSection}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ 
+                  duration: 0.2,
+                  ease: "easeInOut"
+                }}
+                className="grid-container"
+              >
+                {renderSection()}
+              </motion.div>
+            </AnimatePresence>
           </div>
 
           <style jsx>{styles}</style>
