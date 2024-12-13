@@ -56,7 +56,6 @@ import UserManagementTab from "./admin-tabs/UserManagementTab";
 import { debounce } from "lodash";
 import { API_BASE_URL } from '@/lib/api-config';
 import HistoryTab from "./admin-tabs/HistoryTab";
-import { QRScannerDialog } from "../dialogs/QRScannerDialog";
 import { toast } from "react-hot-toast";
 import { ProcessStatus, ProcessMessages } from "@/lib/constants";
 import { motion } from "framer-motion";
@@ -109,7 +108,6 @@ export default function AdminSection({
   const [approvedItemName, setApprovedItemName] = useState("");
   const [readyForPickupCount, setReadyForPickupCount] = useState(0);
   const [historyCount, setHistoryCount] = useState(0);
-  const [showQRScanner, setShowQRScanner] = useState(false);
   const [pendingLostCount, setPendingLostCount] = useState(0);
   const [pendingFoundCount, setPendingFoundCount] = useState(0);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -484,24 +482,6 @@ export default function AdminSection({
     ));
   }, [readyForPickupCount, items]);
 
-  const handleScanComplete = async (result) => {
-    if (result.status === 'found_item_created') {
-      // Switch to found items tab
-      setActiveTab('found');
-      
-      // Wait for state update and data refresh
-      await fetchInitialData();
-      
-      // Find the newly created item
-      const newItem = pendingProcesses.find(p => p.itemId === result.data.itemId);
-      if (newItem) {
-        // Open match dialog for this item
-        setSelectedItemForMatching(newItem);
-        setShowMatchDialog(true);
-      }
-    }
-  };
-
   // Add this useEffect to handle counting
   useEffect(() => {
     if (!pendingProcesses) return;
@@ -612,14 +592,6 @@ export default function AdminSection({
             <p className="text-gray-600 mt-1">Manage and monitor all the lost and found items in the system</p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowQRScanner(true)}
-              className="flex items-center gap-2 border-gray-200 text-gray-700 hover:bg-gray-50"
-            >
-              <QrCode className="h-4 w-4" />
-              Scan QR Code
-            </Button>
             <Button 
               variant="outline" 
               onClick={() => setShowAdminDialog(true)}
@@ -867,12 +839,6 @@ export default function AdminSection({
           </div>
         </DialogContent>
       </Dialog>
-
-      <QRScannerDialog
-        open={showQRScanner}
-        onOpenChange={setShowQRScanner}
-        onScanComplete={handleScanComplete}
-      />
 
       {/* Add these styles somewhere in your component */}
       <style jsx global>{`

@@ -11,7 +11,6 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { CATEGORIES } from '@/lib/constants'
 import { API_BASE_URL } from "@/lib/api-config"
 import { useAuth } from "@/lib/AuthContext"
-import { QRCodeDialog } from "../dialogs/QRCodeDialog"
 import AuthRequiredDialog from "../dialogs/AuthRequiredDialog"
 import { toast } from "react-hot-toast"
 import ClaimVerificationDialog from "../dialogs/ClaimVerificationDialog"
