@@ -15,6 +15,7 @@ import { Plus, X, Upload, Bell, AlertTriangle, Download, Clock, Eye } from "luci
 import { API_BASE_URL } from "@/lib/api-config";
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { toast } from 'sonner'
 
 export default function ReportSection({ 
   onSubmit, 
@@ -314,6 +315,16 @@ export default function ReportSection({
         throw new Error("Failed to submit report");
       }
 
+      // Dispatch custom event for new item
+      const newItemEvent = new CustomEvent('newItemReported', {
+        detail: {
+          item: response,
+          type: itemStatus === ItemStatus.FOUND ? 'found' : 'lost',
+          processId: response.id || response.Id
+        }
+      });
+      window.dispatchEvent(newItemEvent);
+      
       // Show QR code only for non-admin found item reports
       if (!adminMode && itemStatus === ItemStatus.FOUND) {
         const processId = response.id || response.Id || response.processId;
