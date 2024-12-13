@@ -967,6 +967,11 @@ export default function UniLostAndFound() {
         try {
             const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
             const data = await response.json();
+
+            const involvedResponse = await fetch(`${API_BASE_URL}/api/Item/process/user/${user.uid}/involved`);
+            const involvedData = await involvedResponse.json();
+            
+
             
             if (data && data.$values) {
                 // Set items first
@@ -982,7 +987,7 @@ export default function UniLostAndFound() {
                         process.userId === user.uid || 
                         (process.requestorUserId === user.uid && process.status === ProcessStatus.CLAIM_REQUEST)
                     )
-                ).length;
+                ).length + involvedData.data.$values.length;
 
                 // Calculate total pending count (all statuses except AWAITING_SURRENDER and APPROVED)
                 const newTotalCount = data.$values.filter(process => 

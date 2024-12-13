@@ -329,63 +329,43 @@ public class ItemController : ControllerBase
             _logger.LogInformation($"Starting item match process. Lost Process ID: {dto.LostProcessId}, Found Process ID: {dto.FoundProcessId}");
             
             var lostProcess = await _processService.GetProcessByIdAsync(dto.LostProcessId);
-            _logger.LogInformation($"Lost process found: {lostProcess != null}, UserId: {lostProcess?.UserId}, ItemId: {lostProcess?.ItemId}");
-            
-            if (lostProcess == null)
-                return NotFound(new ApiResponse<bool> 
-                { 
-                    Success = false, 
-                    Message = "Lost item process not found" 
-                });
-
             var foundProcess = await _processService.GetProcessByIdAsync(dto.FoundProcessId);
-            _logger.LogInformation($"Found process found: {foundProcess != null}");
             
-            if (foundProcess == null)
-                return NotFound(new ApiResponse<bool> 
-                { 
+            if (lostProcess == null || foundProcess == null)
+                return NotFound(new ApiResponse<bool> { 
                     Success = false, 
-                    Message = "Found item process not found" 
+                    Message = "Process not found" 
                 });
-
-            foundProcess.status = ProcessMessages.Status.PENDING_RETRIEVAL;
-            foundProcess.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
-            await _processService.UpdateProcessAsync(foundProcess);
-            _logger.LogInformation("Found process updated successfully");
 
             // Get reporter info BEFORE deleting the lost item
             var lostItem = await _itemService.GetItemAsync(lostProcess.ItemId);
             var reporter = await _userService.GetUserByIdAsync(lostProcess.UserId);
 
-            _logger.LogInformation($"Lost item found: {lostItem != null}, Reporter found: {reporter != null}");
-            _logger.LogInformation($"Reporter email: {reporter?.Email}, Item name: {lostItem?.Name}");
+            // Store original reporter's user ID in found process
+            foundProcess.OriginalReporterUserId = lostProcess.UserId;
+            foundProcess.status = ProcessMessages.Status.PENDING_RETRIEVAL;
+            foundProcess.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
+            await _processService.UpdateProcessAsync(foundProcess);
 
+            // Send email notification
             if (reporter != null && lostItem != null)
             {
                 try
                 {
-                    _logger.LogInformation($"Attempting to send email to {reporter.Email}");
                     await _emailService.SendReadyForPickupEmailAsync(
                         reporter.Email,
                         lostItem.Name
                     );
-                    _logger.LogInformation("Email sent successfully");
                 }
                 catch (Exception emailEx)
                 {
-                    _logger.LogError($"Failed to send pickup notification email: {emailEx.Message}");
-                    _logger.LogError($"Stack trace: {emailEx.StackTrace}");
-                    // Consider adding email error details to the response
+                    _logger.LogError($"Failed to send email: {emailEx.Message}");
+                    // Continue even if email fails
                 }
             }
-            else
-            {
-                _logger.LogWarning($"Cannot send email - Reporter or item missing. Reporter: {reporter != null}, Item: {lostItem != null}");
-            }
 
-            // Delete the lost item and its process AFTER sending email
+            // Delete the lost item and its process
             await _processService.DeleteProcessAndItemAsync(dto.LostProcessId);
-            _logger.LogInformation("Lost process and item deleted successfully");
 
             return Ok(new ApiResponse<bool>
             {
@@ -397,7 +377,6 @@ public class ItemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError($"Error matching items: {ex.Message}");
-            _logger.LogError($"Stack trace: {ex.StackTrace}");
             return StatusCode(500, new ApiResponse<bool>
             {
                 Success = false,
@@ -418,17 +397,36 @@ public class ItemController : ControllerBase
             if (process.status.ToLower() != ProcessMessages.Status.PENDING_RETRIEVAL.ToLower())
                 return BadRequest(new { error = "Process is not in pending retrieval status" });
 
-            await _processService.UpdateStatusAsync(
-                id,
-                ProcessMessages.Status.APPROVED,
-                ProcessMessages.Messages.ITEM_APPROVED
-            );
+            // Get the original reporter for email notification
+            var originalReporter = await _userService.GetUserByIdAsync(process.OriginalReporterUserId);
+            
+            // Update process status
+            process.status = ProcessMessages.Status.APPROVED;
+            process.Message = ProcessMessages.Messages.ITEM_APPROVED;
+            await _processService.UpdateProcessAsync(process);
 
-            return NoContent();
+            // Send email to original reporter about verification failure
+            if (originalReporter != null && process.Item != null)
+            {
+                try 
+                {
+                    await _emailService.SendVerificationFailedEmailAsync(
+                        originalReporter.Email,
+                        process.Item.Name
+                    );
+                }
+                catch (Exception emailEx)
+                {
+                    _logger.LogError($"Failed to send verification failed email: {emailEx.Message}");
+                    // Continue even if email fails
+                }
+            }
+
+            return Ok(new { message = "Process updated successfully" });
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error undoing retrieval status: {ex.Message}");
+            _logger.LogError($"Error undoing retrieval: {ex.Message}");
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -461,7 +459,7 @@ public class ItemController : ControllerBase
     }
 
     [HttpPost("process/match-found")]
-    public async Task<ActionResult<ApiResponse<bool>>> MatchFoundItems([FromBody] MatchItemsDto dto)
+    public async Task<ActionResult<ApiResponse<bool>>> MatchFoundItem([FromBody] MatchItemsDto dto)
     {
         try
         {
@@ -471,63 +469,43 @@ public class ItemController : ControllerBase
             var foundProcess = await _processService.GetProcessByIdAsync(dto.FoundProcessId);
             var lostProcess = await _processService.GetProcessByIdAsync(dto.LostProcessId);
             
-            // Validate processes exist
-            if (foundProcess == null)
-                return NotFound(new ApiResponse<bool> { Success = false, Message = "Found item process not found" });
-            if (lostProcess == null)
-                return NotFound(new ApiResponse<bool> { Success = false, Message = "Lost item process not found" });
+            if (foundProcess == null || lostProcess == null)
+                return NotFound(new ApiResponse<bool> { 
+                    Success = false, 
+                    Message = "Process not found" 
+                });
 
-            // Get all necessary data before making any changes
+            // Get necessary data
             var lostItem = await _itemService.GetItemAsync(lostProcess.ItemId);
-            var foundItem = await _itemService.GetItemAsync(foundProcess.ItemId);
             var lostItemReporter = await _userService.GetUserByIdAsync(lostProcess.UserId);
-            var foundItemReporter = await _userService.GetUserByIdAsync(foundProcess.UserId);
 
-            _logger.LogInformation($"Found item: {foundItem?.Name}, Lost item: {lostItem?.Name}");
-            _logger.LogInformation($"Found reporter: {foundItemReporter?.Email}, Lost reporter: {lostItemReporter?.Email}");
-
-            // Send notifications first
-            try
+            // Send notification only to lost item reporter
+            if (lostItemReporter != null && lostItem != null)
             {
-                // Notify lost item reporter
-                if (lostItemReporter != null && lostItem != null)
+                try
                 {
                     await _emailService.SendReadyForPickupEmailAsync(
                         lostItemReporter.Email,
                         lostItem.Name
                     );
-                    _logger.LogInformation($"Pickup notification sent to lost item reporter: {lostItemReporter.Email}");
                 }
-
-                // Notify found item reporter
-                if (foundItemReporter != null && foundItem != null)
+                catch (Exception emailEx)
                 {
-                    await _emailService.SendItemMatchedEmailAsync(
-                        foundItemReporter.Email,
-                        foundItem.Name,
-                        lostItem?.Name ?? "Unknown Item"
-                    );
-                    _logger.LogInformation($"Match notification sent to found item reporter: {foundItemReporter.Email}");
+                    _logger.LogError($"Failed to send notification email: {emailEx.Message}");
+                    // Continue even if email fails
                 }
-            }
-            catch (Exception emailEx)
-            {
-                _logger.LogError($"Failed to send notification emails: {emailEx.Message}");
-                // Continue even if email fails
             }
 
             // Update found process status
+            foundProcess.OriginalReporterUserId = lostProcess.UserId;
             foundProcess.status = ProcessMessages.Status.PENDING_RETRIEVAL;
             foundProcess.Message = ProcessMessages.Messages.PENDING_RETRIEVAL;
             await _processService.UpdateProcessAsync(foundProcess);
-            _logger.LogInformation("Found process updated successfully");
 
-            // Delete the lost item and its process last
+            // Delete the lost item and its process
             await _processService.DeleteProcessAndItemAsync(dto.LostProcessId);
-            _logger.LogInformation("Lost process and item deleted successfully");
 
-            return Ok(new ApiResponse<bool>
-            {
+            return Ok(new ApiResponse<bool> {
                 Success = true,
                 Message = "Items matched successfully",
                 Data = true
@@ -535,10 +513,8 @@ public class ItemController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Error matching items: {ex.Message}");
-            _logger.LogError($"Stack trace: {ex.StackTrace}");
-            return StatusCode(500, new ApiResponse<bool>
-            {
+            _logger.LogError($"Error matching found item: {ex.Message}");
+            return StatusCode(500, new ApiResponse<bool> {
                 Success = false,
                 Message = "Failed to match items"
             });
@@ -554,9 +530,9 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
-            // Get the item and user for email
+            // Get the item and original reporter for email
             var item = await _itemService.GetItemAsync(process.ItemId);
-            var user = await _userService.GetUserByIdAsync(process.UserId);
+            var originalReporter = await _userService.GetUserByIdAsync(process.OriginalReporterUserId);
 
             // Update process status
             process.status = ProcessMessages.Status.HANDED_OVER;
@@ -570,12 +546,12 @@ public class ItemController : ControllerBase
             }
 
             // Send email notification
-            if (user != null && item != null)
+            if (originalReporter != null && item != null)
             {
                 try
                 {
                     await _emailService.SendItemHandedOverEmailAsync(
-                        user.Email,
+                        originalReporter.Email,
                         item.Name
                     );
                 }
@@ -606,9 +582,9 @@ public class ItemController : ControllerBase
             if (process == null)
                 return NotFound("Process not found");
 
-            // Get the item and user for email
+            // Get the item and original reporter for email
             var item = await _itemService.GetItemAsync(process.ItemId);
-            var user = await _userService.GetUserByIdAsync(process.UserId);
+            var originalReporter = await _userService.GetUserByIdAsync(process.OriginalReporterUserId);
 
             // Update process status
             process.status = ProcessMessages.Status.NO_SHOW;
@@ -623,12 +599,12 @@ public class ItemController : ControllerBase
             }
 
             // Send email notification
-            if (user != null && item != null)
+            if (originalReporter != null && item != null)
             {
                 try
                 {
                     await _emailService.SendNoShowEmailAsync(
-                        user.Email,
+                        originalReporter.Email,
                         item.Name
                     );
                 }
@@ -749,6 +725,29 @@ public class ItemController : ControllerBase
         {
             _logger.LogError($"Error getting process: {ex.Message}");
             return StatusCode(500, new { message = "Error getting process", error = ex.Message });
+        }
+    }
+
+    [HttpGet("process/user/{userId}/involved")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<PendingProcess>>>> GetUserInvolvedProcesses(string userId)
+    {
+        try
+        {
+            var processes = await _processService.GetUserInvolvedProcessesAsync(userId);
+            return Ok(new ApiResponse<IEnumerable<PendingProcess>>
+            {
+                Success = true,
+                Data = processes
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting user involved processes: {ex.Message}");
+            return StatusCode(500, new ApiResponse<IEnumerable<PendingProcess>>
+            {
+                Success = false,
+                Message = "Failed to get user involved processes"
+            });
         }
     }
 } 
