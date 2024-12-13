@@ -151,6 +151,10 @@ export default function UniLostAndFound() {
   // Add state for claim processes
   const [claimProcesses, setClaimProcesses] = useState([]);
 
+  // Add these refs near the top of your component, with the other state declarations
+  const lastCheckedTimeRef = useRef(Date.now());
+  const lastKnownCountRef = useRef(0);
+
   // Add useEffect for fetching claim processes
   useEffect(() => {
     const fetchClaimProcesses = async () => {
