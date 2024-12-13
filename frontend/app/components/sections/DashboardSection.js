@@ -188,7 +188,9 @@ export default function DashboardSection({
       const searchCat = searchCategory.toLowerCase();
       const matchesCategory = 
         searchCategory === "all" || 
-        (searchCat === "others" ? itemCategory.startsWith("others") : itemCategory === searchCat);
+        (searchCat === "others" 
+          ? itemCategory.startsWith("others") 
+          : itemCategory === searchCat);
 
       // Claim status filter
       const process = processes.find(p => p.itemId === item.id);
