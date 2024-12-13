@@ -542,11 +542,6 @@ const formatDatefns = (dateString) => {
     try {
       setIsMatchingItem(true);
 
-      console.log("Matching items:", {
-        foundProcessId: selectedItemForMatching.id,
-        lostProcessId: lostItem.id,
-      });
-
       const response = await fetch(
         `${API_BASE_URL}/api/Item/process/match-found`,
         {
@@ -566,7 +561,12 @@ const formatDatefns = (dateString) => {
         throw new Error(error.message || "Failed to match items");
       }
 
-      toast.success("Successfully matched items");
+      // Using Sonner toast
+      toast.success("Items matched successfully!", {
+        position: "top-right",
+        className: "bg-green-500 text-white border-none",
+      });
+
       setShowMatchDialog(false);
       setSelectedFoundItem(null);
 
@@ -575,7 +575,10 @@ const formatDatefns = (dateString) => {
       }
     } catch (error) {
       console.error("Error matching items:", error);
-      toast.error(error.message || "Failed to match items");
+      // Using Sonner toast for error
+      toast.error(error.message || "Failed to match items", {
+        position: "top-right"
+      });
     } finally {
       setIsMatchingItem(false);
       setShowMatchDialog(false);
