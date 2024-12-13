@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,7 @@ import { Package, CheckCircle, XCircle, Loader2, CalendarIcon, MapPinIcon, Alert
 import { API_BASE_URL } from '@/lib/api-config';
 import { format } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-
+import { ProcessStatus } from "@/lib/constants";
 const getProcessId = (process) => {
   return process.Id || process.id;
 };
@@ -25,8 +25,20 @@ export default function PendingRetrievalTab({
   const [error, setError] = useState(null);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedItemForDetails, setSelectedItemForDetails] = useState(null);
+  const [pendingRetrievalCount, setPendingRetrievalCount] = useState(0);
 
-  const pendingRetrievalItems = items.filter(process => process.status === "pending_retrieval");
+  const pendingRetrievalItems = items.filter(process => process.status === ProcessStatus.PENDING_RETRIEVAL);
+
+  useEffect(() => {
+    const updateCount = () => {
+      const count = items.filter(process => 
+        process.status === ProcessStatus.PENDING_RETRIEVAL
+      ).length;
+      setPendingRetrievalCount(count);
+    };
+
+    updateCount();
+  }, [items]);
 
   const handleHandOver = async (process) => {
     const processId = getProcessId(process);
@@ -166,6 +178,31 @@ export default function PendingRetrievalTab({
           Manage items that are ready to be picked up. Process item handovers to students 
           who have successfully verified their ownership, or mark items as no-show if unclaimed.
         </p>
+      </div>
+
+      {/* Status Cards */}
+      <div className="grid gap-6 md:grid-cols-3 mt-6">
+        <Card className="bg-white hover:bg-gray-50/50 transition-colors border border-gray-100 shadow-sm">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-green-50 rounded-xl">
+                <Package className="h-6 w-6 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-600">
+                  Pending Retrieval
+                </p>
+                <p className="text-2xl font-bold text-green-600">
+                  {isCountsLoading ? (
+                    <span className="animate-pulse">...</span>
+                  ) : (
+                    pendingRetrievalCount
+                  )}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {error && (

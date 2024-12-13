@@ -31,6 +31,22 @@ const getStatusDisplay = (status) => {
   return statusMap[status] || status;
 };
 
+// Update the calculateProcessDuration helper function
+const calculateProcessDuration = (startDate, endDate) => {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Check if same day
+  if (start.toDateString() === end.toDateString()) {
+    return 'Same day';
+  }
+
+  const diffInMs = end - start;
+  const diffInDays = Math.round(diffInMs / (1000 * 60 * 60 * 24));
+  
+  return diffInDays === 1 ? '1 day' : `${diffInDays} days`;
+};
+
 export const exportStatistics = {
   toPdf: (data, chartRef) => {
     try {
@@ -196,104 +212,129 @@ export const exportStatistics = {
     try {
       const wb = XLSX.utils.book_new();
       
-      // First sheet - Overview & Categories
-      const firstPageData = [
+      // Overview Sheet
+      const overviewData = [
         ['Lost and Found Statistics Report'],
         [`Generated on: ${new Date().toLocaleDateString()}`],
         [''],
         ['Overview'],
         ['Metric', 'Value'],
-        ['Total Reports', data.totalReports],
-        ['Found Items', data.foundItems],
-        ['Active Cases', data.activeCases],
-        ['Retrieved Items', data.retrievedItems],
-        ['No Show', data.noShowItems],
-        ['Weekly Change', `+${data.weeklyChange}`],
-        [''],
-        ['Category Distribution'],
-        ['Category', 'Percentage'],
-        ...Object.entries(data.categoryDistribution)
-          .sort(([, a], [, b]) => b - a)
-          .map(([category, percentage]) => [
-            category,
-            `${percentage}%`
-          ])
+        ['Total Reports', data.totalReports || 0],
+        ['Found Items', data.foundItems || 0],
+        ['Lost Items', data.additionalStats?.lostItems || 0],
+        ['Active Cases', data.activeCases || 0],
+        ['Retrieved Items', data.retrievedItems || 0],
+        ['No Show', data.noShowItems || 0],
+        ['Pending Approval', data.additionalStats?.pendingApproval || 0],
+        ['Pending Retrieval', data.additionalStats?.pendingRetrieval || 0],
+        ['Weekly Change', `+${data.weeklyChange || 0}`]
       ];
 
-      const ws = XLSX.utils.aoa_to_sheet(firstPageData);
+      const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
+      XLSX.utils.book_append_sheet(wb, wsOverview, 'Overview');
 
-      // Set column widths
-      ws['!cols'] = [
-        { wch: 25, alignment: { horizontal: 'left' } },
-        { wch: 15, alignment: { horizontal: 'left' } }
-      ];
-
-      // Add cell styles for alignment
-      for (let i = 0; i < firstPageData.length; i++) {
-        const cellRef = XLSX.utils.encode_cell({ r: i, c: 1 }); // Column B (second column)
-        if (!ws[cellRef]) continue;
-        
-        ws[cellRef].z = '@'; // Text format to prevent auto-formatting
-        if (!ws[cellRef].s) ws[cellRef].s = {};
-        ws[cellRef].s.alignment = { horizontal: 'left' };
-      }
-
-      XLSX.utils.book_append_sheet(wb, ws, 'Overview & Categories');
-
-      // Monthly Statistics sheet
+      // Monthly Statistics Sheet
       const monthlyData = [
         ['Monthly Statistics'],
-        [''], // Empty row
-        ['Month', 'Lost Items', 'Found Items', 'Retrieved Items', 'No Show'],
-        ...data.chartData.labels.map((label, index) => [
-          label,
-          data.chartData.datasets[0].data[index],
-          data.chartData.datasets[1].data[index],
-          data.chartData.datasets[2].data[index],
-          data.chartData.datasets[3].data[index],
-        ])
+        [''],
+        ['Month', 'Lost Items', 'Found Items', 'Retrieved', 'No Show', 'Pending Approval', 'Pending Retrieval', 'Active Cases']
       ];
 
-      const monthlyWs = XLSX.utils.aoa_to_sheet(monthlyData);
-      
-      // Set column widths for monthly statistics
-      monthlyWs['!cols'] = [
-        { wch: 20, alignment: { horizontal: 'left' } },
-        { wch: 15, alignment: { horizontal: 'left' } },
-        { wch: 15, alignment: { horizontal: 'left' } },
-        { wch: 15, alignment: { horizontal: 'left' } },
-        { wch: 15, alignment: { horizontal: 'left' } }
-      ];
-
-      XLSX.utils.book_append_sheet(wb, monthlyWs, 'Monthly Statistics');
-
-      // Recent Activity sheet
-      if (data.recentActivity?.length) {
-        const activityData = [
-          ['Recent Activity'],
-          [''], // Empty row
-          ['Type', 'Item Name', 'Student ID', 'Time'],
-          ...data.recentActivity.map(activity => [
-            activity.type,
-            activity.itemName,
-            activity.studentId,
-            new Date(activity.timestamp).toLocaleString()
-          ])
-        ];
-
-        const activityWs = XLSX.utils.aoa_to_sheet(activityData);
-        
-        // Set column widths for activity
-        activityWs['!cols'] = [
-          { wch: 15, alignment: { horizontal: 'left' } },
-          { wch: 30, alignment: { horizontal: 'left' } },
-          { wch: 20, alignment: { horizontal: 'left' } },
-          { wch: 25, alignment: { horizontal: 'left' } }
-        ];
-
-        XLSX.utils.book_append_sheet(wb, activityWs, 'Recent Activity');
+      // Safely add data rows for each month
+      if (data.chartData?.labels) {
+        data.chartData.labels.forEach((month, index) => {
+          monthlyData.push([
+            month,
+            data.chartData.datasets[0]?.data[index] || 0, // Lost Items
+            data.chartData.datasets[1]?.data[index] || 0, // Found Items
+            data.chartData.datasets[2]?.data[index] || 0, // Retrieved
+            data.chartData.datasets[3]?.data[index] || 0, // No Show
+            data.chartData.datasets[4]?.data[index] || 0, // Pending Approval
+            data.chartData.datasets[5]?.data[index] || 0, // Pending Retrieval
+            data.chartData.datasets[6]?.data[index] || 0  // Active Cases
+          ]);
+        });
       }
 
+      const wsMonthly = XLSX.utils.aoa_to_sheet(monthlyData);
+      XLSX.utils.book_append_sheet(wb, wsMonthly, 'Monthly Statistics');
+
+      // Category Distribution Sheet
+      const categoryData = [
+        ['Category Distribution'],
+        [''],
+        ['Category', 'Percentage']
+      ];
+
+      if (data.categoryDistribution) {
+        Object.entries(data.categoryDistribution)
+          .sort((a, b) => b[1] - a[1]) // Sort by percentage descending
+          .forEach(([category, percentage]) => {
+            categoryData.push([category, `${percentage}%`]);
+          });
+      }
+
+      const wsCategory = XLSX.utils.aoa_to_sheet(categoryData);
+      XLSX.utils.book_append_sheet(wb, wsCategory, 'Categories');
+
+      // Recent Activity Sheet
+      const activityData = [
+        ['Recent Activity'],
+        [''],
+        ['Type', 'Item Name', 'Student ID', 'Item Status', 'Time']
+      ];
+
+      if (data.recentActivity) {
+        data.recentActivity.forEach(activity => {
+          activityData.push([
+            activity.type || '',
+            activity.itemName || '',
+            activity.studentId || '',
+            activity.itemStatus || '',
+            activity.timestamp ? new Date(activity.timestamp).toLocaleString() : ''
+          ]);
+        });
+      }
+
+      const wsActivity = XLSX.utils.aoa_to_sheet(activityData);
+      XLSX.utils.book_append_sheet(wb, wsActivity, 'Recent Activity');
+
+      // Set column widths for all sheets
+      [wsOverview, wsMonthly, wsCategory, wsActivity].forEach(ws => {
+        ws['!cols'] = [
+          { wch: 20 }, // First column
+          { wch: 15 }, // Second column
+          { wch: 15 }, // Third column
+          { wch: 15 }, // Fourth column
+          { wch: 15 }, // Fifth column
+          { wch: 15 }, // Sixth column
+          { wch: 15 }, // Seventh column
+          { wch: 15 }  // Eighth column
+        ];
+      });
+
+      // Add some basic styling to headers
+      const styleHeaders = (ws, range) => {
+        if (!ws['!rows']) ws['!rows'] = [];
+        ws['!rows'][0] = { hidden: false, hpt: 24 }; // Set height for header row
+        if (!ws['!cols']) ws['!cols'] = [];
+        
+        // Make headers bold
+        for (let i = 0; i < range; i++) {
+          const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
+          if (!ws[cellRef]) continue;
+          if (!ws[cellRef].s) ws[cellRef].s = {};
+          ws[cellRef].s.font = { bold: true };
+        }
+      };
+
+      // Apply styles to all sheets
+      styleHeaders(wsOverview, 2);
+      styleHeaders(wsMonthly, 8);
+      styleHeaders(wsCategory, 2);
+      styleHeaders(wsActivity, 5);
+
+      // Save the workbook
       XLSX.writeFile(wb, 'lost-and-found-statistics.xlsx');
     } catch (error) {
       console.error('Error exporting to Excel:', error);
@@ -321,25 +362,35 @@ export const exportToPDF = (items, dateRange) => {
     return acc;
   }, {});
 
-  // Add items table
+  // Add items table with completion date and process duration
   const tableData = items.map(process => {
     const item = process.item || process.Item;
+    const processDuration = calculateProcessDuration(
+      item.dateReported || item.DateReported,
+      process.updatedAt
+    );
+    
     return [
       item.name || item.Name,
       item.category || item.Category,
       formatDate(item.dateReported || item.DateReported),
       getStatusDisplay(process.status),
-      item.location || item.Location
+      item.location || item.Location,
+      formatDate(process.updatedAt), // Date Completed
+      processDuration // Process Duration
     ];
   });
 
   doc.autoTable({
     startY: 35,
-    head: [['Item Name', 'Category', 'Date Reported', 'Status', 'Location']],
+    head: [['Item Name', 'Category', 'Date Reported', 'Status', 'Location', 'Date Completed', 'Process Duration']],
     body: tableData,
     theme: 'grid',
     styles: { fontSize: 10 },
-    headStyles: { fillColor: [0, 82, 204] }
+    headStyles: { fillColor: [0, 82, 204] },
+    columnStyles: {
+      6: { cellWidth: 'auto' } // Ensure Process Duration column has enough width
+    }
   });
 
   // Save the PDF
@@ -350,6 +401,11 @@ export const exportToExcel = (items, dateRange) => {
   // Prepare data for Excel
   const data = items.map(process => {
     const item = process.item || process.Item;
+    const processDuration = calculateProcessDuration(
+      item.dateReported || item.DateReported,
+      process.updatedAt
+    );
+    
     return {
       'Item Name': item.name || item.Name,
       'Category': item.category || item.Category,
@@ -358,7 +414,9 @@ export const exportToExcel = (items, dateRange) => {
       'Location': item.location || item.Location,
       'Description': item.description || item.Description,
       'Reporter ID': item.reporterId || item.ReporterId,
-      'Approved': item.approved ? 'Yes' : 'No'
+      'Approved': item.approved ? 'Yes' : 'No',
+      'Date Completed': formatDate(process.updatedAt),
+      'Process Duration': processDuration
     };
   });
 
@@ -367,6 +425,21 @@ export const exportToExcel = (items, dateRange) => {
   
   // Add main data sheet
   const ws = XLSX.utils.json_to_sheet(data);
+  
+  // Set column widths
+  ws['!cols'] = [
+    { wch: 20 }, // Item Name
+    { wch: 15 }, // Category
+    { wch: 15 }, // Date Reported
+    { wch: 15 }, // Status
+    { wch: 20 }, // Location
+    { wch: 30 }, // Description
+    { wch: 15 }, // Reporter ID
+    { wch: 10 }, // Approved
+    { wch: 15 }, // Date Completed
+    { wch: 15 }  // Process Duration
+  ];
+
   XLSX.utils.book_append_sheet(wb, ws, 'Items');
 
   // Save the file
