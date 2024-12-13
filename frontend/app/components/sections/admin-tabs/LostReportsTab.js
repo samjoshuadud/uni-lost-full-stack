@@ -455,7 +455,7 @@ const formatDatefns = (dateString) => {
           Lost Items Management
         </h3>
         <p className="text-gray-600 mt-2">
-          Process lost item reports and manage student claims. Review item
+          Process lost item reports. Review item
           details, approve posts to make them visible, or find a matching item
           for a found item.
         </p>
