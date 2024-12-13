@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Package, CheckCircle, XCircle, Loader2, CalendarIcon, MapPinIcon, AlertCircle } from "lucide-react"
 import { API_BASE_URL } from '@/lib/api-config';
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ProcessStatus } from "@/lib/constants";
 const getProcessId = (process) => {
@@ -156,6 +156,12 @@ export default function PendingRetrievalTab({
     setShowDetailsDialog(true);
   };
 
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return 'Date not available';
+    const date = new Date(dateString);
+    return formatDistanceToNow(date, { addSuffix: true });
+  };
+
   if (isCountsLoading) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -242,6 +248,12 @@ export default function PendingRetrievalTab({
                         <p className="text-sm text-muted-foreground">
                           Handled by: {process.item?.studentId || 'N/A'}
                         </p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                          <p className="text-sm text-muted-foreground">
+                            {formatTimeAgo(process.dateStatusChanged || process.updatedAt)}
+                          </p>
+                        </div>
                       </div>
                       <Badge variant="outline" className="bg-green-100 text-green-800">
                         Ready for Retrieval
