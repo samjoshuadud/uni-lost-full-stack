@@ -86,6 +86,34 @@ const loadingVariants = {
   }
 };
 
+const isDateInRange = (date, range) => {
+  if (!range.from && !range.to) return true;
+  const itemDate = new Date(date);
+  itemDate.setHours(0, 0, 0, 0);
+
+  if (range.from && range.to) {
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(0, 0, 0, 0);
+    return itemDate >= from && itemDate <= to;
+  }
+
+  if (range.from) {
+    const from = new Date(range.from);
+    from.setHours(0, 0, 0, 0);
+    return itemDate >= from;
+  }
+
+  if (range.to) {
+    const to = new Date(range.to);
+    to.setHours(0, 0, 0, 0);
+    return itemDate <= to;
+  }
+
+  return true;
+};
+
 export default function DashboardSection({ 
   items = [], 
   handleViewDetails,
@@ -95,6 +123,7 @@ export default function DashboardSection({
   onUnapprove,
   searchQuery = "",
   searchCategory = "all",
+  dateFilter = null
 }) {
   const { userData, user } = useAuth();
   const [localItems, setLocalItems] = useState([]);
@@ -191,6 +220,9 @@ export default function DashboardSection({
           ? itemCategory.startsWith("others") 
           : itemCategory === searchCat);
 
+      // Date filter
+      const matchesDate = isDateInRange(item.dateReported, dateFilter);
+
       // Search terms
       if (searchQuery.trim()) {
         const searchTerms = searchQuery.toLowerCase().trim();
@@ -200,10 +232,10 @@ export default function DashboardSection({
           item.description?.toLowerCase().includes(searchTerms) ||
           itemCategory.includes(searchTerms);
 
-        return matchesCategory && matchesSearch;
+        return matchesCategory && matchesSearch && matchesDate;
       }
 
-      return matchesCategory;
+      return matchesCategory && matchesDate;
     }).map(item => {
       const itemCategory = item.category?.toLowerCase() || '';
       const isOthers = itemCategory.startsWith('others');
@@ -225,7 +257,7 @@ export default function DashboardSection({
     
     setLocalItems(filteredItems);
     setIsLoading(false);
-  }, [items, searchQuery, searchCategory, processes]);
+  }, [items, searchQuery, searchCategory, processes, dateFilter]);
 
   const handleQRDialogChange = (open) => {
     setShowQRDialog(open);

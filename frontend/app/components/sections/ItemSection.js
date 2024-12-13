@@ -22,6 +22,34 @@ const staggerDelay = (index) => ({
   animationDelay: `${index * 0.1}s`
 });
 
+const isDateInRange = (date, range) => {
+  if (!range.from && !range.to) return true;
+  const itemDate = new Date(date);
+  itemDate.setHours(0, 0, 0, 0);
+
+  if (range.from && range.to) {
+    const from = new Date(range.from);
+    const to = new Date(range.to);
+    from.setHours(0, 0, 0, 0);
+    to.setHours(0, 0, 0, 0);
+    return itemDate >= from && itemDate <= to;
+  }
+
+  if (range.from) {
+    const from = new Date(range.from);
+    from.setHours(0, 0, 0, 0);
+    return itemDate >= from;
+  }
+
+  if (range.to) {
+    const to = new Date(range.to);
+    to.setHours(0, 0, 0, 0);
+    return itemDate <= to;
+  }
+
+  return true;
+};
+
 export default function ItemSection({ 
   items = [], 
   title,
@@ -31,7 +59,8 @@ export default function ItemSection({
   onDelete,
   onUnapprove,
   searchQuery = "",
-  searchCategory = "all"
+  searchCategory = "all",
+  dateFilter = null
 }) {
   const { userData, user } = useAuth();
   const [localItems, setLocalItems] = useState([]);
@@ -68,35 +97,37 @@ export default function ItemSection({
     setIsLoading(true);
     
     const filteredItems = items.filter(item => {
-        // Category filter - Updated logic for "others" category
-        const matchesCategory = 
-            searchCategory === "all" ? true :
-            searchCategory === "others" ? 
-                !CATEGORIES.includes(item.category?.toLowerCase()) :
-                item.category?.toLowerCase() === searchCategory.toLowerCase();
+      // Category filter
+      const matchesCategory = 
+        searchCategory === "all" ? true :
+        searchCategory === "others" ? 
+          !CATEGORIES.includes(item.category?.toLowerCase()) :
+          item.category?.toLowerCase() === searchCategory.toLowerCase();
 
-        // Search terms - only filter if there's a search query
-        if (searchQuery.trim()) {
-            const searchTerms = searchQuery.toLowerCase().trim();
-            const matchesSearch = 
-                item.name?.toLowerCase().includes(searchTerms) ||
-                item.location?.toLowerCase().includes(searchTerms) ||
-                item.description?.toLowerCase().includes(searchTerms) ||
-                item.category?.toLowerCase().includes(searchTerms);
+      // Date filter
+      const matchesDate = isDateInRange(item.dateReported, dateFilter);
 
-            return matchesCategory && matchesSearch;
-        }
+      // Search terms
+      if (searchQuery.trim()) {
+        const searchTerms = searchQuery.toLowerCase().trim();
+        const matchesSearch = 
+          item.name?.toLowerCase().includes(searchTerms) ||
+          item.location?.toLowerCase().includes(searchTerms) ||
+          item.description?.toLowerCase().includes(searchTerms) ||
+          item.category?.toLowerCase().includes(searchTerms);
 
-        // If no search query, just filter by category
-        return matchesCategory;
+        return matchesCategory && matchesSearch && matchesDate;
+      }
+
+      return matchesCategory && matchesDate;
     }).map(item => ({
-        ...item,
-        process: processes.find(p => p.itemId === item.id)
+      ...item,
+      process: processes.find(p => p.itemId === item.id)
     }));
     
     setLocalItems(filteredItems);
     setIsLoading(false);
-  }, [items, searchQuery, searchCategory, processes]);
+  }, [items, searchQuery, searchCategory, processes, dateFilter]);
 
   const handleDeleteClick = async () => {
     if (!itemToDelete) return;

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bell, Search, User, Loader2, LogOut } from "lucide-react"
+import { Bell, Search, User, Loader2, LogOut, X } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import LoginButton from "./components/login-button"
 import { useAuth } from "@/lib/AuthContext"
@@ -30,6 +30,16 @@ import { authApi, itemApi } from '@/lib/api-client';
 import { API_BASE_URL } from '@/lib/api-config';
 import Image from "next/image"
 import { motion } from "framer-motion"
+import { Calendar as CalendarIcon } from "lucide-react"
+import { format } from "date-fns"
+import { Calendar } from "@/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { addDays } from "date-fns" 
+
 const styles = `
   @keyframes fadeIn {
     from {
@@ -373,6 +383,7 @@ export default function UniLostAndFound() {
           onUnapprove={handleUnapprove}
           searchQuery={searchQuery}
           searchCategory={searchCategory}
+          dateFilter={dateFilter || { from: null, to: null }}
         />
       case "lost":
         const lostItems = items
@@ -407,6 +418,7 @@ export default function UniLostAndFound() {
           onUnapprove={handleUnapprove}
           searchQuery={searchQuery}
           searchCategory={searchCategory}
+          dateFilter={dateFilter || { from: null, to: null }}
         />
       case "found":
         const foundItems = items
@@ -438,6 +450,7 @@ export default function UniLostAndFound() {
           onUnapprove={handleUnapprove}
           searchQuery={searchQuery}
           searchCategory={searchCategory}
+          dateFilter={dateFilter || { from: null, to: null }}
         />
       case "report":
         return <ReportSection onSubmit={handleReportSubmit} />
@@ -1007,6 +1020,126 @@ export default function UniLostAndFound() {
     });
   };
 
+  // Update the date filter state to handle ranges
+  const [dateFilter, setDateFilter] = useState({ from: null, to: null });
+
+  // Add this helper function
+  const isDateInRange = (date, range) => {
+    if (!range.from && !range.to) return true;
+    const itemDate = new Date(date);
+    itemDate.setHours(0, 0, 0, 0);
+
+    if (range.from && range.to) {
+      const from = new Date(range.from);
+      const to = new Date(range.to);
+      from.setHours(0, 0, 0, 0);
+      to.setHours(0, 0, 0, 0);
+      return itemDate >= from && itemDate <= to;
+    }
+
+    if (range.from) {
+      const from = new Date(range.from);
+      from.setHours(0, 0, 0, 0);
+      return itemDate >= from;
+    }
+
+    if (range.to) {
+      const to = new Date(range.to);
+      to.setHours(0, 0, 0, 0);
+      return itemDate <= to;
+    }
+
+    return true;
+  };
+
+  // Update the date filter UI in the filters section
+  <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+    {/* Categories Dropdown */}
+    <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+      <Select value={searchCategory} onValueChange={setSearchCategory}>
+        <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+          <SelectValue placeholder="All Categories" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Categories</SelectItem>
+          <SelectItem value="Books">Books</SelectItem>
+          <SelectItem value="Electronics">Electronics</SelectItem>
+          <SelectItem value="Personal Items">Personal Items</SelectItem>
+          <SelectItem value="Documents">Documents</SelectItem>
+          <SelectItem value="Bags">Bags</SelectItem>
+          <SelectItem value="others">Others</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+
+    {/* Date Filter */}
+    <div className="flex-1 sm:flex-none flex gap-2">
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={`w-full sm:w-[280px] justify-start text-left font-normal bg-white 
+              rounded-full h-12 border-[#0F3A99] shadow-[0_20px_15px_rgba(0,0,0,0.2)]
+              ${(!dateFilter?.from && !dateFilter?.to) ? "text-muted-foreground" : ""}`}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+            <span className="truncate">
+              {dateFilter?.from ? (
+                dateFilter?.to ? (
+                  <>
+                    {format(dateFilter.from, "MMM d")} - {format(dateFilter.to, "MMM d, yyyy")}
+                  </>
+                ) : (
+                  format(dateFilter.from, "MMM d, yyyy")
+                )
+              ) : (
+                "Pick a date range"
+              )}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={dateFilter?.from}
+            selected={{
+              from: dateFilter?.from || null,
+              to: dateFilter?.to || null,
+            }}
+            onSelect={setDateFilter}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
+      {(dateFilter?.from || dateFilter?.to) && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full h-12 w-12 border border-[#0F3A99] ml-2"
+          onClick={() => setDateFilter({ from: null, to: null })}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+
+    {/* Sort Dropdown */}
+    <div className="flex-1 sm:flex-none bg-white rounded-full shadow-[0_20px_15px_rgba(0,0,0,0.2)] border border-[#0F3A99]">
+      <Select value={sortOrder} onValueChange={setSortOrder}>
+        <SelectTrigger className="w-full sm:w-[180px] border-0 focus:ring--1 rounded-full h-12 bg-transparent">
+          <SelectValue placeholder="Sort by" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="newest">Newest First</SelectItem>
+          <SelectItem value="oldest">Oldest First</SelectItem>
+          <SelectItem value="a-z">A to Z</SelectItem>
+          <SelectItem value="z-a">Z to A</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  </div>
+
   // // Loading state
   // if (isLoading) {
   //   return (
@@ -1415,6 +1548,58 @@ export default function UniLostAndFound() {
                       <SelectItem value="others">Others</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                {/* Date Filter */}
+                <div className="flex-1 sm:flex-none flex gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={`w-full sm:w-[280px] justify-start text-left font-normal bg-white 
+                          rounded-full h-12 border-[#0F3A99] shadow-[0_20px_15px_rgba(0,0,0,0.2)]
+                          ${(!dateFilter?.from && !dateFilter?.to) ? "text-muted-foreground" : ""}`}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4 flex-shrink-0" />
+                        <span className="truncate">
+                          {dateFilter?.from ? (
+                            dateFilter?.to ? (
+                              <>
+                                {format(dateFilter.from, "MMM d")} - {format(dateFilter.to, "MMM d, yyyy")}
+                              </>
+                            ) : (
+                              format(dateFilter.from, "MMM d, yyyy")
+                            )
+                          ) : (
+                            "Pick a date range"
+                          )}
+                        </span>
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={dateFilter?.from}
+                        selected={{
+                          from: dateFilter?.from || null,
+                          to: dateFilter?.to || null,
+                        }}
+                        onSelect={setDateFilter}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  {(dateFilter?.from || dateFilter?.to) && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full h-12 w-12 border border-[#0F3A99] ml-2"
+                      onClick={() => setDateFilter({ from: null, to: null })}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
 
                 {/* Sort Dropdown */}
