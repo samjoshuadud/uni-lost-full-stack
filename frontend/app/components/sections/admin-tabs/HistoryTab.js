@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Loader2 } from "lucide-react";
 import { format } from 'date-fns';
+import { toast } from 'react-hot-toast';
 
 const getMonthYear = (date) => {
   return format(new Date(date), 'MMMM yyyy');
@@ -120,7 +121,7 @@ export default function HistoryTab({ handleViewDetails }) {
     try {
       setMarkingHandedOverItems(prev => new Set(prev).add(processId));
 
-      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/mark-handed-over`, {
+      const response = await fetch(`${API_BASE_URL}/api/Item/process/${processId}/hand-over`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -128,9 +129,8 @@ export default function HistoryTab({ handleViewDetails }) {
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response:', errorText);
-        throw new Error('Failed to mark as handed over');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to mark as handed over');
       }
 
       // Update the item status locally
@@ -138,9 +138,11 @@ export default function HistoryTab({ handleViewDetails }) {
         item.id === processId ? { ...item, status: ProcessStatus.HANDED_OVER } : item
       ));
 
+      toast.success('Item successfully marked as handed over');
+
     } catch (err) {
       console.error('Error marking as handed over:', err);
-      alert('Failed to mark as handed over. Please try again.');
+      toast.error(err.message || 'Failed to mark as handed over. Please try again.');
     } finally {
       setMarkingHandedOverItems(prev => {
         const next = new Set(prev);
