@@ -1421,6 +1421,7 @@ export default function UniLostAndFound() {
                       <SelectItem value="Personal Items">Personal Items</SelectItem>
                       <SelectItem value="Documents">Documents</SelectItem>
                       <SelectItem value="Bags">Bags</SelectItem>
+                      <SelectItem value="others">Others</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
