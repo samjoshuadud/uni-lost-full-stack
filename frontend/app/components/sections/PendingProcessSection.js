@@ -239,7 +239,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showVerificationDialog, setShowVerificationDialog] = useState(false);
   const [showFailedDialog, setShowFailedDialog] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
@@ -452,13 +451,6 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                (process.item.reporterId === user?.uid && process.status === "claim_request") // Claims on user's items
            );
   });
-
-  const getUniqueStatuses = (processes) => {
-    const statuses = processes
-      .map(p => p.status)
-      .filter(status => status !== ProcessStatus.AWAITING_SURRENDER);
-    return ["all", ...new Set(statuses)];
-  };
 
   const formatStatus = (status) => {
     if (status === "all") return "All Statuses";
@@ -1015,14 +1007,8 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
   // Add filter functions
   const filterProcesses = (processes) => {
     return processes.filter(process => {
-      // Status filter
-      const matchesStatus = statusFilter === "all" || process.status === statusFilter;
-      
-      // Type filter
       const itemType = process.item?.status?.toLowerCase() || "";
-      const matchesType = typeFilter === "all" || itemType === typeFilter;
-
-      return matchesStatus && matchesType;
+      return typeFilter === "all" || itemType === typeFilter;
     });
   };
 
@@ -1078,9 +1064,8 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
 
   // Filter processes based on selected filters
   const filteredProcesses = validProcesses.filter(process => {
-    const matchesStatus = statusFilter === "all" || process.status === statusFilter;
     const matchesType = typeFilter === "all" || process.item?.status?.toLowerCase() === typeFilter;
-    return matchesStatus && matchesType;
+    return matchesType;
   });
 
   // Group filtered processes
@@ -1141,32 +1126,12 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
                 </SelectContent>
               </Select>
             </div>
-            
-            {/* Status Filter */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Filter className="h-4 w-4 text-gray-500 hidden sm:block" />
-              <Select
-                value={statusFilter}
-                onValueChange={setStatusFilter}
-              >
-                <SelectTrigger className="w-full sm:w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {getUniqueStatuses(validProcesses).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {formatStatus(status)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </div>
       </div>
 
       {/* Tabs Section */}
-      <Tabs defaultValue="pending_retrieval" className="w-full">
+      <Tabs defaultValue="pending_approval" className="w-full">
         <div className="bg-[#2E3F65] rounded-2xl shadow-lg overflow-hidden relative group">
           {/* Scroll Indicator */}
           <motion.div
