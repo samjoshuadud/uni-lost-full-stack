@@ -85,6 +85,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
   const [matchDateFilter, setMatchDateFilter] = useState("all");
   const [matchSortOption, setMatchSortOption] = useState("bestMatch");
   const [selectedFoundItem, setSelectedFoundItem] = useState(null);
+  const [isRankingItems, setIsRankingItems] = useState(false);
 
   useEffect(() => {
     console.log("Raw items received:", items);
@@ -169,6 +170,9 @@ const FoundItemsTab = memo(function FoundItemsTab({
             process.status === ProcessStatus.APPROVED,
         ) || [];
 
+      // Show ranking loading state
+      setIsRankingItems(true);
+
       // Get similarity rankings
       const rankedItems = await rankItemSimilarity(
         foundProcess.item,
@@ -182,6 +186,7 @@ const FoundItemsTab = memo(function FoundItemsTab({
       toast.error("Failed to fetch lost items");
     } finally {
       setIsLoadingLostItems(false);
+      setIsRankingItems(false);
     }
   };
 
@@ -1405,159 +1410,191 @@ const formatDatefns = (dateString) => {
             {/* Items List */}
             <ScrollArea className="h-[400px]">
               <div className="space-y-6 px-4">
-                {filterAndSortItems(lostItems).map((process) => (
-                  <div
-                    key={process.id}
-                    onClick={() => setSelectedFoundItem(process)}
-                    className={cn(
-                      "p-4 rounded-lg border cursor-pointer transition-all relative mt-6 w-full",
-                      selectedFoundItem?.id === process.id
-                        ? "border-blue-500 bg-blue-50/50 shadow-lg"
-                        : "border-gray-200 hover:border-gray-300 hover:shadow-md",
-                    )}
-                    style={{
-                      transition: "all 0.2s ease-in-out",
-                      transform:
-                        selectedFoundItem?.id === process.id
-                          ? "scale(1.01)"
-                          : "scale(1)",
-                    }}
-                  >
-                    {/* Match Percentage Badge - Top Left, overlapping */}
-                    <div
-                      className="absolute -top-2.5 left-0 px-1 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap"
-                      style={getMatchPercentageStyle(process.similarityScore)}
-                    >
-                      {process.similarityScore}% Match
-                    </div>
-
-                    {/* Status Badge - Top Right */}
-                    <div className="absolute top-2 right-2">
-                      <Badge
-                        variant="outline"
-                        className="bg-red-50 text-red-700 px-2 py-0.5 text-xs font-medium"
-                      >
-                        Lost
-                      </Badge>
-                    </div>
-
-                    <div className="flex gap-4 mt-4">
-                      {/* Image Section */}
-                      <div
-                        className={cn(
-                          "w-24 h-24 bg-gray-50 rounded-lg border flex-shrink-0 flex items-center justify-center",
-                          selectedFoundItem?.id === process.id
-                            ? "border-blue-200 bg-blue-50"
-                            : "border-gray-200",
-                        )}
-                      >
-                        {process.item?.imageUrl ? (
-                          <img
-                            src={process.item.imageUrl}
-                            alt={process.item.name}
-                            className="w-full h-full object-cover rounded-lg"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center">
-                            <Package
-                              className={cn(
-                                "h-8 w-8",
-                                selectedFoundItem?.id === process.id
-                                  ? "text-blue-400"
-                                  : "text-gray-400",
-                              )}
-                            />
-                            <span
-                              className={cn(
-                                "text-xs mt-1",
-                                selectedFoundItem?.id === process.id
-                                  ? "text-blue-400"
-                                  : "text-gray-400",
-                              )}
-                            >
-                              No Image
-                            </span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content Section */}
-                      <div className="flex-1 min-w-0">
-                        {/* Title and Date */}
-                        <div className="mb-2">
-                          <h4
-                            className={cn(
-                              "font-semibold text-lg",
-                              selectedFoundItem?.id === process.id &&
-                                "text-blue-700",
-                            )}
-                          >
-                            {process.item.name}
-                          </h4>
-                          <div
-                            className={cn(
-                              "flex items-center text-sm",
-                              selectedFoundItem?.id === process.id
-                                ? "text-blue-500"
-                                : "text-gray-500",
-                            )}
-                          >
-                            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-                            {format(
-                              new Date(process.item.dateReported),
-                              "MMM d, yyyy",
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Add the check icon when selected */}
-                        {selectedFoundItem?.id === process.id && (
-                          <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1 shadow-lg animate-in fade-in zoom-in duration-200">
-                            <CheckCircle className="h-4 w-4 text-white" />
-                          </div>
-                        )}
-
-                        {/* Info Grid - Two rows with two columns each */}
-                        <div className="grid grid-cols-[1fr,1.2fr] gap-y-2">
-                          <div className="text-sm">
-                            <span className="text-gray-600">Category:</span>{" "}
-                            <span className="text-gray-900">
-                              {process.item.category}
-                            </span>
-                          </div>
-                          <div className="text-sm pl-12">
-                            <span className="text-gray-600">Location:</span>{" "}
-                            <span className="text-gray-900">
-                              {process.item.location}
-                            </span>
-                          </div>
-                          <div className="text-sm">
-                            <span className="text-gray-600">Student ID:</span>{" "}
-                            <span className="text-gray-900">
-                              {process.item.studentId}
-                            </span>
-                          </div>
-                          <div className="text-sm pl-12">
-                            <span className="text-gray-600">Status:</span>{" "}
-                            <span className="text-gray-900 capitalize">
-                              Lost
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Description */}
-                        <div className="mt-4">
-                          <p className="text-sm text-gray-600">
-                            <span className="font-medium">Description:</span>
-                          </p>
-                          <p className="text-sm text-gray-700 mt-0.5">
-                            {process.item.description}
-                          </p>
-                        </div>
-                      </div>
+                {isLoadingLostItems || isRankingItems ? (
+                  <div className="flex items-center justify-center p-8">
+                    <div className="text-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                      <p className="mt-2 text-sm text-gray-500">
+                        {isLoadingLostItems 
+                          ? "Loading lost items..." 
+                          : "Ranking items by similarity..."}
+                      </p>
                     </div>
                   </div>
-                ))}
+                ) : filterAndSortItems(lostItems).length === 0 ? (
+                  // Empty state
+                  <Card className="border border-dashed bg-gray-50/50">
+                    <CardContent className="p-12 text-center">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="p-4 bg-blue-50 rounded-full">
+                          <Inbox className="h-12 w-12 text-blue-500" />
+                        </div>
+                        <h3 className="font-semibold text-xl text-gray-900">
+                          No Found Items
+                        </h3>
+                        <p className="text-gray-500 text-sm max-w-sm">
+                          There are currently no found items waiting for
+                          approval. New items will appear here.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  // Items list
+                  filterAndSortItems(lostItems).map((process) => (
+                    <div
+                      key={process.id}
+                      onClick={() => setSelectedFoundItem(process)}
+                      className={cn(
+                        "p-4 rounded-lg border cursor-pointer transition-all relative mt-6 w-full",
+                        selectedFoundItem?.id === process.id
+                          ? "border-blue-500 bg-blue-50/50 shadow-lg"
+                          : "border-gray-200 hover:border-gray-300 hover:shadow-md",
+                      )}
+                      style={{
+                        transition: "all 0.2s ease-in-out",
+                        transform:
+                          selectedFoundItem?.id === process.id
+                            ? "scale(1.01)"
+                            : "scale(1)",
+                      }}
+                    >
+                      {/* Match Percentage Badge - Top Left, overlapping */}
+                      <div
+                        className="absolute -top-2.5 left-0 px-1 py-0.5 rounded text-[10px] font-medium border whitespace-nowrap"
+                        style={getMatchPercentageStyle(process.similarityScore)}
+                      >
+                        {process.similarityScore}% Match
+                      </div>
+
+                      {/* Status Badge - Top Right */}
+                      <div className="absolute top-2 right-2">
+                        <Badge
+                          variant="outline"
+                          className="bg-red-50 text-red-700 px-2 py-0.5 text-xs font-medium"
+                        >
+                          Lost
+                        </Badge>
+                      </div>
+
+                      <div className="flex gap-4 mt-4">
+                        {/* Image Section */}
+                        <div
+                          className={cn(
+                            "w-24 h-24 bg-gray-50 rounded-lg border flex-shrink-0 flex items-center justify-center",
+                            selectedFoundItem?.id === process.id
+                              ? "border-blue-200 bg-blue-50"
+                              : "border-gray-200",
+                          )}
+                        >
+                          {process.item?.imageUrl ? (
+                            <img
+                              src={process.item.imageUrl}
+                              alt={process.item.name}
+                              className="w-full h-full object-cover rounded-lg"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center">
+                              <Package
+                                className={cn(
+                                  "h-8 w-8",
+                                  selectedFoundItem?.id === process.id
+                                    ? "text-blue-400"
+                                    : "text-gray-400",
+                                )}
+                              />
+                              <span
+                                className={cn(
+                                  "text-xs mt-1",
+                                  selectedFoundItem?.id === process.id
+                                    ? "text-blue-400"
+                                    : "text-gray-400",
+                                )}
+                              >
+                                No Image
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Content Section */}
+                        <div className="flex-1 min-w-0">
+                          {/* Title and Date */}
+                          <div className="mb-2">
+                            <h4
+                              className={cn(
+                                "font-semibold text-lg",
+                                selectedFoundItem?.id === process.id &&
+                                  "text-blue-700",
+                              )}
+                            >
+                              {process.item.name}
+                            </h4>
+                            <div
+                              className={cn(
+                                "flex items-center text-sm",
+                                selectedFoundItem?.id === process.id
+                                  ? "text-blue-500"
+                                  : "text-gray-500",
+                              )}
+                            >
+                              <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                              {format(
+                                new Date(process.item.dateReported),
+                                "MMM d, yyyy",
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Add the check icon when selected */}
+                          {selectedFoundItem?.id === process.id && (
+                            <div className="absolute -top-2 -right-2 bg-blue-500 rounded-full p-1 shadow-lg animate-in fade-in zoom-in duration-200">
+                              <CheckCircle className="h-4 w-4 text-white" />
+                            </div>
+                          )}
+
+                          {/* Info Grid - Two rows with two columns each */}
+                          <div className="grid grid-cols-[1fr,1.2fr] gap-y-2">
+                            <div className="text-sm">
+                              <span className="text-gray-600">Category:</span>{" "}
+                              <span className="text-gray-900">
+                                {process.item.category}
+                              </span>
+                            </div>
+                            <div className="text-sm pl-12">
+                              <span className="text-gray-600">Location:</span>{" "}
+                              <span className="text-gray-900">
+                                {process.item.location}
+                              </span>
+                            </div>
+                            <div className="text-sm">
+                              <span className="text-gray-600">Student ID:</span>{" "}
+                              <span className="text-gray-900">
+                                {process.item.studentId}
+                              </span>
+                            </div>
+                            <div className="text-sm pl-12">
+                              <span className="text-gray-600">Status:</span>{" "}
+                              <span className="text-gray-900 capitalize">
+                                Lost
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Description */}
+                          <div className="mt-4">
+                            <p className="text-sm text-gray-600">
+                              <span className="font-medium">Description:</span>
+                            </p>
+                            <p className="text-sm text-gray-700 mt-0.5">
+                              {process.item.description}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </ScrollArea>
 
