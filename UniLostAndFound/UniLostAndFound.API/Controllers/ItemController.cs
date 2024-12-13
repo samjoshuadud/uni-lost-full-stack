@@ -727,4 +727,27 @@ public class ItemController : ControllerBase
             return StatusCode(500, new { message = "Error getting process", error = ex.Message });
         }
     }
+
+    [HttpGet("process/user/{userId}/involved")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<PendingProcess>>>> GetUserInvolvedProcesses(string userId)
+    {
+        try
+        {
+            var processes = await _processService.GetUserInvolvedProcessesAsync(userId);
+            return Ok(new ApiResponse<IEnumerable<PendingProcess>>
+            {
+                Success = true,
+                Data = processes
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error getting user involved processes: {ex.Message}");
+            return StatusCode(500, new ApiResponse<IEnumerable<PendingProcess>>
+            {
+                Success = false,
+                Message = "Failed to get user involved processes"
+            });
+        }
+    }
 } 

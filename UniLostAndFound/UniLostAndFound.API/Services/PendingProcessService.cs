@@ -181,4 +181,15 @@ public class PendingProcessService
             throw;
         }
     }
+
+    public async Task<IEnumerable<PendingProcess>> GetUserInvolvedProcessesAsync(string userId)
+    {
+        return await _context.PendingProcesses
+            .Include(p => p.Item)
+            .Where(p => p.UserId == userId || p.OriginalReporterUserId == userId)
+            .Where(p => p.status == ProcessMessages.Status.PENDING_RETRIEVAL 
+                    || p.status == ProcessMessages.Status.HANDED_OVER 
+                    || p.status == ProcessMessages.Status.NO_SHOW)
+            .ToListAsync();
+    }
 } 
