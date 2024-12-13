@@ -38,6 +38,40 @@ export default function MatchingItemsDialog({
   const [isMatchingItem, setIsMatchingItem] = useState(false);
   const [selectedFoundItem, setSelectedFoundItem] = useState(null);
 
+  useEffect(() => {
+    if (open) {
+      fetchFoundItems();
+    }
+  }, [open, fetchFoundItems]);
+
+  useEffect(() => {
+    const rankItems = async () => {
+      if (!selectedItem || !items.length) return;
+      
+      setIsRankingItems(true);
+      try {
+        const rankedItems = await Promise.all(
+          items.map(async (item) => {
+            const score = await rankItemSimilarity(selectedItem, item);
+            return {
+              ...item,
+              similarityScore: score
+            };
+          })
+        );
+        
+        setFoundItems(rankedItems.sort((a, b) => b.similarityScore - a.similarityScore));
+      } catch (error) {
+        console.error('Error ranking items:', error);
+        setFoundItems(items);
+      } finally {
+        setIsRankingItems(false);
+      }
+    };
+
+    rankItems();
+  }, [selectedItem, items]);
+
   const handleMatchItem = async (matchItem) => {
     if (!matchItem || !selectedItem) return;
     
@@ -140,41 +174,35 @@ export default function MatchingItemsDialog({
   };
 
   const sortedAndFilteredItems = useMemo(() => {
-    const filtered = foundItems.filter(item => {
-      const searchStr = searchQuery.toLowerCase();
-      const matchesSearch = (
-        item.name?.toLowerCase().includes(searchStr) ||
-        item.description?.toLowerCase().includes(searchStr) ||
-        item.category?.toLowerCase().includes(searchStr) ||
-        item.location?.toLowerCase().includes(searchStr)
-      );
-      
-      const matchesDate = isWithinDateRange(item.createdAt, dateFilter);
-      
-      return matchesSearch && matchesDate;
-    });
-
-    return filtered.sort((a, b) => {
-      switch (sortOption) {
-        case 'newest':
-          return new Date(b.createdAt) - new Date(a.createdAt);
-        case 'oldest':
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        case 'nameAZ':
-          return (a.name || '').localeCompare(b.name || '');
-        case 'nameZA':
-          return (b.name || '').localeCompare(a.name || '');
-        default:
-          return 0;
-      }
-    });
+    return foundItems
+      .filter(item => {
+        const searchStr = searchQuery.toLowerCase();
+        const matchesSearch = (
+          item.name?.toLowerCase().includes(searchStr) ||
+          item.description?.toLowerCase().includes(searchStr) ||
+          item.category?.toLowerCase().includes(searchStr) ||
+          item.location?.toLowerCase().includes(searchStr)
+        );
+        
+        const matchesDate = isWithinDateRange(item.createdAt, dateFilter);
+        
+        return matchesSearch && matchesDate;
+      })
+      .sort((a, b) => {
+        switch (sortOption) {
+          case 'newest':
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          case 'oldest':
+            return new Date(a.createdAt) - new Date(b.createdAt);
+          case 'nameAZ':
+            return (a.name || '').localeCompare(b.name || '');
+          case 'nameZA':
+            return (b.name || '').localeCompare(a.name || '');
+          default:
+            return 0;
+        }
+      });
   }, [foundItems, searchQuery, dateFilter, dateRange, sortOption]);
-
-  useEffect(() => {
-    if (open) {
-      fetchFoundItems();
-    }
-  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
