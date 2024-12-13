@@ -174,6 +174,10 @@ export default function StatisticsSection() {
                 type = 'Rejected';
                 label = 'bg-gray-500';
                 break;
+              case ProcessStatus.APPROVED:
+                type = 'Posted';
+                label = 'bg-blue-500';
+                break;
               default:
                 type = 'Status Update';
                 label = 'bg-gray-400';
