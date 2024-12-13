@@ -70,6 +70,15 @@ public class AppDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.Property(e => e.status).HasMaxLength(50);
 
+            entity.Property(e => e.OriginalReporterUserId)
+                .HasMaxLength(450)
+                .IsRequired(false);
+
+            entity.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(e => e.OriginalReporterUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             entity.HasOne(e => e.Item)
                 .WithMany()
                 .HasForeignKey(e => e.ItemId)

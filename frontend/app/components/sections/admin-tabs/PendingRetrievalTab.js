@@ -240,7 +240,7 @@ export default function PendingRetrievalTab({
                       <div>
                         <h3 className="font-bold text-lg">{process.item?.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          Student ID: {process.item?.studentId || 'N/A'}
+                          Handled by: {process.item?.studentId || 'N/A'}
                         </p>
                       </div>
                       <Badge variant="outline" className="bg-green-100 text-green-800">

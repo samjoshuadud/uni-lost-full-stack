@@ -26,17 +26,14 @@ public class PendingProcessService
         _context = context;
     }
 
-    public async Task<IEnumerable<PendingProcess>> GetByUserIdAsync(string userId)
+    public async Task<List<PendingProcess>> GetByUserIdAsync(string userId)
     {
-        try
-        {
-            return await _processRepository.GetByUserIdAsync(userId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Error getting pending processes for user {userId}: {ex.Message}");
-            throw;
-        }
+        return await _context.PendingProcesses
+            .Include(p => p.Item)
+            .Where(p => p.UserId == userId || 
+                       (p.Item != null && p.Item.ReporterId == userId) ||
+                       p.OriginalReporterUserId == userId)
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<PendingProcess>> GetAllWithItemsAsync()
