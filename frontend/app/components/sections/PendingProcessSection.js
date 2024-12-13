@@ -868,18 +868,9 @@ export default function PendingProcessSection({ pendingProcesses = [], onViewDet
         const isLostItem = process.item?.status?.toLowerCase() === 'lost';
         cardStyle = "border-l-4 border-l-green-500";
         statusBadge = (
-          <div className="flex gap-2">
-            <Badge variant="outline" className="bg-green-100 text-green-800">
-              Posted
-            </Badge>
-            <Badge variant="outline" className={`${
-              isLostItem 
-                ? 'bg-red-100 text-red-800' 
-                : 'bg-emerald-100 text-emerald-800'
-            }`}>
-              {isLostItem ? 'Lost Item' : 'Found Item'}
-            </Badge>
-          </div>
+          <Badge variant="outline" className="bg-green-100 text-green-800">
+            Posted
+          </Badge>
         );
         messageStyle = "text-green-800 bg-green-50";
         content = (
