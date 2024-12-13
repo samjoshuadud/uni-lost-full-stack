@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Bell, Search, User, Loader2, LogOut, X } from "lucide-react"
@@ -39,6 +39,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { addDays } from "date-fns" 
+import { Toaster, toast } from 'sonner'
 
 const styles = `
   @keyframes fadeIn {
@@ -1152,6 +1153,149 @@ export default function UniLostAndFound() {
   //   );
   // }
 
+  useEffect(() => {
+    const handleNewItem = (event) => {
+      if (!isAdmin) return;
+      
+      const { item, type, processId } = event.detail;
+      
+      toast.custom((t) => (
+        <div className={`${
+          t.visible ? 'animate-enter' : 'animate-leave'
+        } max-w-[400px] bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black/5 overflow-hidden`}>
+          <div className={`w-1.5 ${type === 'found' ? 'bg-green-500' : 'bg-yellow-500'}`} />
+          <div className="flex items-start p-4 gap-3">
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+              type === 'found' ? 'bg-green-100 text-green-500' : 'bg-yellow-100 text-yellow-500'
+            }`}>
+              {type === 'found' ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              )}
+            </div>
+
+            <div className="flex-1 pt-0.5">
+              <div className="flex items-start justify-between">
+                <div className="flex flex-col">
+                  <h3 className="text-sm font-medium text-gray-900">
+                    New {type} Item Report
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500 font-medium">
+                    {item.name || item.Name}
+                  </p>
+                </div>
+                <span className={`ml-3 flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                  type === 'found' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                }`}>
+                  {type.toUpperCase()}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center gap-2 text-xs text-gray-500">
+                <span className="inline-flex items-center rounded px-2 py-0.5 bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                  {item.category || item.Category}
+                </span>
+                <span>•</span>
+                <span>{item.location || item.Location}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ), {
+        duration: 5000,
+        position: 'top-right'
+      });
+    };
+
+    window.addEventListener('newItemReported', handleNewItem);
+    return () => window.removeEventListener('newItemReported', handleNewItem);
+  }, [isAdmin]);
+
+  // Add this at the component level, before the useEffects
+  const lastKnownCountRef = useRef(0);
+  const lastCheckedTimeRef = useRef(0);
+
+  // Then modify the polling effect
+  useEffect(() => {
+    if (!isAdmin) return;
+    
+    const checkNewPendingItems = async () => {
+      try {
+        const now = Date.now();
+        // Prevent checking too frequently
+        if (now - lastCheckedTimeRef.current < 5000) return;
+        lastCheckedTimeRef.current = now;
+
+        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+        const data = await response.json();
+        
+        if (!data?.$values) return;
+        
+        const pendingItems = data.$values.filter(process => 
+          process.status === ProcessStatus.PENDING_APPROVAL
+        );
+        
+        const currentCount = pendingItems.length;
+        
+        if (lastKnownCountRef.current > 0 && currentCount > lastKnownCountRef.current) {
+          const newCount = currentCount - lastKnownCountRef.current;
+          
+          toast.custom((t) => (
+            <div className={`${
+              t.visible ? 'animate-enter' : 'animate-leave'
+            } max-w-[400px] bg-white shadow-lg rounded-lg pointer-events-auto flex ring-1 ring-black/5 overflow-hidden`}>
+              <div className={`w-1.5 bg-blue-500`} />
+              <div className="flex items-start p-4 gap-3">
+                <div className="flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-100">
+                    <Bell className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+                <div className="flex-1 pt-0.5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex flex-col">
+                      <h3 className="text-sm font-medium text-gray-900">
+                        Pending Items Update
+                      </h3>
+                      <p className="mt-1 text-sm text-gray-500">
+                        {newCount} new item{newCount > 1 ? 's' : ''} pending approval
+                      </p>
+                    </div>
+                    <span className="ml-3 flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                      NEEDS ATTENTION
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ), {
+            duration: 5000,
+            position: 'top-right'
+          });
+        }
+        
+        lastKnownCountRef.current = currentCount;
+        
+      } catch (error) {
+        console.error('Error checking for new pending items:', error);
+      }
+    };
+
+    // Initial check
+    checkNewPendingItems();
+
+    // Set up interval
+    const interval = setInterval(checkNewPendingItems, 30000);
+    
+    return () => {
+      clearInterval(interval);
+    };
+  }, [isAdmin]);
+
   return (
     <div className="min-h-screen relative">
       <div className="fixed inset-0 bg-pattern"></div>
@@ -1683,6 +1827,21 @@ export default function UniLostAndFound() {
           }}
         />
       </div>
+      <Toaster 
+        position="top-right"
+        expand={true}
+        richColors
+        closeButton
+        toastOptions={{
+          style: {
+            background: 'transparent',
+            padding: 0,
+            margin: 0,
+            boxShadow: 'none',
+          },
+          className: 'transform-gpu',
+        }}
+      />
     </div>
   )
 }
