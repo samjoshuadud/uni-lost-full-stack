@@ -44,7 +44,7 @@ export async function generateVerificationQuestions(itemInfo) {
     // If there's an image URL, use the vision model
     if (itemInfo.imageUrl) {
       try {
-        model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
         
         // Fetch the image
         const imageResponse = await fetch(itemInfo.imageUrl);
@@ -75,12 +75,12 @@ export async function generateVerificationQuestions(itemInfo) {
       } catch (imageError) {
         console.warn('Failed to process image, falling back to text-only:', imageError);
         // Fall back to text-only if image processing fails
-        model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        model = genAI.getGenerativeModel({ model: "gemini-pro" });
         result = await model.generateContent(promptText);
       }
     } else {
       // Use text-only model if no image
-      model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      model = genAI.getGenerativeModel({ model: "gemini-pro" });
       result = await model.generateContent(promptText);
     }
 
@@ -105,12 +105,16 @@ export async function rankItemSimilarity(lostItem, foundItems) {
     }
 
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash" 
+      model: "gemini-pro" 
     });
 
     const promptText = `
-    Compare this lost item with a list of found items and rank them by similarity.
-    Consider matching these attributes: name, category, description, and location.
+    Compare this lost item with a list of found items and rank ALL of them by similarity.
+    Consider matching these attributes in order of importance:
+    1. Category match (30% weight)
+    2. Name similarity (30% weight)
+    3. Description keywords match (25% weight)
+    4. Location proximity (15% weight)
     
     Lost Item:
     Name: ${lostItem.name}
@@ -127,23 +131,65 @@ export async function rankItemSimilarity(lostItem, foundItems) {
     Location: ${item.item?.location}
     `).join('\n')}
 
-    Return a JSON array of objects containing the item index and similarity percentage.
-    Example: [{"index": 2, "similarity": 85}, {"index": 1, "similarity": 60}]
-    Important: Return ONLY the array, no markdown formatting or additional text.
-    Ensure similarity is a number between 0-100.
+    Instructions:
+    1. You MUST rank ALL items provided
+    2. Return a JSON array containing ALL items with their similarity scores
+    3. Each item in array must have "index" and "similarity" properties
+    4. Similarity scores should be between 0-100
+    5. Even low matching items should be included with appropriate low scores
+    
+    Expected format:
+    [
+      {"index": 1, "similarity": 85},
+      {"index": 2, "similarity": 60},
+      {"index": 3, "similarity": 30},
+      ... (continue for ALL items)
+    ]
+
+    Important: 
+    - Return ONLY the JSON array
+    - Include ALL items in the response
+    - No markdown formatting or additional text
+    - Ensure every item from the input list has a ranking
     `;
 
     const result = await model.generateContent(promptText);
     const response = await result.response;
     
-    // Clean up the response text
-    const cleanedResponse = response.text()
+    // Clean up the response text and ensure it's valid JSON
+    let cleanedResponse = response.text()
       .replace(/```json\n?/g, '')
       .replace(/```\n?/g, '')
       .trim();
     
-    // Parse the cleaned response as JSON array
-    const rankings = JSON.parse(cleanedResponse);
+    // Add error checking for JSON parsing
+    let rankings;
+    try {
+      rankings = JSON.parse(cleanedResponse);
+      
+      // Verify we have rankings for all items
+      if (rankings.length !== foundItems.length) {
+        console.warn('Incomplete rankings received, padding with remaining items');
+        const existingIndices = new Set(rankings.map(r => r.index));
+        
+        // Add missing items with 0 similarity
+        for (let i = 1; i <= foundItems.length; i++) {
+          if (!existingIndices.has(i)) {
+            rankings.push({ index: i, similarity: 0 });
+          }
+        }
+      }
+    } catch (parseError) {
+      console.error('Error parsing rankings:', parseError);
+      // Fallback: create rankings with 0 similarity
+      rankings = foundItems.map((_, index) => ({
+        index: index + 1,
+        similarity: 0
+      }));
+    }
+    
+    // Sort by similarity score before mapping
+    rankings.sort((a, b) => b.similarity - a.similarity);
     
     // Map the rankings to the original items with similarity scores
     return rankings.map(ranking => ({
