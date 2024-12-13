@@ -66,8 +66,7 @@ export default function AboutUs() {
                 </div>
                 <h2 className="text-2xl font-bold text-[#0052cc] mb-4">Our Mission</h2>
                 <p className="text-gray-700 text-center">
-                  To ensure the health, safety, and security of the UMak community through comprehensive programs and services that promote a safe and conducive learning environment.
-                </p>
+                Our mission is to tediously inspects, assesses, and promptly addresses all safety and wellness concerns through regular ocular inspections including safety and health measure campaigns and implementations.                </p>
               </div>
             </div>
             <div className="bg-white rounded-xl p-8 shadow-lg">
@@ -77,8 +76,7 @@ export default function AboutUs() {
                 </div>
                 <h2 className="text-2xl font-bold text-[#0052cc] mb-4">Our Vision</h2>
                 <p className="text-gray-700 text-center">
-                  To be the leading institution in providing excellent health services and maintaining the highest standards of safety and security in the academic community.
-                </p>
+                Occupational Health and Safety Office envisions the university as an educational institution where perceived hazards are preempted and immediately addressed to ensure safety and wellness among its populace.                </p>
               </div>
             </div>
           </div>
