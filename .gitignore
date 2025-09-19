@@ -9,6 +9,8 @@ tree.txt
 READme.md
 unilostfound.sql
 
+# appsettings.json
+# UniLostAndFound/UniLostAndFound.API/appsettings.json
 # Dependencies
 **/node_modules
 node_modules
