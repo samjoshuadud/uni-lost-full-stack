@@ -56,9 +56,31 @@ try
         options.AddPolicy("AllowNextJS",
             corsBuilder =>
             {
-                var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-                
-                corsBuilder.WithOrigins(allowedOrigins)
+                var allowedOrigins = (builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>())
+                    .Where(origin => !string.IsNullOrWhiteSpace(origin))
+                    .ToList();
+
+                // Supports Azure App Settings using a single CSV value.
+                var allowedOriginsCsv = builder.Configuration["Cors:AllowedOriginsCsv"];
+                if (!string.IsNullOrWhiteSpace(allowedOriginsCsv))
+                {
+                    allowedOrigins.AddRange(
+                        allowedOriginsCsv
+                            .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                    );
+                }
+
+                var distinctOrigins = allowedOrigins
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
+                if (distinctOrigins.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        "No CORS origins configured. Set Cors:AllowedOrigins or Cors:AllowedOriginsCsv.");
+                }
+
+                corsBuilder.WithOrigins(distinctOrigins)
                     .AllowAnyMethod()
                     .AllowAnyHeader()
                     .AllowCredentials();
@@ -101,4 +123,3 @@ catch (Exception ex)
     Console.WriteLine($"[Debug] Stack trace: {ex.StackTrace}");
     throw;
 }
-

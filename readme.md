@@ -70,3 +70,27 @@ The project is a full-stack application. The frontend is built with Next.js and 
     ```bash
     dotnet run
     ```
+
+### Deploying Backend to Azure (App Service)
+
+1. Provision services:
+   - Azure App Service (Linux, .NET)
+   - Azure Database for MySQL
+
+2. Configure App Service **Application settings** (no secrets in repo):
+   - `ConnectionStrings__DefaultConnection`
+   - `EmailSettings__Host`
+   - `EmailSettings__Port`
+   - `EmailSettings__FromEmail`
+   - `EmailSettings__Password`
+   - `EmailSettings__FromName`
+   - `App__FrontendBaseUrl` (your frontend URL)
+   - `Cors__AllowedOriginsCsv` (comma-separated frontend origins)
+
+3. Ensure CORS includes your frontend domain via `Cors__AllowedOriginsCsv`.
+
+4. Deploy API from `UniLostAndFound/UniLostAndFound.API`:
+   ```bash
+   dotnet publish -c Release
+   ```
+   Then deploy the published output to your App Service (ZIP deploy/GitHub Actions/Azure CLI).

@@ -1,5 +1,6 @@
 // API base URL
-const API_BASE_URL = "http://localhost:5067"; // TODO: Change to ngrok URL
+//
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL // TODO: Change to ngrok URL
 // const API_BASE_URL = "https://2e92-136-158-1-190.ngrok-free.app";
 // API endpoints configuration
 const API_ENDPOINTS = {

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Configuration;
 using MimeKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
@@ -13,17 +14,20 @@ using System.Linq;
 using UniLostAndFound.API.DTOs;
 namespace UniLostAndFound.API.Services
 {
-    public class EmailService : IEmailService
-    {
-        private readonly ILogger<EmailService> _logger;
-        private readonly EmailSettings _emailSettings;
+        public class EmailService : IEmailService
+        {
+            private readonly ILogger<EmailService> _logger;
+            private readonly EmailSettings _emailSettings;
+            private readonly string _frontendBaseUrl;
 
         public EmailService(
             ILogger<EmailService> logger,
-            IOptions<EmailSettings> emailSettings)
+            IOptions<EmailSettings> emailSettings,
+            IConfiguration configuration)
         {
             _logger = logger;
             _emailSettings = emailSettings.Value;
+            _frontendBaseUrl = configuration["App:FrontendBaseUrl"]?.TrimEnd('/') ?? "http://localhost:3000";
         }
 
         private async Task SendEmailAsync(string toEmail, string subject, string htmlBody)
@@ -134,7 +138,7 @@ namespace UniLostAndFound.API.Services
                 email.To.Add(MailboxAddress.Parse(userEmail));
                 email.Subject = "Lost Item Report Approved";
 
-                var viewItemUrl = $"http://localhost:3000?highlight=item-{itemId}&delay=true";
+                var viewItemUrl = $"{_frontendBaseUrl}?highlight=item-{itemId}&delay=true";
 
                 var builder = new BodyBuilder
                 {
@@ -298,7 +302,7 @@ namespace UniLostAndFound.API.Services
                         </ul>
 
                         <div style='margin: 20px 0;'>
-                            <a href='http://localhost:3000' 
+                            <a href='{_frontendBaseUrl}' 
                                style='background-color: #0066cc; 
                                       color: white; 
                                       padding: 10px 20px; 
