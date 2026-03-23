@@ -1,6 +1,14 @@
 // API base URL
 //
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL // TODO: Change to ngrok URL
+// In production the API must be reached over HTTPS to avoid ERR_SSL_PROTOCOL_ERROR
+// (browsers enforce HSTS for *.azurewebsites.net and similar domains).
+// If NEXT_PUBLIC_API_URL is accidentally set to an http:// URL we silently upgrade
+// it to https:// when the app is running in production mode.
+const rawApiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+const API_BASE_URL =
+  process.env.NODE_ENV === 'production' && rawApiUrl.startsWith('http://')
+    ? rawApiUrl.replace('http://', 'https://')
+    : rawApiUrl;
 // const API_BASE_URL = "https://2e92-136-158-1-190.ngrok-free.app";
 // API endpoints configuration
 const API_ENDPOINTS = {

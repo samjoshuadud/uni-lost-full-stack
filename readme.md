@@ -94,3 +94,40 @@ The project is a full-stack application. The frontend is built with Next.js and 
    dotnet publish -c Release
    ```
    Then deploy the published output to your App Service (ZIP deploy/GitHub Actions/Azure CLI).
+
+### Deploying Frontend to Azure (App Service / Static Web Apps)
+
+1. Set the following **Application settings** (or environment variables) on your
+   frontend App Service / Static Web Apps resource:
+
+   | Variable | Description |
+   |---|---|
+   | `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase API key |
+   | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | `<project-id>.firebaseapp.com` |
+   | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
+   | `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | `<project-id>.appspot.com` |
+   | `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
+   | `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
+   | `NEXT_PUBLIC_API_URL` | **Must use `https://`** – e.g. `https://<backend>.azurewebsites.net` |
+   | `NEXT_PUBLIC_GEMINI_API_KEY` | Google Gemini API key (optional) |
+
+   > **Important – use HTTPS for `NEXT_PUBLIC_API_URL`.**  
+   > Azure's `*.azurewebsites.net` domain is on the browser's HSTS preload list.
+   > If you set an `http://` URL the browser will automatically upgrade the
+   > request to `https://` and, because the connection was originally plain HTTP,
+   > the handshake fails with **ERR_SSL_PROTOCOL_ERROR** during Google Auth.
+   > Always set `NEXT_PUBLIC_API_URL` to your backend's `https://` address.
+
+2. In the **Firebase Console** (Authentication → Settings → Authorized domains)
+   add your frontend's Azure domain (e.g. `myapp.azurewebsites.net`) so that
+   Firebase's Google OAuth popup is allowed to communicate with your app.
+
+3. Also add your backend's Azure CORS origin in the backend App Service's
+   Application settings using `Cors__AllowedOriginsCsv` (see backend section).
+
+4. Build and deploy from the `frontend` directory:
+   ```bash
+   npm run build
+   # Deploy the .next output per your CI/CD pipeline or
+   # use Azure Static Web Apps / Azure App Service Node.js deployment.
+   ```
