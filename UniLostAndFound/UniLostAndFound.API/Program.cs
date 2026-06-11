@@ -32,10 +32,10 @@ try
         });
     });
 
-    // Add MySQL DbContext
+    // Add PostgreSQL DbContext
     var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+        options.UseNpgsql(connectionString));
 
     // Register Repositories
     builder.Services.AddScoped<IItemRepository, ItemRepository>();

@@ -16,7 +16,7 @@ export default function ClaimInstructionsDialog({ isOpen, onClose }) {
           <div className="pt-4 space-y-4">
             <DialogDescription>
               To claim this item, please visit the OSHO (Occupational Safety and Health Office) 
-              for verification. Here's what you need to do:
+              for verification. Here&apos;s what you need to do:
             </DialogDescription>
             <div className="space-y-3 bg-blue-50 p-4 rounded-lg text-sm">
               <p className="font-medium text-blue-900">Requirements:</p>

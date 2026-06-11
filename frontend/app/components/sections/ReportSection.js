@@ -758,7 +758,7 @@ export default function ReportSection({
                   </div>
                   <div className="px-4 py-3 rounded-b-xl">
                     <p className="text-sm text-yellow-700 leading-relaxed">
-                      Please surrender the found item to the University's Lost and Found after submitting this report.
+                      Please surrender the found item to the University&apos;s Lost and Found after submitting this report.
                       <span className="block mt-1 font-medium">
                         Items not surrendered within 3 days will be automatically removed from the system.
                       </span>

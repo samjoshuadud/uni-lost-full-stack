@@ -575,7 +575,7 @@ export default function AdminSection({
         <CardContent className="p-8 text-center">
           <h2 className="text-xl font-bold mb-2">Access Denied</h2>
           <p className="text-muted-foreground">
-            You don't have permission to access this section.
+            You don&apos;t have permission to access this section.
           </p>
         </CardContent>
       </Card>
