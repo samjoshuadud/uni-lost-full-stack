@@ -145,134 +145,94 @@ export default function UniLostAndFound() {
 
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
-  // Add state for user's pending processes
-  const [userPendingProcesses, setUserPendingProcesses] = useState([]);
-
-  // Add state for claim processes
-  const [claimProcesses, setClaimProcesses] = useState([]);
-
   // Add these refs near the top of your component, with the other state declarations
   const lastCheckedTimeRef = useRef(Date.now());
   const lastKnownCountRef = useRef(0);
 
-  // Add useEffect for fetching claim processes
-  useEffect(() => {
-    const fetchClaimProcesses = async () => {
-      if (!user) return;
-      
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-        const data = await response.json();
-        const processes = data.$values || [];
-        
-        // Filter processes where requestorUserId matches current user
-        const userClaims = processes.filter(p => 
-          p.requestorUserId === user.uid && 
-          p.status === "claim_request"
-        );
-        
-        setClaimProcesses(userClaims);
-      } catch (error) {
-        console.error('Error fetching claim processes:', error);
-      }
-    };
-
-    fetchClaimProcesses();
-  }, [user]);
-
-  // Add function to fetch user's pending processes
-  const fetchUserPendingProcesses = async () => {
-    if (!user) return;
-    
+  // Consolidated function to fetch global data (all items, user involved process counts, etc.)
+  const fetchGlobalData = useCallback(async () => {
     try {
-        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-        const data = await response.json();
-        const processes = data.$values || [];
+      const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
+      if (!response.ok) throw new Error("Failed to fetch data");
+      
+      const data = await response.json();
+      if (data && data.$values) {
+        setItems(data.$values);
         
-        // Filter processes:
-        // 1. User's regular processes (where UserId matches)
-        // 2. User's claim processes (where RequestorUserId matches)
-        const userProcesses = processes.filter(p => 
-            p.userId === user.uid || 
-            (p.requestorUserId === user.uid && p.status === "claim_request")
-        );
-        
-        setUserPendingProcesses(userProcesses);
-    } catch (error) {
-        console.error('Error fetching user pending processes:', error);
-    }
-  };
+        // Calculate count if user is logged in
+        if (user && !authLoading) {
+          const involvedResponse = await fetch(`${API_BASE_URL}/api/Item/process/user/${user.uid}/involved`);
+          const involvedData = await involvedResponse.json();
+          const involvedList = involvedData?.data?.$values || [];
+          
+          // Calculate count based on:
+          // 1. User's regular processes (where UserId matches)
+          // 2. User's claim processes (where RequestorUserId matches)
+          // 3. Exclude awaiting_surrender status
+          const newCount = data.$values.filter(process => 
+                process.status !== ProcessStatus.AWAITING_SURRENDER && (
+                  process.userId === user.uid || 
+                  (process.requestorUserId === user.uid && process.status === ProcessStatus.CLAIM_REQUEST)
+              )
+          ).length + involvedList.length;
 
-  // Add useEffect to fetch user's pending processes
-  useEffect(() => {
-    const fetchPendingProcesses = async () => {
-        if (!user) return;
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-            const data = await response.json();
-            const processes = data.$values || [];
-            
-            // Filter processes:
-            // 1. User's regular processes (where UserId matches)
-            // 2. User's claim processes (where RequestorUserId matches)
-            const userProcesses = processes.filter(p => 
-                p.userId === user.uid || 
-                (p.requestorUserId === user.uid && p.status === "claim_request")
-            );
-            
-            setUserPendingProcesses(userProcesses);
-        } catch (error) {
-            console.error('Error fetching user pending processes:', error);
+          // Calculate total pending count (all statuses except AWAITING_SURRENDER and APPROVED)
+          const newTotalCount = data.$values.filter(process => 
+              process.status !== ProcessStatus.AWAITING_SURRENDER && 
+              process.status !== ProcessStatus.APPROVED &&
+              process.status !== ProcessStatus.HANDED_OVER &&
+              process.status !== ProcessStatus.NO_SHOW
+          ).length;
+
+          setPendingProcessCount(prevCount => prevCount !== newCount ? newCount : prevCount);
+          setTotalPendingCount(newTotalCount);
+        } else {
+          setPendingProcessCount(0);
+          setTotalPendingCount(0);
         }
-    };
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error fetching global data:', error);
+      setIsLoading(false);
+    } finally {
+      setIsProcessCountLoading(false);
+    }
+  }, [user, authLoading]);
 
-    // Add event listener for manual refresh
-    const handleRefresh = () => {
-        fetchPendingProcesses();
-    };
+  // Consolidated function to fetch pending processes for the current user (used in event handlers)
+  const fetchUserPendingProcesses = useCallback(async () => {
+    if (!user?.uid) return;
 
-    if (user) {
-        fetchPendingProcesses();
-        window.addEventListener('refreshPendingProcesses', handleRefresh);
-        const interval = setInterval(fetchPendingProcesses, 5000);
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('refreshPendingProcesses', handleRefresh);
-        };
-    } else {
-        setUserPendingProcesses([]);
+    try {
+      const token = await user.getIdToken(true);
+      const data = await itemApi.getUserPending(token, user.uid);
+      setPendingProcesses(Array.isArray(data) ? data : [data].filter(Boolean));
+    } catch (error) {
+      console.error('Error fetching user pending processes:', error);
     }
   }, [user]);
 
+  // Effect to fetch initial data
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-        if (!response.ok) throw new Error("Failed to fetch data");
-        
-        const data = await response.json();
-        if (data && data.$values) {
-          setItems(data.$values);
-          if (typeof onUpdateCounts === 'function') {
-            onUpdateCounts();
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
+    fetchGlobalData();
+    fetchUserPendingProcesses();
+  }, [fetchGlobalData, fetchUserPendingProcesses]);
+
+  // Removed background polling interval to run purely on mount-fetching and manual/action refresh events
+
+  // Add event listener for manual refresh requests from child sections
+  useEffect(() => {
+    const handleRefresh = () => {
+      fetchGlobalData();
+      fetchUserPendingProcesses();
     };
 
-    let timeoutId;
-    if (activeSection === "lost" || activeSection === "found" || activeSection === "dashboard") {
-      fetchData();
-      timeoutId = setInterval(fetchData, 5000);
-    }
-
+    window.addEventListener('refreshPendingProcesses', handleRefresh);
     return () => {
-      if (timeoutId) clearInterval(timeoutId);
+      window.removeEventListener('refreshPendingProcesses', handleRefresh);
     };
-  }, [activeSection]); // Only depend on activeSection
+  }, [fetchGlobalData, fetchUserPendingProcesses]); // Only depend on activeSection
 
   const filteredItems = useMemo(() => {
     if (!items) return [];
@@ -507,7 +467,7 @@ export default function UniLostAndFound() {
         return <ProfileSection user={user} />
       case "pending_process":
         return <PendingProcessSection 
-          pendingProcesses={userPendingProcesses}
+          pendingProcesses={pendingProcesses}
           onViewDetails={handleViewDetails}
           handleDelete={handleDelete}
           onViewPost={handleViewPost}
@@ -939,96 +899,7 @@ export default function UniLostAndFound() {
     }
   }, [user]);
 
-  // Add useEffect to fetch pending processes for the current user
-  useEffect(() => {
-    const fetchPendingProcesses = async () => {
-      if (!user?.uid) return;
-
-      try {
-        const token = await user.getIdToken(true);
-        const data = await itemApi.getUserPending(token, user.uid);
-        setPendingProcesses(Array.isArray(data) ? data : [data].filter(Boolean));
-      } catch (error) {
-        console.error('Error fetching pending processes:', error);
-      }
-    };
-
-    if (user) {
-      fetchPendingProcesses();
-      const interval = setInterval(fetchPendingProcesses, 5000);
-      return () => clearInterval(interval);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    const fetchPendingProcessCount = async () => {
-        if (!user || authLoading) return;
-        
-        try {
-            const response = await fetch(`${API_BASE_URL}/api/Item/pending/all`);
-            const data = await response.json();
-
-            const involvedResponse = await fetch(`${API_BASE_URL}/api/Item/process/user/${user.uid}/involved`);
-            const involvedData = await involvedResponse.json();
-            
-
-            
-            if (data && data.$values) {
-                // Set items first
-                setItems(data.$values);
-                setIsLoading(false);
-
-                // Calculate count based on:
-                // 1. User's regular processes (where UserId matches)
-                // 2. User's claim processes (where RequestorUserId matches)
-                // 3. Exclude awaiting_surrender status
-                const newCount = data.$values.filter(process => 
-                      process.status !== ProcessStatus.AWAITING_SURRENDER && (
-                        process.userId === user.uid || 
-                        (process.requestorUserId === user.uid && process.status === ProcessStatus.CLAIM_REQUEST)
-                    )
-                ).length + involvedData.data.$values.length;
-
-                // Calculate total pending count (all statuses except AWAITING_SURRENDER and APPROVED)
-                const newTotalCount = data.$values.filter(process => 
-                    process.status !== ProcessStatus.AWAITING_SURRENDER && 
-                    process.status !== ProcessStatus.APPROVED &&
-                    process.status !== ProcessStatus.HANDED_OVER &&
-                    process.status !== ProcessStatus.NO_SHOW
-                ).length;
-
-                setPendingProcessCount(prevCount => {
-                    if (prevCount !== newCount) {
-                        return newCount;
-                    }
-                    return prevCount;
-                });
-
-                setTotalPendingCount(newTotalCount);
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            setPendingProcessCount(0);
-            setTotalPendingCount(0);
-            setIsLoading(false);
-        } finally {
-            setIsProcessCountLoading(false);
-        }
-    };
-
-    if (user && !authLoading) {
-        setIsLoading(true);
-        setIsProcessCountLoading(true);
-        fetchPendingProcessCount();
-        const interval = setInterval(fetchPendingProcessCount, 5000);
-        return () => clearInterval(interval);
-    } else {
-        setPendingProcessCount(0);
-        setTotalPendingCount(0);
-        setIsLoading(false);
-        setIsProcessCountLoading(false);
-    }
-  }, [user, authLoading]);
+  // Duplicate polling effect hooks removed and consolidated into fetchGlobalData and fetchUserPendingProcesses at the top
 
   // Add sort state
   const [sortOrder, setSortOrder] = useState("newest");
@@ -1322,9 +1193,6 @@ export default function UniLostAndFound() {
     };
 
     checkNewPendingItems();
-    const interval = setInterval(checkNewPendingItems, 30000);
-    
-    return () => clearInterval(interval);
   }, [isAdmin]);
 
   return (

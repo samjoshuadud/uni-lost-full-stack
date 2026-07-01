@@ -157,7 +157,6 @@ export default function AdminSection({
   useEffect(() => {
     if (isAdmin) {
       let isMounted = true;
-      let timeoutId;
 
       const fetchData = async () => {
         if (!isMounted) return;
@@ -188,18 +187,12 @@ export default function AdminSection({
         } catch (error) {
           console.error("Error fetching data:", error);
         }
-        
-        // Schedule next update only if component is still mounted
-        if (isMounted) {
-          timeoutId = setTimeout(fetchData, 5000);
-        }
       };
 
       fetchData();
 
       return () => {
         isMounted = false;
-        if (timeoutId) clearTimeout(timeoutId);
       };
     }
   }, [isAdmin]);
