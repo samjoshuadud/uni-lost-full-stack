@@ -4,6 +4,7 @@ using Microsoft.OpenApi.Models;
 using Microsoft.IdentityModel.Tokens;
 using UniLostAndFound.API.Services;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using UniLostAndFound.API.Data;
 using UniLostAndFound.API.Repositories;
@@ -49,6 +50,24 @@ try
     builder.Services.AddScoped<UserService>();
     builder.Services.AddScoped<UserAccessService>();
     builder.Services.AddScoped<AdminService>();
+
+    // Configure forwarded headers so ASP.NET Core correctly reads X-Forwarded-Proto
+    // and X-Forwarded-For sent by Azure App Service's reverse proxy.  Without this
+    // the app sees all requests as plain HTTP even when the client used HTTPS.
+    builder.Services.Configure<ForwardedHeadersOptions>(options =>
+    {
+        options.ForwardedHeaders =
+            ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+        // Azure App Service's internal proxy IP is dynamic and not predictable,
+        // so we clear the known-networks/proxies allowlists to trust any forwarded
+        // address.  This is the documented approach for Azure App Service
+        // (https://learn.microsoft.com/aspnet/core/host-and-deploy/proxy-load-balancer).
+        // The application is protected from external header spoofing by Azure's
+        // network boundary; however, if you expose the app outside Azure's managed
+        // infrastructure you should restrict this to the specific proxy address.
+        options.KnownNetworks.Clear();
+        options.KnownProxies.Clear();
+    });
 
     // Add CORS
     builder.Services.AddCors(options =>
@@ -108,6 +127,18 @@ try
             c.SwaggerEndpoint("/swagger/v1/swagger.json", "UniLostAndFound API V1");
             c.RoutePrefix = string.Empty; // Serve Swagger UI at root
         });
+    }
+
+    // Trust X-Forwarded-Proto / X-Forwarded-For from Azure's reverse proxy.
+    // Must be called before any middleware that depends on the request scheme.
+    app.UseForwardedHeaders();
+
+    // Redirect plain HTTP to HTTPS in production.  Azure App Service terminates
+    // TLS and forwards HTTP internally, but if a request somehow arrives over
+    // plain HTTP this ensures it is upgraded.
+    if (!app.Environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
     }
 
     app.UseCors("AllowNextJS");
